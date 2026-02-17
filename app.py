@@ -5,7 +5,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # ==========================================
-# ページ設定とCSS（スマホ最適化）
+# ページ設定
 # ==========================================
 st.set_page_config(
     page_title="性格適性診断 | オンボーディング",
@@ -14,33 +14,61 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ボタンや全体レイアウトをスマホで押しやすくするモダンCSS
+# ==========================================
+# CSS: 強制ライトモード ＆ ユニバーサルデザイン
+# ==========================================
 st.markdown("""
 <style>
+    /* 強制ライトモード（OSのダークモード設定を無効化） */
+    .stApp, .stApp > header, .stApp .main {
+        background-color: #FFFFFF !important;
+    }
+    h1, h2, h3, h4, h5, h6, p, span, div, label, li {
+        color: #000000 !important;
+    }
+    
+    /* ユニバーサルデザインの回答ボタン */
     .stButton>button {
-        width: 100%;
-        height: 60px;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        transition: 0.3s;
+        width: 100% !important;
+        height: 65px !important;
+        font-size: 18px !important;
+        font-weight: 900 !important;
+        color: #000000 !important;
+        background-color: #FFFFFF !important;
+        border: 3px solid #444444 !important; /* 太くて濃いグレーの枠線 */
+        border-radius: 12px !important;       /* 角丸 */
+        margin-bottom: 12px !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important;
+    }
+    
+    /* ボタンホバー・タップ時の挙動 */
+    .stButton>button:hover {
+        background-color: #F5F5F5 !important;
+        border-color: #111111 !important;
     }
     .stButton>button:active {
-        background-color: #00C853 !important;
-        color: white !important;
+        background-color: #E0E0E0 !important;
+        transform: translateY(2px) !important;
+        box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
     }
+
+    /* 質問テキストのスタイル */
     .question-title {
-        font-size: 1.3rem;
-        font-weight: 800;
+        font-size: 1.4rem;
+        font-weight: 900;
         text-align: center;
         margin-top: 2rem;
         margin-bottom: 2rem;
         line-height: 1.6;
+        color: #000000 !important;
     }
-    /* 選択ボックス等のラベルの余白調整 */
+    
+    /* 入力フォームのラベル強調 */
     .stSelectbox label, .stTextInput label {
-        font-weight: bold;
+        font-weight: 900 !important;
+        font-size: 1.1rem !important;
+        color: #000000 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -109,7 +137,6 @@ QUESTIONS = [
     {"id": 49, "text": "ストレスが溜まると、体調（胃腸や頭痛など）にすぐ表れる。", "trait": "N", "is_reverse": False},
     {"id": 50, "text": "どんなピンチの状況でも、常にリラックスして冷静でいられる。", "trait": "N", "is_reverse": True}
 ]
-
 # ==========================================
 # セッションステートの初期化
 # ==========================================
@@ -127,23 +154,31 @@ if "user_data" not in st.session_state:
 # ==========================================
 # ロジック・コールバック関数
 # ==========================================
-def start_test(user_id, y, m, d, btime, gender):
-    """基本情報の入力完了・テスト開始"""
+def start_test(user_id, dob_str, btime, gender):
+    """基本情報の入力完了・バリデーション・テスト開始"""
     if not user_id:
         st.error("User_IDを入力してください。")
         return
     
-    # 存在しない日付（例: 2月30日）の簡易バリデーション
+    # 生年月日の8桁チェック
+    if not dob_str.isdigit() or len(dob_str) != 8:
+        st.error("生年月日は「19900101」のように8桁の半角数字で入力してください。")
+        return
+    
+    # 日付の妥当性チェックと形式変換
     try:
-        dob_obj = datetime.date(y, m, d)
-        dob_str = dob_obj.strftime("%Y/%m/%d")
+        y = int(dob_str[:4])
+        m = int(dob_str[4:6])
+        d = int(dob_str[6:])
+        valid_date = datetime.date(y, m, d)
+        formatted_dob = valid_date.strftime("%Y/%m/%d")
     except ValueError:
-        st.error("存在しない日付です。正しい日付を選択してください。")
+        st.error("存在しない日付です。正しい8桁の生年月日を入力してください。")
         return
 
     st.session_state.user_data = {
         "User_ID": user_id,
-        "DOB": dob_str,
+        "DOB": formatted_dob,
         "Birth_Time": btime.strip() if btime else "",
         "Gender": gender
     }
@@ -171,6 +206,11 @@ def handle_answer(q_id, answer_value):
         finish_test()
     else:
         st.session_state.current_q += 1
+
+def go_back():
+    """1つ前の質問に戻るコールバック"""
+    if st.session_state.current_q > 1:
+        st.session_state.current_q -= 1
 
 def finish_test():
     """テスト終了処理・ステート切り替え"""
@@ -219,9 +259,10 @@ def save_to_spreadsheet():
             ud["User_ID"],          # User_ID
             "",                     # Stripe_ID (空白)
             "",                     # LINE_ID (空白)
-            ud["DOB"],              # 生年月日
+            ud["DOB"],              # 生年月日 (YYYY/MM/DD)
             ud["Birth_Time"],       # 出生時間 (空白許容)
-            ud["Gender"]            # 性別
+            ud["Gender"],           # 性別
+            "", "", "", "", "", ""  # 【修正】占い用データ枠（日干支,天中殺,主星,初年,中年,晩年）として6個の空白を追加
         ]
         
         # Q1〜Q50の回答 (未回答部分は空白)
@@ -255,23 +296,18 @@ if st.session_state.step == "user_info":
     with st.form("info_form"):
         user_id = st.text_input("User_ID（システム用）")
         
-        st.markdown("<p style='font-weight: bold; margin-bottom: 0;'>生年月日</p>", unsafe_allow_html=True)
-        col_y, col_m, col_d = st.columns(3)
-        with col_y:
-            # デフォルトを1990年あたりにするためにindexを指定
-            years = list(range(1900, 2025))
-            y = st.selectbox("年", years, index=years.index(1990))
-        with col_m:
-            m = st.selectbox("月", list(range(1, 13)), index=0)
-        with col_d:
-            d = st.selectbox("日", list(range(1, 32)), index=0)
-            
+        # 【要件定義1】生年月日の8桁数字入力（UX改善）
+        st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
+        dob_input = st.text_input("例：19900101", max_chars=8, label_visibility="collapsed")
+        
         btime = st.text_input("出生時間（任意・例: 14:30、不明なら空欄のまま）", value="")
         gender = st.selectbox("性別", ["男性", "女性", "その他", "回答しない"])
         
+        # 送信ボタン
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
-            start_test(user_id, y, m, d, btime, gender)
+            # パート2で定義したstart_test関数を呼び出し
+            start_test(user_id, dob_input, btime, gender)
             st.rerun()
 
 # --- 2. CAT テスト画面 (SPA・1画面1問) ---
@@ -290,20 +326,18 @@ elif st.session_state.step == "test":
     
     st.write("---")
     
-    # スマホで押しやすいようにカラムでボタンを配置
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
+    # スマホで押し間違いを防ぐため、縦並びのUDボタンを配置
     # ボタンを押した瞬間に handle_answer がコールバックされ、画面が瞬時に切り替わる
-    with col1:
-        st.button("全く\n違う", on_click=handle_answer, args=(current_q_num, 1), key=f"btn_1_{current_q_num}")
-    with col2:
-        st.button("やや\n違う", on_click=handle_answer, args=(current_q_num, 2), key=f"btn_2_{current_q_num}")
-    with col3:
-        st.button("どちらでも\nない", on_click=handle_answer, args=(current_q_num, 3), key=f"btn_3_{current_q_num}")
-    with col4:
-        st.button("やや\nそう思う", on_click=handle_answer, args=(current_q_num, 4), key=f"btn_4_{current_q_num}")
-    with col5:
-        st.button("強く\nそう思う", on_click=handle_answer, args=(current_q_num, 5), key=f"btn_5_{current_q_num}")
+    st.button("全く違う", on_click=handle_answer, args=(current_q_num, 1), key=f"btn_1_{current_q_num}")
+    st.button("やや違う", on_click=handle_answer, args=(current_q_num, 2), key=f"btn_2_{current_q_num}")
+    st.button("どちらでもない", on_click=handle_answer, args=(current_q_num, 3), key=f"btn_3_{current_q_num}")
+    st.button("ややそう思う", on_click=handle_answer, args=(current_q_num, 4), key=f"btn_4_{current_q_num}")
+    st.button("強くそう思う", on_click=handle_answer, args=(current_q_num, 5), key=f"btn_5_{current_q_num}")
+    
+    # 【要件定義2】1つ前に戻るボタンの実装
+    if current_q_num > 1:
+        st.write("---")
+        st.button("◀ 前の質問に戻る", on_click=go_back, key=f"btn_back_{current_q_num}")
 
 # --- 3. 処理・完了画面 ---
 elif st.session_state.step == "processing":
