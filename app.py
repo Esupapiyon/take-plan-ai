@@ -15,10 +15,16 @@ st.set_page_config(
 )
 
 # ==========================================
-# CSS: 強制ライトモード ＆ ユニバーサルデザイン
+# CSS: 強制ライトモード ＆ ユニバーサルデザイン ＆ 余白極小化
 # ==========================================
 st.markdown("""
 <style>
+    /* 【要件定義2】Streamlit特有の上下余白を極限まで削る */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1rem !important;
+    }
+
     /* 強制ライトモード（OSのダークモード設定を無効化） */
     .stApp, .stApp > header, .stApp .main {
         background-color: #FFFFFF !important;
@@ -53,13 +59,13 @@ st.markdown("""
         box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
     }
 
-    /* 質問テキストのスタイル */
+    /* 質問テキストのスタイル（上下余白を小さく調整） */
     .question-title {
         font-size: 1.4rem;
         font-weight: 900;
         text-align: center;
-        margin-top: 2rem;
-        margin-bottom: 2rem;
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
         line-height: 1.6;
         color: #000000 !important;
     }
@@ -162,7 +168,7 @@ def start_test(user_id, dob_str, btime, gender):
     
     # 生年月日の8桁チェック
     if not dob_str.isdigit() or len(dob_str) != 8:
-        st.error("生年月日は「19900101」のように8桁の半角数字で入力してください。")
+        st.error("生年月日は「19961229」のように8桁の半角数字で入力してください。")
         return
     
     # 日付の妥当性チェックと形式変換
@@ -185,7 +191,11 @@ def start_test(user_id, dob_str, btime, gender):
     st.session_state.step = "test"
 
 def handle_answer(q_id, answer_value):
-    """回答を保存し、次へ進む（CATロジック含む）"""
+    """回答を保存し、次へ進む（CATロジック・二重タップ防止含む）"""
+    # 【要件定義3：二重タップ・スキップ防止】現在の問題番号と違うボタンの通信は無視する
+    if st.session_state.current_q != q_id:
+        return
+
     st.session_state.answers[q_id] = answer_value
     
     # 【CATロジック】第30問目で回答の分散（矛盾）をチェック
@@ -262,7 +272,7 @@ def save_to_spreadsheet():
             ud["DOB"],              # 生年月日 (YYYY/MM/DD)
             ud["Birth_Time"],       # 出生時間 (空白許容)
             ud["Gender"],           # 性別
-            "", "", "", "", "", ""  # 【修正】占い用データ枠（日干支,天中殺,主星,初年,中年,晩年）として6個の空白を追加
+            "", "", "", "", "", ""  # 占い用データ枠（日干支,天中殺,主星,初年,中年,晩年）として6個の空白を追加
         ]
         
         # Q1〜Q50の回答 (未回答部分は空白)
@@ -296,11 +306,12 @@ if st.session_state.step == "user_info":
     with st.form("info_form"):
         user_id = st.text_input("User_ID（システム用）")
         
-        # 【要件定義1】生年月日の8桁数字入力（UX改善）
+        # 【要件定義1】生年月日の8桁数字入力（プレースホルダー追加）
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
-        dob_input = st.text_input("例：19900101", max_chars=8, label_visibility="collapsed")
+        dob_input = st.text_input("生年月日", max_chars=8, placeholder="例 19961229", label_visibility="collapsed")
         
-        btime = st.text_input("出生時間（任意・例: 14:30、不明なら空欄のまま）", value="")
+        # 【要件定義1】出生時間のプレースホルダー追加
+        btime = st.text_input("出生時間（任意・不明なら空欄のまま）", value="", placeholder="例 23:16")
         gender = st.selectbox("性別", ["男性", "女性", "その他", "回答しない"])
         
         # 送信ボタン
@@ -320,6 +331,10 @@ elif st.session_state.step == "test":
     st.progress(progress_val)
     st.caption(f"現在 {current_q_num} 問目 / (最大 {max_q_num} 問)")
     
+    # 【要件定義2】1つ前に戻るボタンをプログレスバーのすぐ下（質問文の上）に配置
+    if current_q_num > 1:
+        st.button("◀ 前の質問に戻る", on_click=go_back, key=f"btn_back_{current_q_num}")
+    
     # 質問表示
     question_data = QUESTIONS[current_q_num - 1]
     st.markdown(f"<div class='question-title'>{question_data['text']}</div>", unsafe_allow_html=True)
@@ -333,11 +348,6 @@ elif st.session_state.step == "test":
     st.button("どちらでもない", on_click=handle_answer, args=(current_q_num, 3), key=f"btn_3_{current_q_num}")
     st.button("ややそう思う", on_click=handle_answer, args=(current_q_num, 4), key=f"btn_4_{current_q_num}")
     st.button("強くそう思う", on_click=handle_answer, args=(current_q_num, 5), key=f"btn_5_{current_q_num}")
-    
-    # 【要件定義2】1つ前に戻るボタンの実装
-    if current_q_num > 1:
-        st.write("---")
-        st.button("◀ 前の質問に戻る", on_click=go_back, key=f"btn_back_{current_q_num}")
 
 # --- 3. 処理・完了画面 ---
 elif st.session_state.step == "processing":
