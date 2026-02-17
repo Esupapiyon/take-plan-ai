@@ -59,25 +59,43 @@ st.markdown("""
         box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
     }
 
-    /* 【要件定義3】LINE連携ボタン (Primary) のブランドカラー上書き */
+    /* Primaryボタンのスタイル上書き */
     button[kind="primary"] {
         width: 100% !important;
         height: 60px !important;
         font-size: 18px !important;
         font-weight: 900 !important;
-        color: #FFFFFF !important;
-        background-color: #06C755 !important; /* LINEグリーン */
         border: none !important;
         border-radius: 12px !important;
         transition: all 0.2s ease-in-out !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important;
     }
-    
-    button[kind="primary"]:hover {
-        background-color: #05B34C !important;
-        color: #FFFFFF !important;
-    }
     button[kind="primary"]:active {
+        transform: translateY(2px) !important;
+        box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
+    }
+
+    /* 【要件定義2】LINEリンクボタンを強制的にLINEカラー（#06C755）にする強力なCSS */
+    div[data-testid="stLinkButton"] > a {
+        background-color: #06C755 !important;
+        color: white !important;
+        border: none !important;
+        font-weight: bold !important;
+        width: 100% !important;
+        height: 60px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 12px !important;
+        font-size: 18px !important;
+        text-decoration: none !important;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    div[data-testid="stLinkButton"] > a:hover {
+        background-color: #05b34c !important;
+    }
+    div[data-testid="stLinkButton"] > a:active {
         transform: translateY(2px) !important;
         box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
     }
@@ -195,20 +213,17 @@ def start_test(user_id, dob_str, btime, gender):
         st.error("User_IDを入力してください。")
         return
     
-    # 生年月日の8桁チェック
+    # 【要件定義1】生年月日の厳格なバリデーションとエラー表示
     if not dob_str.isdigit() or len(dob_str) != 8:
-        st.error("生年月日は「19961229」のように8桁の半角数字で入力してください。")
+        st.error("⚠️ 生年月日は8桁の半角数字で入力してください（例：19961229）")
         return
     
-    # 日付の妥当性チェックと形式変換
+    # 日付の存在チェック（19901345のような無効な日付を弾く）
     try:
-        y = int(dob_str[:4])
-        m = int(dob_str[4:6])
-        d = int(dob_str[6:])
-        valid_date = datetime.date(y, m, d)
+        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
         formatted_dob = valid_date.strftime("%Y/%m/%d")
     except ValueError:
-        st.error("存在しない日付です。正しい8桁の生年月日を入力してください。")
+        st.error("⚠️ 存在しない日付です。正しい生年月日を入力してください。")
         return
 
     st.session_state.user_data = {
@@ -343,15 +358,18 @@ if st.session_state.step == "user_info":
         # 出生時間のプレースホルダー維持
         btime = st.text_input("出生時間（任意・不明なら空欄のまま）", value="", placeholder="例 23:16")
         
-        # 【要件定義2】性別入力のUI変更（バグ解消と1タップ化）
+        # 性別入力のUI変更（バグ解消と1タップ化）
         gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True)
         
-        # 送信ボタン（Primary指定により、パート1のCSSでLINEカラーになります）
+        # 送信ボタン
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
-            # パート2で定義したstart_test関数を呼び出し
+            # パート2で定義したstart_test関数を呼び出し（内部で厳格なバリデーション実行）
             start_test(user_id, dob_input, btime, gender)
-            st.rerun()
+            
+            # エラーに引っかからず、testステップに進んだ場合のみ再描画（エラーメッセージを残すための必須処理）
+            if st.session_state.step == "test":
+                st.rerun()
 
 # --- 2. CAT テスト画面 (SPA・1画面1問) ---
 elif st.session_state.step == "test":
@@ -394,7 +412,7 @@ elif st.session_state.step == "done":
     st.success("解析が完了しました。")
     st.markdown("### 下のボタンからLINEに戻り、結果をお受け取りください。")
     
-    # 【要件定義3】完了画面に「LINEへ戻る」緑色ボタンを設置
+    # 【要件定義2】完了画面に「LINEへ戻る」緑色ボタンを設置
     st.link_button("LINEに戻って結果を受け取る", "https://lin.ee/dummy", type="primary")
     
     st.info("このウィンドウは閉じて構いません。")
