@@ -31,35 +31,90 @@ st.markdown("""
         color: white !important;
     }
     .question-title {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
         font-weight: 800;
         text-align: center;
         margin-top: 2rem;
         margin-bottom: 2rem;
-        line-height: 1.5;
+        line-height: 1.6;
+    }
+    /* 選択ボックス等のラベルの余白調整 */
+    .stSelectbox label, .stTextInput label {
+        font-weight: bold;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# CAT（適応型テスト）用 ダミー質問データ (50問)
-# O: 開放性, C: 勤勉性, E: 外向性, A: 協調性, N: 神経症的傾向
+# 本番用 Big5 質問データ (50問)
 # ==========================================
-TRAITS = ["O", "C", "E", "A", "N"]
-QUESTIONS = []
-for i in range(1, 51):
-    trait = TRAITS[(i - 1) % 5]
-    QUESTIONS.append({
-        "id": i,
-        "text": f"質問 {i}：自分は「{trait}」に関する特徴が当てはまる方だと思う。（ダミー質問）",
-        "trait": trait
-    })
+QUESTIONS = [
+    # O（開放性）
+    {"id": 1, "text": "新しいアイデアや企画を考えるのが好きだ。", "trait": "O", "is_reverse": False},
+    {"id": 2, "text": "芸術、音楽、文化的なものに深く心を動かされる。", "trait": "O", "is_reverse": False},
+    {"id": 3, "text": "ルーティンワーク（単純作業）よりも、変化のある環境を好む。", "trait": "O", "is_reverse": False},
+    {"id": 4, "text": "複雑で抽象的な概念について考えるのが得意だ。", "trait": "O", "is_reverse": False},
+    {"id": 5, "text": "慣習や伝統にとらわれず、新しいやり方を試したい。", "trait": "O", "is_reverse": False},
+    {"id": 6, "text": "未知の分野や、自分の知らない世界について学ぶことにワクワクする。", "trait": "O", "is_reverse": False},
+    {"id": 7, "text": "想像力が豊かで、つい空想にふけることがある。", "trait": "O", "is_reverse": False},
+    {"id": 8, "text": "物事の表面だけでなく、背後にある「なぜ？」を深く追求する。", "trait": "O", "is_reverse": False},
+    {"id": 9, "text": "哲学的、あるいは思想的な議論を交わすことに喜びを感じる。", "trait": "O", "is_reverse": False},
+    {"id": 10, "text": "想像を膨らませるより、現実的で具体的な事実だけを見ていたい。", "trait": "O", "is_reverse": True},
+
+    # C（勤勉性）
+    {"id": 11, "text": "仕事や作業は、細部まで正確に仕上げないと気が済まない。", "trait": "C", "is_reverse": False},
+    {"id": 12, "text": "立てた計画は、最後までスケジュール通りに実行する自信がある。", "trait": "C", "is_reverse": False},
+    {"id": 13, "text": "身の回りの整理整頓が常にできている方だ。", "trait": "C", "is_reverse": False},
+    {"id": 14, "text": "面倒なことでも、一度引き受けた約束や責任は必ず果たす。", "trait": "C", "is_reverse": False},
+    {"id": 15, "text": "衝動買いや、その場のノリでの行動はあまりしない。", "trait": "C", "is_reverse": False},
+    {"id": 16, "text": "目標達成のためなら、目先の遊びや誘惑を我慢できる。", "trait": "C", "is_reverse": False},
+    {"id": 17, "text": "仕事に取り掛かるのが早く、ギリギリまで先延ばしにすることはない。", "trait": "C", "is_reverse": False},
+    {"id": 18, "text": "効率を常に意識し、無駄のない動きを心がけている。", "trait": "C", "is_reverse": False},
+    {"id": 19, "text": "ミスを防ぐため、提出前や完了前に必ず二重チェックを行う。", "trait": "C", "is_reverse": False},
+    {"id": 20, "text": "計画を立てるのが苦手で、行き当たりばったりで行動しがちだ。", "trait": "C", "is_reverse": True},
+
+    # E（外向性）
+    {"id": 21, "text": "初対面の人とも、緊張せずにすぐ打ち解けられる。", "trait": "E", "is_reverse": False},
+    {"id": 22, "text": "飲み会やイベントなど、人が多く集まる活気ある場所が好きだ。", "trait": "E", "is_reverse": False},
+    {"id": 23, "text": "チームや集団の中では、自らリーダーシップを取ることが多い。", "trait": "E", "is_reverse": False},
+    {"id": 24, "text": "休日は一人で過ごすより、誰かと会ってエネルギーをチャージしたい。", "trait": "E", "is_reverse": False},
+    {"id": 25, "text": "自分の意見や考えを、ためらわずにハッキリと主張できる。", "trait": "E", "is_reverse": False},
+    {"id": 26, "text": "会話の中心になり、場を盛り上げるのが得意な方だ。", "trait": "E", "is_reverse": False},
+    {"id": 27, "text": "話すスピードや行動のテンポが、周りの人より早いと言われる。", "trait": "E", "is_reverse": False},
+    {"id": 28, "text": "ポジティブな感情（喜び・楽しさ）を、素直に大きく表現する。", "trait": "E", "is_reverse": False},
+    {"id": 29, "text": "人と話すことで思考が整理され、新しいアイデアが湧いてくる。", "trait": "E", "is_reverse": False},
+    {"id": 30, "text": "大勢でワイワイ騒ぐよりも、少人数で静かに過ごす方が好きだ。", "trait": "E", "is_reverse": True},
+
+    # A（協調性）
+    {"id": 31, "text": "困っている人を見ると、自分の作業を止めてでも助けたくなる。", "trait": "A", "is_reverse": False},
+    {"id": 32, "text": "チーム内での対立や揉め事を避けるためなら、自分が折れることができる。", "trait": "A", "is_reverse": False},
+    {"id": 33, "text": "相手の些細な感情の変化に気づき、共感するのが得意だ。", "trait": "A", "is_reverse": False},
+    {"id": 34, "text": "他人の長所を見つけ、素直に褒めることができる。", "trait": "A", "is_reverse": False},
+    {"id": 35, "text": "人から頼み事をされると、嫌とは言えず引き受けてしまうことが多い。", "trait": "A", "is_reverse": False},
+    {"id": 36, "text": "競争して勝つことよりも、全員で協力して成果を出すことに価値を感じる。", "trait": "A", "is_reverse": False},
+    {"id": 37, "text": "他人のミスに対して寛容で、厳しく責め立てることはしない。", "trait": "A", "is_reverse": False},
+    {"id": 38, "text": "自分の利益よりも、周囲の人やチーム全体の利益を優先しがちだ。", "trait": "A", "is_reverse": False},
+    {"id": 39, "text": "誰に対しても丁寧で、礼儀正しい態度で接することを心がけている。", "trait": "A", "is_reverse": False},
+    {"id": 40, "text": "他人の悩みやトラブルには、正直あまり関心がない。", "trait": "A", "is_reverse": True},
+
+    # N（神経症的傾向）
+    {"id": 41, "text": "プレッシャーのかかる場面では、極度に緊張したり不安になりやすい。", "trait": "N", "is_reverse": False},
+    {"id": 42, "text": "他人からの何気ない一言を、深く気に病んでしまうことがある。", "trait": "N", "is_reverse": False},
+    {"id": 43, "text": "失敗した時のことを考えると、心配で行動を起こせなくなる。", "trait": "N", "is_reverse": False},
+    {"id": 44, "text": "気分が落ち込みやすく、立ち直るまでに時間がかかる方だ。", "trait": "N", "is_reverse": False},
+    {"id": 45, "text": "予想外のトラブルが起きると、パニックになり冷静な判断ができなくなる。", "trait": "N", "is_reverse": False},
+    {"id": 46, "text": "自分の能力や将来について、強い焦りや劣等感を感じることがある。", "trait": "N", "is_reverse": False},
+    {"id": 47, "text": "イライラしやすく、些細なことで感情的になってしまうことがある。", "trait": "N", "is_reverse": False},
+    {"id": 48, "text": "夜、考え事をしてしまい眠れなくなる日がよくある。", "trait": "N", "is_reverse": False},
+    {"id": 49, "text": "ストレスが溜まると、体調（胃腸や頭痛など）にすぐ表れる。", "trait": "N", "is_reverse": False},
+    {"id": 50, "text": "どんなピンチの状況でも、常にリラックスして冷静でいられる。", "trait": "N", "is_reverse": True}
+]
 
 # ==========================================
 # セッションステートの初期化
 # ==========================================
 if "step" not in st.session_state:
-    st.session_state.step = "user_info" # user_info -> test -> done
+    st.session_state.step = "user_info" # user_info -> test -> processing -> done
 if "current_q" not in st.session_state:
     st.session_state.current_q = 1
 if "answers" not in st.session_state:
@@ -72,16 +127,24 @@ if "user_data" not in st.session_state:
 # ==========================================
 # ロジック・コールバック関数
 # ==========================================
-def start_test(user_id, dob, btime, gender):
+def start_test(user_id, y, m, d, btime, gender):
     """基本情報の入力完了・テスト開始"""
     if not user_id:
         st.error("User_IDを入力してください。")
         return
     
+    # 存在しない日付（例: 2月30日）の簡易バリデーション
+    try:
+        dob_obj = datetime.date(y, m, d)
+        dob_str = dob_obj.strftime("%Y/%m/%d")
+    except ValueError:
+        st.error("存在しない日付です。正しい日付を選択してください。")
+        return
+
     st.session_state.user_data = {
         "User_ID": user_id,
-        "DOB": dob.strftime("%Y/%m/%d"),
-        "Birth_Time": btime.strftime("%H:%M"),
+        "DOB": dob_str,
+        "Birth_Time": btime.strip() if btime else "",
         "Gender": gender
     }
     st.session_state.step = "test"
@@ -99,7 +162,7 @@ def handle_answer(q_id, answer_value):
         if variance < 0.8: 
             st.session_state.max_q = 50
         else:
-            # 精度95%以上とみなし終了
+            # 精度クリアとみなし終了
             finish_test()
             return
 
@@ -110,17 +173,23 @@ def handle_answer(q_id, answer_value):
         st.session_state.current_q += 1
 
 def finish_test():
-    """テスト終了処理・スプレッドシートへの書き込み"""
+    """テスト終了処理・ステート切り替え"""
     st.session_state.step = "processing"
     
 def calculate_scores():
-    """Big5スコアの計算（モック）"""
+    """Big5スコアの計算（逆転項目対応）"""
     scores = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
     counts = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
     
     for q_id, val in st.session_state.answers.items():
-        trait = QUESTIONS[q_id - 1]["trait"]
-        scores[trait] += val
+        question = QUESTIONS[q_id - 1]
+        trait = question["trait"]
+        is_reverse = question["is_reverse"]
+        
+        # 逆転項目の場合は数値を反転させる（5->1, 4->2, 3->3, 2->4, 1->5）
+        actual_val = 6 - val if is_reverse else val
+        
+        scores[trait] += actual_val
         counts[trait] += 1
         
     # 平均値を算出
@@ -151,11 +220,11 @@ def save_to_spreadsheet():
             "",                     # Stripe_ID (空白)
             "",                     # LINE_ID (空白)
             ud["DOB"],              # 生年月日
-            ud["Birth_Time"],       # 出生時間
+            ud["Birth_Time"],       # 出生時間 (空白許容)
             ud["Gender"]            # 性別
         ]
         
-        # Q1〜Q50の回答 (未回答は空白)
+        # Q1〜Q50の回答 (未回答部分は空白)
         for i in range(1, 51):
             row_data.append(st.session_state.answers.get(i, ""))
             
@@ -185,13 +254,24 @@ if st.session_state.step == "user_info":
     
     with st.form("info_form"):
         user_id = st.text_input("User_ID（システム用）")
-        dob = st.date_input("生年月日", min_value=datetime.date(1920, 1, 1), max_value=datetime.date.today())
-        btime = st.time_input("出生時間（不明な場合は12:00のまま）", datetime.time(12, 0))
+        
+        st.markdown("<p style='font-weight: bold; margin-bottom: 0;'>生年月日</p>", unsafe_allow_html=True)
+        col_y, col_m, col_d = st.columns(3)
+        with col_y:
+            # デフォルトを1990年あたりにするためにindexを指定
+            years = list(range(1900, 2025))
+            y = st.selectbox("年", years, index=years.index(1990))
+        with col_m:
+            m = st.selectbox("月", list(range(1, 13)), index=0)
+        with col_d:
+            d = st.selectbox("日", list(range(1, 32)), index=0)
+            
+        btime = st.text_input("出生時間（任意・例: 14:30、不明なら空欄のまま）", value="")
         gender = st.selectbox("性別", ["男性", "女性", "その他", "回答しない"])
         
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
-            start_test(user_id, dob, btime, gender)
+            start_test(user_id, y, m, d, btime, gender)
             st.rerun()
 
 # --- 2. CAT テスト画面 (SPA・1画面1問) ---
