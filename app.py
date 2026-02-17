@@ -209,14 +209,21 @@ def start_test(user_id, dob_str, btime, gender):
         st.error("User_IDを入力してください。")
         return
     
-    # 【絶対遵守2】生年月日のチェック
+    # 生年月日のチェック
     if not dob_str.isdigit() or len(dob_str) != 8:
         st.error("⚠️ 生年月日は8桁の半角数字で入力してください（例：19961229）")
         return
     
-    # 【絶対遵守2】実在する日付かどうかのチェック
+    # 実在する日付かどうかのチェック ＋ 年代の範囲チェック
     try:
         valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
+        
+        # 【追加】未来の日付や古すぎる日付（1111年など）を弾く処理
+        current_year = datetime.date.today().year
+        if not (1900 <= valid_date.year <= current_year):
+            st.error(f"⚠️ 正しい年代の生年月日を入力してください（1900年〜{current_year}年）")
+            return
+            
         formatted_dob = valid_date.strftime("%Y/%m/%d")
     except ValueError:
         st.error("⚠️ 存在しない日付です。正しい生年月日を入力してください。")
