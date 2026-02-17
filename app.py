@@ -15,11 +15,11 @@ st.set_page_config(
 )
 
 # ==========================================
-# CSS: 強制ライトモード ＆ ユニバーサルデザイン ＆ 余白極小化
+# CSS: 強制ライトモード ＆ ユニバーサルデザイン ＆ 余白極小化 ＆ LINEボタン化
 # ==========================================
 st.markdown("""
 <style>
-    /* 【要件定義2】Streamlit特有の上下余白を極限まで削る */
+    /* Streamlit特有の上下余白を極限まで削る */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 1rem !important;
@@ -33,8 +33,8 @@ st.markdown("""
         color: #000000 !important;
     }
     
-    /* ユニバーサルデザインの回答ボタン */
-    .stButton>button {
+    /* ユニバーサルデザインの回答ボタン (Secondary) */
+    button[kind="secondary"] {
         width: 100% !important;
         height: 65px !important;
         font-size: 18px !important;
@@ -48,13 +48,36 @@ st.markdown("""
         box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important;
     }
     
-    /* ボタンホバー・タップ時の挙動 */
-    .stButton>button:hover {
+    /* ボタンホバー・タップ時の挙動 (Secondary) */
+    button[kind="secondary"]:hover {
         background-color: #F5F5F5 !important;
         border-color: #111111 !important;
     }
-    .stButton>button:active {
+    button[kind="secondary"]:active {
         background-color: #E0E0E0 !important;
+        transform: translateY(2px) !important;
+        box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
+    }
+
+    /* 【要件定義3】LINE連携ボタン (Primary) のブランドカラー上書き */
+    button[kind="primary"] {
+        width: 100% !important;
+        height: 60px !important;
+        font-size: 18px !important;
+        font-weight: 900 !important;
+        color: #FFFFFF !important;
+        background-color: #06C755 !important; /* LINEグリーン */
+        border: none !important;
+        border-radius: 12px !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important;
+    }
+    
+    button[kind="primary"]:hover {
+        background-color: #05B34C !important;
+        color: #FFFFFF !important;
+    }
+    button[kind="primary"]:active {
         transform: translateY(2px) !important;
         box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
     }
@@ -71,10 +94,16 @@ st.markdown("""
     }
     
     /* 入力フォームのラベル強調 */
-    .stSelectbox label, .stTextInput label {
+    .stSelectbox label, .stTextInput label, .stRadio label {
         font-weight: 900 !important;
         font-size: 1.1rem !important;
         color: #000000 !important;
+    }
+    
+    /* ラジオボタンの選択肢テキストの色を強制的に黒に */
+    .stRadio div[role="radiogroup"] label span {
+        color: #000000 !important;
+        font-weight: bold !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -192,7 +221,7 @@ def start_test(user_id, dob_str, btime, gender):
 
 def handle_answer(q_id, answer_value):
     """回答を保存し、次へ進む（CATロジック・二重タップ防止含む）"""
-    # 【要件定義3：二重タップ・スキップ防止】現在の問題番号と違うボタンの通信は無視する
+    # 【二重タップ・スキップ防止】現在の問題番号と違うボタンの通信は無視する
     if st.session_state.current_q != q_id:
         return
 
@@ -300,21 +329,24 @@ def save_to_spreadsheet():
 
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
-    st.title("ようこそ！初期設定を始めましょう")
-    st.write("精密な解析を行うため、まずはプロフィールをご入力ください。")
+    # 【要件定義1】初期画面のテキスト変更
+    st.title("【完全版】プレミアム裏ステータス診断")
+    st.write("数億通りのAI×宿命アルゴリズムで、あなたの深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
     
     with st.form("info_form"):
         user_id = st.text_input("User_ID（システム用）")
         
-        # 【要件定義1】生年月日の8桁数字入力（プレースホルダー追加）
+        # 生年月日の8桁数字入力（プレースホルダー維持）
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
         dob_input = st.text_input("生年月日", max_chars=8, placeholder="例 19961229", label_visibility="collapsed")
         
-        # 【要件定義1】出生時間のプレースホルダー追加
+        # 出生時間のプレースホルダー維持
         btime = st.text_input("出生時間（任意・不明なら空欄のまま）", value="", placeholder="例 23:16")
-        gender = st.selectbox("性別", ["男性", "女性", "その他", "回答しない"])
         
-        # 送信ボタン
+        # 【要件定義2】性別入力のUI変更（バグ解消と1タップ化）
+        gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True)
+        
+        # 送信ボタン（Primary指定により、パート1のCSSでLINEカラーになります）
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
             # パート2で定義したstart_test関数を呼び出し
@@ -331,9 +363,9 @@ elif st.session_state.step == "test":
     st.progress(progress_val)
     st.caption(f"現在 {current_q_num} 問目 / (最大 {max_q_num} 問)")
     
-    # 【要件定義2】1つ前に戻るボタンをプログレスバーのすぐ下（質問文の上）に配置
+    # 1つ前に戻るボタンをプログレスバーのすぐ下（質問文の上）に配置
     if current_q_num > 1:
-        st.button("◀ 前の質問に戻る", on_click=go_back, key=f"btn_back_{current_q_num}")
+        st.button("◀ 前の質問に戻る", on_click=go_back, key=f"btn_back_{current_q_num}", type="secondary")
     
     # 質問表示
     question_data = QUESTIONS[current_q_num - 1]
@@ -343,11 +375,11 @@ elif st.session_state.step == "test":
     
     # スマホで押し間違いを防ぐため、縦並びのUDボタンを配置
     # ボタンを押した瞬間に handle_answer がコールバックされ、画面が瞬時に切り替わる
-    st.button("全く違う", on_click=handle_answer, args=(current_q_num, 1), key=f"btn_1_{current_q_num}")
-    st.button("やや違う", on_click=handle_answer, args=(current_q_num, 2), key=f"btn_2_{current_q_num}")
-    st.button("どちらでもない", on_click=handle_answer, args=(current_q_num, 3), key=f"btn_3_{current_q_num}")
-    st.button("ややそう思う", on_click=handle_answer, args=(current_q_num, 4), key=f"btn_4_{current_q_num}")
-    st.button("強くそう思う", on_click=handle_answer, args=(current_q_num, 5), key=f"btn_5_{current_q_num}")
+    st.button("全く違う", on_click=handle_answer, args=(current_q_num, 1), key=f"btn_1_{current_q_num}", type="secondary")
+    st.button("やや違う", on_click=handle_answer, args=(current_q_num, 2), key=f"btn_2_{current_q_num}", type="secondary")
+    st.button("どちらでもない", on_click=handle_answer, args=(current_q_num, 3), key=f"btn_3_{current_q_num}", type="secondary")
+    st.button("ややそう思う", on_click=handle_answer, args=(current_q_num, 4), key=f"btn_4_{current_q_num}", type="secondary")
+    st.button("強くそう思う", on_click=handle_answer, args=(current_q_num, 5), key=f"btn_5_{current_q_num}", type="secondary")
 
 # --- 3. 処理・完了画面 ---
 elif st.session_state.step == "processing":
@@ -360,5 +392,9 @@ elif st.session_state.step == "processing":
 
 elif st.session_state.step == "done":
     st.success("解析が完了しました。")
-    st.markdown("### LINEに戻って結果をお待ちください。")
+    st.markdown("### 下のボタンからLINEに戻り、結果をお受け取りください。")
+    
+    # 【要件定義3】完了画面に「LINEへ戻る」緑色ボタンを設置
+    st.link_button("LINEに戻って結果を受け取る", "https://lin.ee/dummy", type="primary")
+    
     st.info("このウィンドウは閉じて構いません。")
