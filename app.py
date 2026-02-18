@@ -204,7 +204,7 @@ if "user_data" not in st.session_state:
 # ロジック・コールバック関数群
 # ==========================================
 def calculate_sanmeigaku(year, month, day, time_str):
-    """【要件定義1】算命学の自動計算エンジン（時柱追加・SaaS特化型ハイブリッドロジック）"""
+    """【絶対遵守】算命学の自動計算エンジン（五鼠遁による時柱の正確な実装）"""
     # 1. 出生時間が空欄の場合は12:00として処理を続行（絶対にエラーで止めない）
     if not time_str: 
         time_str = "12:00"
@@ -259,7 +259,7 @@ def calculate_sanmeigaku(year, month, day, time_str):
     ]
     main_star = stars_matrix[rel][0 if same_parity else 1]
     
-    # 6. 【十二大従星】日干を基準として算出
+    # 6. 【十二大従星】日干を基準として算出するための共通関数
     star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
     chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
     
@@ -276,22 +276,31 @@ def calculate_sanmeigaku(year, month, day, time_str):
     bannen = get_12star(day_branch)
 
     # ---------------------------------------------------------
-    # 【追加実装】時干支と十二大従星_最晩年の算出
+    # 【絶対遵守】時干支と十二大従星_最晩年の正確な算出（五鼠遁の実装）
     # ---------------------------------------------------------
     try:
         hour = int(time_str.split(':')[0])
     except Exception:
-        hour = 12 # エラー時は安全に12:00（午）として処理
+        hour = 12 # パースエラー時は12:00（午）として安全に処理
         
-    # 時支の算出（23:00~00:59 -> 子(1), 01:00~02:59 -> 丑(2)...）
+    # 1. 時間から「時支」への変換ルール（23:00〜00:59=子(1), 01:00〜02:59=丑(2)...）
     time_branch = ((hour + 1) // 2) % 12 + 1
     
-    # 五鼠遁（ごそとん）の法則による時干の算出
-    zi_stem_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
-    z_stem = zi_stem_map[day_stem]
-    time_stem = (z_stem + time_branch - 2) % 10 + 1
+    # 2. 「五鼠遁（ごそとん）」の実装（日干から子時間の十干を特定する）
+    # 甲(1)・己(6) -> 子時間は甲(1)からスタート
+    # 乙(2)・庚(7) -> 子時間は丙(3)からスタート
+    # 丙(3)・辛(8) -> 子時間は戊(5)からスタート
+    # 丁(4)・壬(9) -> 子時間は庚(7)からスタート
+    # 戊(5)・癸(10)-> 子時間は壬(9)からスタート
+    goso_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
+    base_time_stem = goso_map[day_stem]
+    
+    # 子時間を基準として、該当する時支まで十干を進める
+    time_stem = (base_time_stem + time_branch - 2) % 10 + 1
     
     jikanshi = stems_str[time_stem] + branches_str[time_branch]
+    
+    # 3. 算出された時支と日干を用いて十二大従星（最晩年）を動的に算出
     saibannen = get_12star(time_branch)
     
     return {
@@ -301,8 +310,8 @@ def calculate_sanmeigaku(year, month, day, time_str):
         "初年": shonen,
         "中年": chunen,
         "晩年": bannen,
-        "時干支": jikanshi,     # 【追加】
-        "最晩年": saibannen     # 【追加】
+        "時干支": jikanshi,     # 正確な時干支
+        "最晩年": saibannen     # 動的に変動する最晩年
     }
 
 def start_test(user_id, dob_str, btime, gender):
@@ -407,12 +416,12 @@ def save_to_spreadsheet():
         # Big5スコアの計算
         scores = calculate_scores()
         
-        # 算命学パラメータの自動計算（時柱対応）
+        # 算命学パラメータの自動計算（五鼠遁による時柱対応済）
         ud = st.session_state.user_data
         y, m, d = map(int, ud["DOB"].split('/'))
         sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
         
-        # 【要件定義2】スプレッドシートの書き込み枠を8列に変更
+        # スプレッドシートの書き込み枠（8枠完全対応）
         row_data = [
             ud["User_ID"],          # User_ID
             "",                     # Stripe_ID (空白)
@@ -426,8 +435,8 @@ def save_to_spreadsheet():
             sanmeigaku["初年"],      # 占い枠4
             sanmeigaku["中年"],      # 占い枠5
             sanmeigaku["晩年"],      # 占い枠6
-            sanmeigaku["時干支"],    # 占い枠7（追加）
-            sanmeigaku["最晩年"]     # 占い枠8（追加）
+            sanmeigaku["時干支"],    # 占い枠7（動的変動）
+            sanmeigaku["最晩年"]     # 占い枠8（動的変動）
         ]
         
         # Q1〜Q50の回答 (未回答部分は空白)
