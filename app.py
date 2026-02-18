@@ -81,7 +81,6 @@ st.markdown("""
         color: white !important;
         border: none !important;
         font-weight: bold !important;
-        /* スマホ向けに押しやすくするためのレイアウト調整（既存の良質なUIを維持） */
         width: 100% !important;
         height: 60px !important;
         display: flex !important;
@@ -91,6 +90,7 @@ st.markdown("""
         font-size: 18px !important;
         text-decoration: none !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important;
+        transition: all 0.2s ease-in-out !important;
     }
     div[data-testid="stLinkButton"] > a:hover {
         background-color: #05b34c !important;
@@ -201,29 +201,108 @@ if "user_data" not in st.session_state:
     st.session_state.user_data = {}
 
 # ==========================================
-# ロジック・コールバック関数
+# ロジック・コールバック関数群
 # ==========================================
+def calculate_sanmeigaku(year, month, day, time_str):
+    """【要件定義1】算命学の自動計算エンジン（SaaS特化型ハイブリッドロジック）"""
+    # 1. 出生時間が空欄の場合は12:00として処理を続行
+    if not time_str: 
+        time_str = "12:00"
+    
+    target_date = datetime.date(year, month, day)
+    
+    # 2. 【日干支】1900/1/1(甲戌=11)を基準とした経過日数モジュロ演算
+    elapsed = (target_date - datetime.date(1900, 1, 1)).days
+    day_kanshi_num = (10 + elapsed) % 60 + 1
+    day_stem = (day_kanshi_num - 1) % 10 + 1
+    day_branch = (day_kanshi_num - 1) % 12 + 1
+    
+    stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+    branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+    nikkanshi = stems_str[day_stem] + branches_str[day_branch]
+    
+    # 3. 【天中殺】日干支から割り出し
+    tenchusatsu_map = {0: "戌亥", 2: "申酉", 4: "午未", 6: "辰巳", 8: "寅卯", 10: "子丑"}
+    diff = (day_branch - day_stem) % 12
+    tenchusatsu = tenchusatsu_map.get(diff, "")
+    
+    # 4. 【月干支・年干支の算出】簡易節入りロジック（毎月5日を基準）
+    solar_m = month if day >= 5 else month - 1
+    solar_y = year
+    if solar_m == 0:
+        solar_m = 12
+        solar_y -= 1
+    if solar_m == 1:
+        solar_y -= 1
+    
+    month_branch = (solar_m + 1) % 12
+    if month_branch == 0: month_branch = 12
+    
+    year_branch = (solar_y - 3) % 12
+    if year_branch == 0: year_branch = 12
+    
+    # 5. 【主星（十大主星）】日干と月支本元からの算出
+    # 月支ごとの本元（蔵干）マッピング
+    hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
+    month_hidden_stem = hon_gen_map[month_branch]
+    
+    me_el = (day_stem - 1) // 2
+    other_el = (month_hidden_stem - 1) // 2
+    rel = (other_el - me_el) % 5
+    same_parity = (day_stem % 2) == (month_hidden_stem % 2)
+    
+    stars_matrix = [
+        ["貫索星", "石門星"],
+        ["鳳閣星", "調舒星"],
+        ["禄存星", "司禄星"],
+        ["車騎星", "牽牛星"],
+        ["龍高星", "玉堂星"]
+    ]
+    main_star = stars_matrix[rel][0 if same_parity else 1]
+    
+    # 6. 【十二大従星】日干を基準として年支・月支・日支から算出
+    star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
+    chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
+    
+    def get_12star(target_branch):
+        if day_stem % 2 != 0: # 陽干
+            offset = (target_branch - chosei_map[day_stem]) % 12
+        else: # 陰干
+            offset = (chosei_map[day_stem] - target_branch) % 12
+        idx = (2 + offset) % 12
+        return star_names[idx]
+        
+    shonen = get_12star(year_branch)
+    chunen = get_12star(month_branch)
+    bannen = get_12star(day_branch)
+    
+    return {
+        "日干支": nikkanshi,
+        "天中殺": tenchusatsu,
+        "主星": main_star,
+        "初年": shonen,
+        "中年": chunen,
+        "晩年": bannen
+    }
+
 def start_test(user_id, dob_str, btime, gender):
     """基本情報の入力完了・バリデーション・テスト開始"""
     if not user_id:
         st.error("User_IDを入力してください。")
         return
     
-    # 生年月日のチェック
+    # 生年月日のチェック（8桁の数字）
     if not dob_str.isdigit() or len(dob_str) != 8:
         st.error("⚠️ 生年月日は8桁の半角数字で入力してください（例：19961229）")
         return
     
-    # 実在する日付かどうかのチェック ＋ 年代の範囲チェック
+    # 実在する日付かどうかのチェック ＋ 年代の範囲チェック（前回の修正維持）
     try:
         valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
-        
-        # 【追加】未来の日付や古すぎる日付（1111年など）を弾く処理
         current_year = datetime.date.today().year
         if not (1900 <= valid_date.year <= current_year):
             st.error(f"⚠️ 正しい年代の生年月日を入力してください（1900年〜{current_year}年）")
             return
-            
         formatted_dob = valid_date.strftime("%Y/%m/%d")
     except ValueError:
         st.error("⚠️ 存在しない日付です。正しい生年月日を入力してください。")
@@ -250,11 +329,10 @@ def handle_answer(q_id, answer_value):
         ans_values = list(st.session_state.answers.values())
         variance = statistics.variance(ans_values) if len(ans_values) > 1 else 0
         
-        # 分散が小さすぎる（適当に真ん中ばかり押している等）場合は50問に延長
+        # 分散が小さすぎる場合は50問に延長
         if variance < 0.8: 
             st.session_state.max_q = 50
         else:
-            # 精度クリアとみなし終了
             finish_test()
             return
 
@@ -283,13 +361,12 @@ def calculate_scores():
         trait = question["trait"]
         is_reverse = question["is_reverse"]
         
-        # 逆転項目の場合は数値を反転させる（5->1, 4->2, 3->3, 2->4, 1->5）
+        # 逆転項目の場合は数値を反転させる
         actual_val = 6 - val if is_reverse else val
         
         scores[trait] += actual_val
         counts[trait] += 1
         
-    # 平均値を算出
     for t in scores:
         scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
     return scores
@@ -307,11 +384,15 @@ def save_to_spreadsheet():
         sheet_url = st.secrets["spreadsheet_url"]
         sheet = client.open_by_url(sheet_url).sheet1
         
-        # スコア計算
+        # Big5スコアの計算
         scores = calculate_scores()
         
-        # 1行分のデータを作成
+        # 【要件定義2】算命学パラメータの自動計算
         ud = st.session_state.user_data
+        y, m, d = map(int, ud["DOB"].split('/'))
+        sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
+        
+        # 1行分のデータを作成
         row_data = [
             ud["User_ID"],          # User_ID
             "",                     # Stripe_ID (空白)
@@ -319,7 +400,12 @@ def save_to_spreadsheet():
             ud["DOB"],              # 生年月日 (YYYY/MM/DD)
             ud["Birth_Time"],       # 出生時間 (空白許容)
             ud["Gender"],           # 性別
-            "", "", "", "", "", ""  # 占い用データ枠（日干支,天中殺,主星,初年,中年,晩年）として6個の空白を追加
+            sanmeigaku["日干支"],    # 【修正】算命学データ置き換え
+            sanmeigaku["天中殺"],    # 【修正】算命学データ置き換え
+            sanmeigaku["主星"],      # 【修正】算命学データ置き換え
+            sanmeigaku["初年"],      # 【修正】算命学データ置き換え
+            sanmeigaku["中年"],      # 【修正】算命学データ置き換え
+            sanmeigaku["晩年"]       # 【修正】算命学データ置き換え
         ]
         
         # Q1〜Q50の回答 (未回答部分は空白)
@@ -329,7 +415,7 @@ def save_to_spreadsheet():
         # O, C, E, A, N Scores
         row_data.extend([scores["O"], scores["C"], scores["E"], scores["A"], scores["N"]])
         
-        # 課金開始日, 極秘ライブラリ(恋愛), 極秘ライブラリ(適職), 残回数
+        # 課金開始日, 極秘ライブラリ解放権限, 残回数
         today_str = datetime.date.today().strftime("%Y/%m/%d")
         row_data.extend([today_str, "FALSE", "FALSE", 3])
         
@@ -366,7 +452,7 @@ if st.session_state.step == "user_info":
         # 送信ボタン
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
-            # パート2で定義したstart_test関数を呼び出し（内部で【絶対遵守2】の厳格なバリデーション実行）
+            # パート2で定義したstart_test関数を呼び出し（内部で厳格なバリデーション実行）
             start_test(user_id, dob_input, btime, gender)
             
             # エラーに引っかからず、testステップに進んだ場合のみ再描画（エラーメッセージを残すための必須処理）
@@ -414,7 +500,7 @@ elif st.session_state.step == "done":
     st.success("解析が完了しました。")
     st.markdown("### 下のボタンからLINEに戻り、結果をお受け取りください。")
     
-    # 【絶対遵守1】本番LINE URLの直接埋め込み（dummy禁止）
+    # 本番LINE URLの直接埋め込み
     st.link_button("LINEに戻って結果を受け取る", "https://lin.ee/FrawIyY", type="primary")
     
     st.info("このウィンドウは閉じて構いません。")
