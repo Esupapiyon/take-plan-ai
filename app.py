@@ -513,64 +513,81 @@ def save_to_spreadsheet():
 # UI レンダリング
 # ==========================================
 
-# 【要件定義2】LIFFによるLINE_IDと名前の自動取得ロジック（最重要）
+# 【要件定義：LIFFのiframe制約突破ロジックへの変更】
 if "line_id" not in st.session_state:
     params = st.query_params
     if "line_id" in params and "line_name" in params:
         st.session_state.line_id = params["line_id"]
         st.session_state.line_name = urllib.parse.unquote(params["line_name"])
     else:
+        # 修正：親ウィンドウURL取得を諦め、App URLを直接指定
+        app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
         liff_id = "2009158681-7tv2nwIm"
+        
         liff_js = f"""
         <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
         <script>
-            liff.init({{ liffId: "{liff_id}" }}).then(() => {{
-                if (liff.isLoggedIn()) {{
-                    liff.getProfile().then(profile => {{
-                        const url = new URL(window.parent.location.href);
-                        url.searchParams.set('line_id', profile.userId);
-                        url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
-                        window.parent.location.href = url.toString();
-                    }});
-                }} else {{
-                    liff.login();
-                }}
+            document.addEventListener("DOMContentLoaded", function() {{
+                liff.init({{ liffId: "{liff_id}" }}).then(() => {{
+                    if (liff.isLoggedIn()) {{
+                        liff.getProfile().then(profile => {{
+                            const url = new URL("{app_url}");
+                            url.searchParams.set('line_id', profile.userId);
+                            url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
+                            
+                            // iframe内を物理的な開始ボタンに書き換える（Sandbox回避の最強ハック）
+                            document.body.innerHTML = `
+                            <div style="display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background-color:#ffffff; font-family:sans-serif;">
+                                <a href="${{url.toString()}}" target="_top" style="display:block; width:90%; text-align:center; padding: 25px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 20px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                                    ✅ LINE認証成功！<br><span style="font-size:16px;">ここをタップして診断を開始</span>
+                                </a>
+                            </div>`;
+                            
+                            // 念のため自動リダイレクトも試みる
+                            try {{
+                                window.top.location.href = url.toString();
+                            }} catch(e) {{
+                                console.log("Auto-redirect blocked by sandbox. Waiting for user to tap the button.");
+                            }}
+                        }}).catch(err => console.error(err));
+                    } else {{
+                        liff.login();
+                    }}
+                }}).catch(err => console.error(err));
             }});
         </script>
         """
-        components.html(liff_js, height=0, width=0)
-        st.markdown("<h3 style='text-align:center;'>🔄 LINEアカウントをセキュアに認証しています...<br>そのままお待ちください。</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center;'>🔄 LINEアカウントをセキュアに認証しています...</h3>", unsafe_allow_html=True)
+        # 修正：ボタンが表示されるよう heightを250に変更
+        components.html(liff_js, height=250, scrolling=False)
         st.stop()
 
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
     
-    # 【要件定義3】入力UIの改修（ゼロ・フリクション化）
+    # ようこそメッセージ（LINE名表示）
     st.markdown(f"### ようこそ、{st.session_state.line_name} さん！")
     
     st.title("【完全版】プレミアム裏ステータス診断")
     st.write("数億通りのAI×宿命アルゴリズムで、あなたの深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
     
     with st.form("info_form"):
-        # User_ID手入力欄を完全削除
-        
-        # 生年月日の8桁数字入力（プレースホルダー維持）
+        # 生年月日の8桁数字入力
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
         dob_input = st.text_input("生年月日", max_chars=8, placeholder="例 19961229", label_visibility="collapsed")
         
-        # 出生時間のプレースホルダー維持
+        # 出生時間のプレースホルダー
         btime = st.text_input("出生時間（任意・不明なら空欄のまま）", value="", placeholder="例 23:16")
         
-        # 性別入力のUI変更（バグ解消と1タップ化）
+        # 性別入力
         gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True)
         
         # 送信ボタン
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
-            # 【要件定義3】自動取得したLINE情報を渡すように修正
+            # 自動取得したLINE情報を渡して開始
             start_test(st.session_state.line_name, st.session_state.line_id, dob_input, btime, gender)
             
-            # エラーに引っかからず、testステップに進んだ場合のみ再描画（エラーメッセージを残すための必須処理）
             if st.session_state.step == "test":
                 st.rerun()
 
@@ -584,7 +601,7 @@ elif st.session_state.step == "test":
     st.progress(progress_val)
     st.caption(f"現在 {current_q_num} 問目 / (最大 {max_q_num} 問)")
     
-    # 1つ前に戻るボタンをプログレスバーのすぐ下（質問文の上）に配置
+    # 1つ前に戻るボタン
     if current_q_num > 1:
         st.button("◀ 前の質問に戻る", on_click=go_back, key=f"btn_back_{current_q_num}", type="secondary")
     
@@ -594,7 +611,7 @@ elif st.session_state.step == "test":
     
     st.write("---")
     
-    # スマホで押し間違いを防ぐため、縦並びのUDボタンを配置
+    # 縦並びのUDボタン
     st.button("全く違う", on_click=handle_answer, args=(current_q_num, 1), key=f"btn_1_{current_q_num}", type="secondary")
     st.button("やや違う", on_click=handle_answer, args=(current_q_num, 2), key=f"btn_2_{current_q_num}", type="secondary")
     st.button("どちらでもない", on_click=handle_answer, args=(current_q_num, 3), key=f"btn_3_{current_q_num}", type="secondary")
@@ -614,7 +631,7 @@ elif st.session_state.step == "done":
     st.success("解析が完了しました。")
     st.markdown("### LINEに診断結果をお送りしました！<br>下のボタンからLINEにお戻りください。", unsafe_allow_html=True)
     
-    # 本番LINE URLの直接埋め込み（維持）
+    # 本番LINE URLの直接埋め込み
     st.link_button("LINEに戻って結果を受け取る", "https://lin.ee/FrawIyY", type="primary")
     
     st.info("このウィンドウは閉じて構いません。")
