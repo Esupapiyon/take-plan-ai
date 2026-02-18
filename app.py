@@ -75,7 +75,7 @@ st.markdown("""
         box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
     }
 
-    /* 【絶対遵守3】LINEリンクボタンを強制的にLINEカラー（#06C755）にする強力なCSS */
+    /* LINEリンクボタンを強制的にLINEカラー（#06C755）にする強力なCSS */
     div[data-testid="stLinkButton"] > a {
         background-color: #06C755 !important;
         color: white !important;
@@ -204,8 +204,8 @@ if "user_data" not in st.session_state:
 # ロジック・コールバック関数群
 # ==========================================
 def calculate_sanmeigaku(year, month, day, time_str):
-    """【要件定義1】算命学の自動計算エンジン（SaaS特化型ハイブリッドロジック）"""
-    # 1. 出生時間が空欄の場合は12:00として処理を続行
+    """【要件定義1】算命学の自動計算エンジン（時柱追加・SaaS特化型ハイブリッドロジック）"""
+    # 1. 出生時間が空欄の場合は12:00として処理を続行（絶対にエラーで止めない）
     if not time_str: 
         time_str = "12:00"
     
@@ -242,7 +242,6 @@ def calculate_sanmeigaku(year, month, day, time_str):
     if year_branch == 0: year_branch = 12
     
     # 5. 【主星（十大主星）】日干と月支本元からの算出
-    # 月支ごとの本元（蔵干）マッピング
     hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
     month_hidden_stem = hon_gen_map[month_branch]
     
@@ -260,7 +259,7 @@ def calculate_sanmeigaku(year, month, day, time_str):
     ]
     main_star = stars_matrix[rel][0 if same_parity else 1]
     
-    # 6. 【十二大従星】日干を基準として年支・月支・日支から算出
+    # 6. 【十二大従星】日干を基準として算出
     star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
     chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
     
@@ -275,6 +274,25 @@ def calculate_sanmeigaku(year, month, day, time_str):
     shonen = get_12star(year_branch)
     chunen = get_12star(month_branch)
     bannen = get_12star(day_branch)
+
+    # ---------------------------------------------------------
+    # 【追加実装】時干支と十二大従星_最晩年の算出
+    # ---------------------------------------------------------
+    try:
+        hour = int(time_str.split(':')[0])
+    except Exception:
+        hour = 12 # エラー時は安全に12:00（午）として処理
+        
+    # 時支の算出（23:00~00:59 -> 子(1), 01:00~02:59 -> 丑(2)...）
+    time_branch = ((hour + 1) // 2) % 12 + 1
+    
+    # 五鼠遁（ごそとん）の法則による時干の算出
+    zi_stem_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
+    z_stem = zi_stem_map[day_stem]
+    time_stem = (z_stem + time_branch - 2) % 10 + 1
+    
+    jikanshi = stems_str[time_stem] + branches_str[time_branch]
+    saibannen = get_12star(time_branch)
     
     return {
         "日干支": nikkanshi,
@@ -282,7 +300,9 @@ def calculate_sanmeigaku(year, month, day, time_str):
         "主星": main_star,
         "初年": shonen,
         "中年": chunen,
-        "晩年": bannen
+        "晩年": bannen,
+        "時干支": jikanshi,     # 【追加】
+        "最晩年": saibannen     # 【追加】
     }
 
 def start_test(user_id, dob_str, btime, gender):
@@ -291,12 +311,12 @@ def start_test(user_id, dob_str, btime, gender):
         st.error("User_IDを入力してください。")
         return
     
-    # 生年月日のチェック（8桁の数字）
+    # 生年月日のチェック
     if not dob_str.isdigit() or len(dob_str) != 8:
         st.error("⚠️ 生年月日は8桁の半角数字で入力してください（例：19961229）")
         return
     
-    # 実在する日付かどうかのチェック ＋ 年代の範囲チェック（前回の修正維持）
+    # 実在する日付かどうかのチェック ＋ 年代の範囲チェック
     try:
         valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
         current_year = datetime.date.today().year
@@ -387,12 +407,12 @@ def save_to_spreadsheet():
         # Big5スコアの計算
         scores = calculate_scores()
         
-        # 【要件定義2】算命学パラメータの自動計算
+        # 算命学パラメータの自動計算（時柱対応）
         ud = st.session_state.user_data
         y, m, d = map(int, ud["DOB"].split('/'))
         sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
         
-        # 1行分のデータを作成
+        # 【要件定義2】スプレッドシートの書き込み枠を8列に変更
         row_data = [
             ud["User_ID"],          # User_ID
             "",                     # Stripe_ID (空白)
@@ -400,12 +420,14 @@ def save_to_spreadsheet():
             ud["DOB"],              # 生年月日 (YYYY/MM/DD)
             ud["Birth_Time"],       # 出生時間 (空白許容)
             ud["Gender"],           # 性別
-            sanmeigaku["日干支"],    # 【修正】算命学データ置き換え
-            sanmeigaku["天中殺"],    # 【修正】算命学データ置き換え
-            sanmeigaku["主星"],      # 【修正】算命学データ置き換え
-            sanmeigaku["初年"],      # 【修正】算命学データ置き換え
-            sanmeigaku["中年"],      # 【修正】算命学データ置き換え
-            sanmeigaku["晩年"]       # 【修正】算命学データ置き換え
+            sanmeigaku["日干支"],    # 占い枠1
+            sanmeigaku["天中殺"],    # 占い枠2
+            sanmeigaku["主星"],      # 占い枠3
+            sanmeigaku["初年"],      # 占い枠4
+            sanmeigaku["中年"],      # 占い枠5
+            sanmeigaku["晩年"],      # 占い枠6
+            sanmeigaku["時干支"],    # 占い枠7（追加）
+            sanmeigaku["最晩年"]     # 占い枠8（追加）
         ]
         
         # Q1〜Q50の回答 (未回答部分は空白)
@@ -500,7 +522,7 @@ elif st.session_state.step == "done":
     st.success("解析が完了しました。")
     st.markdown("### 下のボタンからLINEに戻り、結果をお受け取りください。")
     
-    # 本番LINE URLの直接埋め込み
+    # 本番LINE URLの直接埋め込み（維持）
     st.link_button("LINEに戻って結果を受け取る", "https://lin.ee/FrawIyY", type="primary")
     
     st.info("このウィンドウは閉じて構いません。")
