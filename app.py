@@ -204,7 +204,7 @@ if "user_data" not in st.session_state:
 # ロジック・コールバック関数群
 # ==========================================
 def calculate_sanmeigaku(year, month, day, time_str):
-    """【絶対遵守】算命学の自動計算エンジン（五鼠遁による時柱の正確な実装）"""
+    """【絶対遵守】算命学の自動計算エンジン（五鼠遁と堅牢な時間パースの実装）"""
     # 1. 出生時間が空欄の場合は12:00として処理を続行（絶対にエラーで止めない）
     if not time_str: 
         time_str = "12:00"
@@ -279,7 +279,17 @@ def calculate_sanmeigaku(year, month, day, time_str):
     # 【絶対遵守】時干支と十二大従星_最晩年の正確な算出（五鼠遁の実装）
     # ---------------------------------------------------------
     try:
-        hour = int(time_str.split(':')[0])
+        # 全角コロンを半角に変換、余計な空白を削除し、表記揺れを吸収
+        clean_time = time_str.replace("：", ":").replace(" ", "").strip()
+        
+        if ":" in clean_time:
+            hour = int(clean_time.split(':')[0])
+        elif len(clean_time) == 4 and clean_time.isdigit():
+            hour = int(clean_time[:2]) # 例: "2316" -> 23
+        elif len(clean_time) == 3 and clean_time.isdigit():
+            hour = int(clean_time[:1]) # 例: "915" -> 9
+        else:
+            hour = 12
     except Exception:
         hour = 12 # パースエラー時は12:00（午）として安全に処理
         
@@ -287,11 +297,6 @@ def calculate_sanmeigaku(year, month, day, time_str):
     time_branch = ((hour + 1) // 2) % 12 + 1
     
     # 2. 「五鼠遁（ごそとん）」の実装（日干から子時間の十干を特定する）
-    # 甲(1)・己(6) -> 子時間は甲(1)からスタート
-    # 乙(2)・庚(7) -> 子時間は丙(3)からスタート
-    # 丙(3)・辛(8) -> 子時間は戊(5)からスタート
-    # 丁(4)・壬(9) -> 子時間は庚(7)からスタート
-    # 戊(5)・癸(10)-> 子時間は壬(9)からスタート
     goso_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
     base_time_stem = goso_map[day_stem]
     
@@ -416,7 +421,7 @@ def save_to_spreadsheet():
         # Big5スコアの計算
         scores = calculate_scores()
         
-        # 算命学パラメータの自動計算（五鼠遁による時柱対応済）
+        # 算命学パラメータの自動計算（五鼠遁と堅牢な時間パース対応済）
         ud = st.session_state.user_data
         y, m, d = map(int, ud["DOB"].split('/'))
         sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
