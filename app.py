@@ -4,7 +4,7 @@ import statistics
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# 【要件定義1】必要なモジュールのインポート
+# 必要なモジュールのインポート
 import streamlit.components.v1 as components
 import urllib.parse
 import requests
@@ -325,7 +325,7 @@ def calculate_sanmeigaku(year, month, day, time_str):
     }
 
 def start_test(line_name, line_id, dob_str, btime, gender):
-    """【要件定義3】基本情報の入力完了・バリデーション・テスト開始（LIFF連携対応）"""
+    """基本情報の入力完了・バリデーション・テスト開始（LIFF連携対応）"""
     # 生年月日のチェック
     if not dob_str.isdigit() or len(dob_str) != 8:
         st.error("⚠️ 生年月日は8桁の半角数字で入力してください（例：19961229）")
@@ -500,7 +500,7 @@ def save_to_spreadsheet():
         # 書き込み
         sheet.append_row(row_data)
         
-        # 【要件定義4】完了時のLINEへのダイレクトプッシュ送信
+        # 完了時のLINEへのダイレクトプッシュ送信
         send_line_result(ud["LINE_ID"], sanmeigaku, scores)
         
         return True
@@ -513,17 +513,18 @@ def save_to_spreadsheet():
 # UI レンダリング
 # ==========================================
 
-# 【要件定義：LIFFのiframe制約突破ロジックへの変更】
+# 【要件定義：LIFFのiframe制約突破ロジック（f-string修正済み）】
 if "line_id" not in st.session_state:
     params = st.query_params
     if "line_id" in params and "line_name" in params:
         st.session_state.line_id = params["line_id"]
         st.session_state.line_name = urllib.parse.unquote(params["line_name"])
     else:
-        # 修正：親ウィンドウURL取得を諦め、App URLを直接指定
+        # 親ウィンドウURL取得を諦め、App URLを直接指定
         app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
         liff_id = "2009158681-7tv2nwIm"
         
+        # 【修正】f-string内の波括弧をすべて二重 {{ }} にエスケープ
         liff_js = f"""
         <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
         <script>
@@ -536,6 +537,7 @@ if "line_id" not in st.session_state:
                             url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
                             
                             // iframe内を物理的な開始ボタンに書き換える（Sandbox回避の最強ハック）
+                            // JSのテンプレートリテラル ${{...}} もエスケープして記述
                             document.body.innerHTML = `
                             <div style="display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background-color:#ffffff; font-family:sans-serif;">
                                 <a href="${{url.toString()}}" target="_top" style="display:block; width:90%; text-align:center; padding: 25px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 20px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
@@ -550,7 +552,7 @@ if "line_id" not in st.session_state:
                                 console.log("Auto-redirect blocked by sandbox. Waiting for user to tap the button.");
                             }}
                         }}).catch(err => console.error(err));
-                    } else {{
+                    }} else {{
                         liff.login();
                     }}
                 }}).catch(err => console.error(err));
@@ -558,7 +560,7 @@ if "line_id" not in st.session_state:
         </script>
         """
         st.markdown("<h3 style='text-align:center;'>🔄 LINEアカウントをセキュアに認証しています...</h3>", unsafe_allow_html=True)
-        # 修正：ボタンが表示されるよう heightを250に変更
+        # ボタンが表示されるよう heightを250に変更
         components.html(liff_js, height=250, scrolling=False)
         st.stop()
 
