@@ -513,22 +513,48 @@ def save_to_spreadsheet():
 # UI レンダリング
 # ==========================================
 
-# 【要件定義：LIFFのiframe制約突破ロジック（.replace置換による完全修正版）】
+# 【修正：超堅牢・デバッグ機能付きLIFF認証ロジック】
 if "line_id" not in st.session_state:
     params = st.query_params
+    # 1. URLからline_idが渡ってきた場合の処理
     if "line_id" in params and "line_name" in params:
         st.session_state.line_id = params["line_id"]
         st.session_state.line_name = urllib.parse.unquote(params["line_name"])
+        st.rerun()  # 確実に再描画して次のステップへ
     else:
         # 親ウィンドウURL取得を諦め、App URLを直接指定
         app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
         liff_id = "2009158681-7tv2nwIm"
         
-        # 【修正】f-stringを廃止し、通常の文字列として定義（波括弧のエスケープ不要）
+        # HTMLテンプレート（f-string不使用・.replaceで注入）
         liff_js_template = """
+        <div id="status_msg" style="text-align:center; font-family:sans-serif; color:#666; margin-top: 20px;">
+            🔄 LINE認証を試みています...
+        </div>
+        <div id="error_msg" style="color:red; font-size:12px; text-align:center; margin-top: 10px;"></div>
+        
+        <div id="btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px;">
+            <a id="liff_link" href="#" target="_top" style="display:block; width:90%; text-align:center; padding: 20px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 18px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                ✅ 認証完了！<br><span style="font-size:14px">ここをタップして開始</span>
+            </a>
+        </div>
+
         <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
         <script>
-            document.addEventListener("DOMContentLoaded", function() {
+            // 2. 強制表示タイマー：3秒経っても画面が遷移しなければボタンを強制表示
+            setTimeout(() => {
+                const btn = document.getElementById('btn_container');
+                if (btn.style.display === 'none') {
+                    btn.style.display = 'flex';
+                    document.getElementById('status_msg').innerText = "自動遷移に時間がかかっています。下のボタンを押してください。";
+                    // リンク先が未設定ならデフォルトURLを入れておく（念のため）
+                    if (document.getElementById('liff_link').getAttribute('href') === '#') {
+                         document.getElementById('liff_link').href = "APP_URL_VAL";
+                    }
+                }
+            }, 3000);
+
+            function startLiff() {
                 liff.init({ liffId: "LIFF_ID_VAL" }).then(() => {
                     if (liff.isLoggedIn()) {
                         liff.getProfile().then(profile => {
@@ -536,35 +562,42 @@ if "line_id" not in st.session_state:
                             url.searchParams.set('line_id', profile.userId);
                             url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
                             
-                            // iframe内を物理的な開始ボタンに書き換える（Sandbox回避の最強ハック）
-                            document.body.innerHTML = `
-                            <div style="display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background-color:#ffffff; font-family:sans-serif;">
-                                <a href="${url.toString()}" target="_top" style="display:block; width:90%; text-align:center; padding: 25px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 20px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
-                                    ✅ LINE認証成功！<br><span style="font-size:16px;">ここをタップして診断を開始</span>
-                                </a>
-                            </div>`;
+                            const finalUrl = url.toString();
                             
-                            // 念のため自動リダイレクトも試みる
+                            // ボタンのリンク先を書き換え & 表示
+                            const linkParams = document.getElementById('liff_link');
+                            linkParams.href = finalUrl;
+                            
+                            document.getElementById('btn_container').style.display = 'flex';
+                            document.getElementById('status_msg').style.display = 'none';
+                            
+                            // 3. 自動リダイレクト試行（エラーが出てもボタンがあるから安心）
                             try {
-                                window.top.location.href = url.toString();
+                                window.top.location.href = finalUrl;
                             } catch(e) {
-                                console.log("Auto-redirect blocked by sandbox. Waiting for user to tap the button.");
+                                console.error("Auto-redirect failed:", e);
                             }
-                        }).catch(err => console.error(err));
+                        }).catch(err => {
+                            document.getElementById('error_msg').innerText = "プロフィール取得エラー: " + err;
+                            document.getElementById('btn_container').style.display = 'flex'; // エラーでもボタンは出す
+                        });
                     } else {
                         liff.login();
                     }
-                }).catch(err => console.error(err));
-            });
+                }).catch(err => {
+                    document.getElementById('error_msg').innerText = "LIFF初期化エラー: " + err;
+                    document.getElementById('btn_container').style.display = 'flex'; // エラーでもボタンは出す
+                });
+            }
+            document.addEventListener("DOMContentLoaded", startLiff);
         </script>
         """
         
-        # 安全に変数を流し込む
+        # 変数を安全に注入
         liff_js = liff_js_template.replace("LIFF_ID_VAL", liff_id).replace("APP_URL_VAL", app_url)
         
-        st.markdown("<h3 style='text-align:center;'>🔄 LINEアカウントをセキュアに認証しています...</h3>", unsafe_allow_html=True)
-        # ボタンが表示されるよう heightを250に変更
-        components.html(liff_js, height=250, scrolling=False)
+        # 4. エラー表示領域確保のため高さを確保
+        components.html(liff_js, height=300)
         st.stop()
 
 # --- 1. 基本情報入力画面 ---
