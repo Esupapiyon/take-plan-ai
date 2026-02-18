@@ -513,92 +513,100 @@ def save_to_spreadsheet():
 # UI レンダリング
 # ==========================================
 
-# 【修正：超堅牢・デバッグ機能付きLIFF認証ロジック】
+# 【修正：無限ループ防止・堅牢なパラメータ取得ロジック】
+def get_params_robust():
+    """新旧バージョン・型違いに対応したパラメータ取得"""
+    params = {}
+    try:
+        # 新しいAPI (st.query_params) を辞書として取得
+        # バージョンによって挙動が違うため、to_dict()があれば使う
+        if hasattr(st.query_params, "to_dict"):
+            params = st.query_params.to_dict()
+        else:
+            params = dict(st.query_params)
+    except:
+        try:
+            # 古いAPIのフォールバック
+            params = st.experimental_get_query_params()
+        except:
+            pass
+    return params
+
+# パラメータ取得実行
+raw_params = get_params_robust()
+
+# 値の抽出（リストか文字列かを吸収）
+# Streamlitのバージョンにより値がリストの場合と文字列の場合があるため両対応
+p_line_id = raw_params.get("line_id", "")
+if isinstance(p_line_id, list) and len(p_line_id) > 0:
+    p_line_id = p_line_id[0]
+
+p_line_name = raw_params.get("line_name", "")
+if isinstance(p_line_name, list) and len(p_line_name) > 0:
+    p_line_name = p_line_name[0]
+
+# セッションに存在せず、かつパラメータが取れた場合 -> 保存して続行（リランしないことでループ回避）
+if "line_id" not in st.session_state and p_line_id and p_line_name:
+    st.session_state.line_id = p_line_id
+    st.session_state.line_name = urllib.parse.unquote(p_line_name)
+
+# まだセッションに無い場合 -> LIFF認証へ
 if "line_id" not in st.session_state:
-    params = st.query_params
-    # 1. URLからline_idが渡ってきた場合の処理
-    if "line_id" in params and "line_name" in params:
-        st.session_state.line_id = params["line_id"]
-        st.session_state.line_name = urllib.parse.unquote(params["line_name"])
-        st.rerun()  # 確実に再描画して次のステップへ
-    else:
-        # 親ウィンドウURL取得を諦め、App URLを直接指定
-        app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
-        liff_id = "2009158681-7tv2nwIm"
-        
-        # HTMLテンプレート（f-string不使用・.replaceで注入）
-        liff_js_template = """
-        <div id="status_msg" style="text-align:center; font-family:sans-serif; color:#666; margin-top: 20px;">
-            🔄 LINE認証を試みています...
-        </div>
-        <div id="error_msg" style="color:red; font-size:12px; text-align:center; margin-top: 10px;"></div>
-        
-        <div id="btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px;">
-            <a id="liff_link" href="#" target="_top" style="display:block; width:90%; text-align:center; padding: 20px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 18px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
-                ✅ 認証完了！<br><span style="font-size:14px">ここをタップして開始</span>
-            </a>
-        </div>
+    app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
+    liff_id = "2009158681-7tv2nwIm"
+    
+    # 物理ボタン付きLIFFコード（f-string不使用・.replace置換）
+    liff_js_template = """
+    <div id="status_msg" style="text-align:center; font-family:sans-serif; color:#666; margin-top: 20px;">
+        🔄 LINE認証を準備中...
+    </div>
+    <div id="btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px;">
+        <a id="liff_link" href="#" target="_top" style="display:block; width:90%; text-align:center; padding: 20px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 18px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+            ✅ 認証完了！<br><span style="font-size:14px">ここをタップして開始</span>
+        </a>
+    </div>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        // タイムアウト処理
+        setTimeout(() => {
+            document.getElementById('btn_container').style.display = 'flex';
+            document.getElementById('status_msg').style.display = 'none';
+        }, 2500);
 
-        <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-        <script>
-            // 2. 強制表示タイマー：3秒経っても画面が遷移しなければボタンを強制表示
-            setTimeout(() => {
-                const btn = document.getElementById('btn_container');
-                if (btn.style.display === 'none') {
-                    btn.style.display = 'flex';
-                    document.getElementById('status_msg').innerText = "自動遷移に時間がかかっています。下のボタンを押してください。";
-                    // リンク先が未設定ならデフォルトURLを入れておく（念のため）
-                    if (document.getElementById('liff_link').getAttribute('href') === '#') {
-                         document.getElementById('liff_link').href = "APP_URL_VAL";
-                    }
+        function startLiff() {
+            liff.init({ liffId: "LIFF_ID_VAL" }).then(() => {
+                if (liff.isLoggedIn()) {
+                    liff.getProfile().then(profile => {
+                        const url = new URL("APP_URL_VAL");
+                        url.searchParams.set('line_id', profile.userId);
+                        url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
+                        
+                        const finalUrl = url.toString();
+                        
+                        // ボタンのリンク先設定
+                        document.getElementById('liff_link').href = finalUrl;
+                        document.getElementById('btn_container').style.display = 'flex';
+                        document.getElementById('status_msg').style.display = 'none';
+                        
+                        // 自動リダイレクト試行
+                        try { window.top.location.href = finalUrl; } catch(e) {}
+                    }).catch(err => { console.error(err); });
+                } else {
+                    liff.login();
                 }
-            }, 3000);
+            }).catch(err => { console.error(err); });
+        }
+        document.addEventListener("DOMContentLoaded", startLiff);
+    </script>
+    """
+    
+    # 変数を安全に注入
+    liff_js = liff_js_template.replace("LIFF_ID_VAL", liff_id).replace("APP_URL_VAL", app_url)
+    
+    # 画面描画
+    components.html(liff_js, height=300)
+    st.stop()
 
-            function startLiff() {
-                liff.init({ liffId: "LIFF_ID_VAL" }).then(() => {
-                    if (liff.isLoggedIn()) {
-                        liff.getProfile().then(profile => {
-                            const url = new URL("APP_URL_VAL");
-                            url.searchParams.set('line_id', profile.userId);
-                            url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
-                            
-                            const finalUrl = url.toString();
-                            
-                            // ボタンのリンク先を書き換え & 表示
-                            const linkParams = document.getElementById('liff_link');
-                            linkParams.href = finalUrl;
-                            
-                            document.getElementById('btn_container').style.display = 'flex';
-                            document.getElementById('status_msg').style.display = 'none';
-                            
-                            // 3. 自動リダイレクト試行（エラーが出てもボタンがあるから安心）
-                            try {
-                                window.top.location.href = finalUrl;
-                            } catch(e) {
-                                console.error("Auto-redirect failed:", e);
-                            }
-                        }).catch(err => {
-                            document.getElementById('error_msg').innerText = "プロフィール取得エラー: " + err;
-                            document.getElementById('btn_container').style.display = 'flex'; // エラーでもボタンは出す
-                        });
-                    } else {
-                        liff.login();
-                    }
-                }).catch(err => {
-                    document.getElementById('error_msg').innerText = "LIFF初期化エラー: " + err;
-                    document.getElementById('btn_container').style.display = 'flex'; // エラーでもボタンは出す
-                });
-            }
-            document.addEventListener("DOMContentLoaded", startLiff);
-        </script>
-        """
-        
-        # 変数を安全に注入
-        liff_js = liff_js_template.replace("LIFF_ID_VAL", liff_id).replace("APP_URL_VAL", app_url)
-        
-        # 4. エラー表示領域確保のため高さを確保
-        components.html(liff_js, height=300)
-        st.stop()
 
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
