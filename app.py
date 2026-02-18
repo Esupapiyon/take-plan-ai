@@ -513,7 +513,7 @@ def save_to_spreadsheet():
 # UI レンダリング
 # ==========================================
 
-# 【要件定義：LIFFのiframe制約突破ロジック（f-string修正済み）】
+# 【要件定義：LIFFのiframe制約突破ロジック（.replace置換による完全修正版）】
 if "line_id" not in st.session_state:
     params = st.query_params
     if "line_id" in params and "line_name" in params:
@@ -524,41 +524,44 @@ if "line_id" not in st.session_state:
         app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
         liff_id = "2009158681-7tv2nwIm"
         
-        # 【修正】f-string内の波括弧をすべて二重 {{ }} にエスケープ
-        liff_js = f"""
+        # 【修正】f-stringを廃止し、通常の文字列として定義（波括弧のエスケープ不要）
+        liff_js_template = """
         <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
         <script>
-            document.addEventListener("DOMContentLoaded", function() {{
-                liff.init({{ liffId: "{liff_id}" }}).then(() => {{
-                    if (liff.isLoggedIn()) {{
-                        liff.getProfile().then(profile => {{
-                            const url = new URL("{app_url}");
+            document.addEventListener("DOMContentLoaded", function() {
+                liff.init({ liffId: "LIFF_ID_VAL" }).then(() => {
+                    if (liff.isLoggedIn()) {
+                        liff.getProfile().then(profile => {
+                            const url = new URL("APP_URL_VAL");
                             url.searchParams.set('line_id', profile.userId);
                             url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
                             
                             // iframe内を物理的な開始ボタンに書き換える（Sandbox回避の最強ハック）
-                            // JSのテンプレートリテラル ${{...}} もエスケープして記述
                             document.body.innerHTML = `
                             <div style="display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background-color:#ffffff; font-family:sans-serif;">
-                                <a href="${{url.toString()}}" target="_top" style="display:block; width:90%; text-align:center; padding: 25px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 20px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                                <a href="${url.toString()}" target="_top" style="display:block; width:90%; text-align:center; padding: 25px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 20px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
                                     ✅ LINE認証成功！<br><span style="font-size:16px;">ここをタップして診断を開始</span>
                                 </a>
                             </div>`;
                             
                             // 念のため自動リダイレクトも試みる
-                            try {{
+                            try {
                                 window.top.location.href = url.toString();
-                            }} catch(e) {{
+                            } catch(e) {
                                 console.log("Auto-redirect blocked by sandbox. Waiting for user to tap the button.");
-                            }}
-                        }}).catch(err => console.error(err));
-                    }} else {{
+                            }
+                        }).catch(err => console.error(err));
+                    } else {
                         liff.login();
-                    }}
-                }}).catch(err => console.error(err));
-            }});
+                    }
+                }).catch(err => console.error(err));
+            });
         </script>
         """
+        
+        # 安全に変数を流し込む
+        liff_js = liff_js_template.replace("LIFF_ID_VAL", liff_id).replace("APP_URL_VAL", app_url)
+        
         st.markdown("<h3 style='text-align:center;'>🔄 LINEアカウントをセキュアに認証しています...</h3>", unsafe_allow_html=True)
         # ボタンが表示されるよう heightを250に変更
         components.html(liff_js, height=250, scrolling=False)
