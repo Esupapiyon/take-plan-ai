@@ -4,6 +4,11 @@ import statistics
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+# 【要件定義1】必要なモジュールのインポート
+import streamlit.components.v1 as components
+import urllib.parse
+import requests
+
 # ==========================================
 # ページ設定
 # ==========================================
@@ -319,12 +324,8 @@ def calculate_sanmeigaku(year, month, day, time_str):
         "最晩年": saibannen     # 動的に変動する最晩年
     }
 
-def start_test(user_id, dob_str, btime, gender):
-    """基本情報の入力完了・バリデーション・テスト開始"""
-    if not user_id:
-        st.error("User_IDを入力してください。")
-        return
-    
+def start_test(line_name, line_id, dob_str, btime, gender):
+    """【要件定義3】基本情報の入力完了・バリデーション・テスト開始（LIFF連携対応）"""
     # 生年月日のチェック
     if not dob_str.isdigit() or len(dob_str) != 8:
         st.error("⚠️ 生年月日は8桁の半角数字で入力してください（例：19961229）")
@@ -343,7 +344,8 @@ def start_test(user_id, dob_str, btime, gender):
         return
 
     st.session_state.user_data = {
-        "User_ID": user_id,
+        "User_ID": line_name,    # 自動取得したLINE名
+        "LINE_ID": line_id,      # 自動取得したLINE_ID
         "DOB": formatted_dob,
         "Birth_Time": btime.strip() if btime else "",
         "Gender": gender
@@ -405,6 +407,46 @@ def calculate_scores():
         scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
     return scores
 
+def send_line_result(line_id, sanmeigaku, scores):
+    """【要件定義4】LINEへのダイレクト結果送信（Messaging API）"""
+    if not line_id:
+        return
+        
+    try:
+        token = st.secrets["LINE_ACCESS_TOKEN"]
+        url = "https://api.line.me/v2/bot/message/push"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
+        
+        # 美しくフォーマットされた結果テキスト
+        text = "✨ 診断が完了しました！\n\n"
+        text += "【あなたの宿命（算命学）】\n"
+        text += f"日干支: {sanmeigaku['日干支']}\n"
+        text += f"天中殺: {sanmeigaku['天中殺']}\n"
+        text += f"主星: {sanmeigaku['主星']}\n"
+        text += f"初年: {sanmeigaku['初年']} / 中年: {sanmeigaku['中年']} / 晩年: {sanmeigaku['晩年']}\n"
+        text += f"時干支: {sanmeigaku['時干支']}\n"
+        text += f"最晩年: {sanmeigaku['最晩年']}\n\n"
+        
+        text += "【深層心理（Big5スコア）】\n"
+        text += f"開放性(O): {scores['O']}\n"
+        text += f"勤勉性(C): {scores['C']}\n"
+        text += f"外向性(E): {scores['E']}\n"
+        text += f"協調性(A): {scores['A']}\n"
+        text += f"神経症(N): {scores['N']}\n\n"
+        text += "詳細な解説レポートは順次お届けします。お楽しみに！"
+
+        payload = {
+            "to": line_id,
+            "messages": [{"type": "text", "text": text}]
+        }
+        requests.post(url, headers=headers, json=payload)
+    except Exception as e:
+        # 送信に失敗してもアプリ側の処理は止めない
+        print(f"LINE送信エラー: {e}")
+
 def save_to_spreadsheet():
     """Googleスプレッドシートへの書き込み処理"""
     try:
@@ -426,11 +468,11 @@ def save_to_spreadsheet():
         y, m, d = map(int, ud["DOB"].split('/'))
         sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
         
-        # スプレッドシートの書き込み枠（8枠完全対応）
+        # スプレッドシートの書き込み枠（8枠完全対応 + LINE ID統合）
         row_data = [
-            ud["User_ID"],          # User_ID
+            ud["User_ID"],          # User_ID (自動取得したLINE名)
             "",                     # Stripe_ID (空白)
-            "",                     # LINE_ID (空白)
+            ud["LINE_ID"],          # LINE_ID (自動取得したLINE_ID)
             ud["DOB"],              # 生年月日 (YYYY/MM/DD)
             ud["Birth_Time"],       # 出生時間 (空白許容)
             ud["Gender"],           # 性別
@@ -457,6 +499,10 @@ def save_to_spreadsheet():
         
         # 書き込み
         sheet.append_row(row_data)
+        
+        # 【要件定義4】完了時のLINEへのダイレクトプッシュ送信
+        send_line_result(ud["LINE_ID"], sanmeigaku, scores)
+        
         return True
         
     except Exception as e:
@@ -467,13 +513,46 @@ def save_to_spreadsheet():
 # UI レンダリング
 # ==========================================
 
+# 【要件定義2】LIFFによるLINE_IDと名前の自動取得ロジック（最重要）
+if "line_id" not in st.session_state:
+    params = st.query_params
+    if "line_id" in params and "line_name" in params:
+        st.session_state.line_id = params["line_id"]
+        st.session_state.line_name = urllib.parse.unquote(params["line_name"])
+    else:
+        liff_id = "2009158681-7tv2nwIm"
+        liff_js = f"""
+        <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+        <script>
+            liff.init({{ liffId: "{liff_id}" }}).then(() => {{
+                if (liff.isLoggedIn()) {{
+                    liff.getProfile().then(profile => {{
+                        const url = new URL(window.parent.location.href);
+                        url.searchParams.set('line_id', profile.userId);
+                        url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
+                        window.parent.location.href = url.toString();
+                    }});
+                }} else {{
+                    liff.login();
+                }}
+            }});
+        </script>
+        """
+        components.html(liff_js, height=0, width=0)
+        st.markdown("<h3 style='text-align:center;'>🔄 LINEアカウントをセキュアに認証しています...<br>そのままお待ちください。</h3>", unsafe_allow_html=True)
+        st.stop()
+
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
+    
+    # 【要件定義3】入力UIの改修（ゼロ・フリクション化）
+    st.markdown(f"### ようこそ、{st.session_state.line_name} さん！")
+    
     st.title("【完全版】プレミアム裏ステータス診断")
     st.write("数億通りのAI×宿命アルゴリズムで、あなたの深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
     
     with st.form("info_form"):
-        user_id = st.text_input("User_ID（システム用）")
+        # User_ID手入力欄を完全削除
         
         # 生年月日の8桁数字入力（プレースホルダー維持）
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
@@ -488,8 +567,8 @@ if st.session_state.step == "user_info":
         # 送信ボタン
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
-            # パート2で定義したstart_test関数を呼び出し（内部で厳格なバリデーション実行）
-            start_test(user_id, dob_input, btime, gender)
+            # 【要件定義3】自動取得したLINE情報を渡すように修正
+            start_test(st.session_state.line_name, st.session_state.line_id, dob_input, btime, gender)
             
             # エラーに引っかからず、testステップに進んだ場合のみ再描画（エラーメッセージを残すための必須処理）
             if st.session_state.step == "test":
@@ -516,7 +595,6 @@ elif st.session_state.step == "test":
     st.write("---")
     
     # スマホで押し間違いを防ぐため、縦並びのUDボタンを配置
-    # ボタンを押した瞬間に handle_answer がコールバックされ、画面が瞬時に切り替わる
     st.button("全く違う", on_click=handle_answer, args=(current_q_num, 1), key=f"btn_1_{current_q_num}", type="secondary")
     st.button("やや違う", on_click=handle_answer, args=(current_q_num, 2), key=f"btn_2_{current_q_num}", type="secondary")
     st.button("どちらでもない", on_click=handle_answer, args=(current_q_num, 3), key=f"btn_3_{current_q_num}", type="secondary")
@@ -534,7 +612,7 @@ elif st.session_state.step == "processing":
 
 elif st.session_state.step == "done":
     st.success("解析が完了しました。")
-    st.markdown("### 下のボタンからLINEに戻り、結果をお受け取りください。")
+    st.markdown("### LINEに診断結果をお送りしました！<br>下のボタンからLINEにお戻りください。", unsafe_allow_html=True)
     
     # 本番LINE URLの直接埋め込み（維持）
     st.link_button("LINEに戻って結果を受け取る", "https://lin.ee/FrawIyY", type="primary")
