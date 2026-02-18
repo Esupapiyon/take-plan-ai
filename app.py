@@ -558,13 +558,13 @@ if "line_id" not in st.session_state:
     app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
     liff_id = "2009158681-7tv2nwIm"
     
-    # ループ防止機能付きLIFFコード（JavaScript側でパラメータチェック）
+    # ループ防止機能付きLIFFコード
     liff_js_template = """
     <div id="loader" style="text-align:center; font-family:sans-serif; color:#666; margin-top: 20px;">
         🔄 認証状況を確認中...
     </div>
     
-    <div id="start_btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px; flex-direction:column;">
+    <div id="start_btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px;">
         <a id="start_link" href="#" target="_top" style="display:block; width:90%; text-align:center; padding: 25px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 20px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
             🚀 診断をスタートする
         </a>
@@ -572,7 +572,7 @@ if "line_id" not in st.session_state:
     </div>
 
     <div id="login_btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px;">
-         <button id="manual_login_btn" onclick="liff.login();" style="width:90%; padding: 20px 0; background-color: #06C755; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor:pointer;">
+         <button id="manual_login_btn" style="width:90%; padding: 20px 0; background-color: #06C755; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold;">
             LINEでログインして開始
          </button>
     </div>
@@ -584,18 +584,11 @@ if "line_id" not in st.session_state:
         document.addEventListener("DOMContentLoaded", function() {
             // 【重要】すでにURLにline_idがある場合、LIFF処理をスキップしてループを止める
             const urlParams = new URLSearchParams(window.location.search);
-            // 親ウィンドウのURLパラメータも確認（iframe対策）
-            const parentParams = new URLSearchParams(window.parent.location.search);
-            
-            if (urlParams.has('line_id') || parentParams.has('line_id')) {
+            if (urlParams.has('line_id')) {
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('start_btn_container').style.display = 'flex';
-                
-                // 現在のURL（パラメータ付き）を再読み込みするリンクを設定
-                // target="_top" で親ウィンドウをリロードさせることでStreamlitにパラメータを認識させる
-                const currentUrl = (window.parent !== window) ? document.referrer : window.location.href;
-                document.getElementById('start_link').href = currentUrl;
-                
+                // 現在のURLを再読み込みするリンクを設定
+                document.getElementById('start_link').href = window.location.href;
                 return; // ここで処理終了（無限ループ回避）
             }
 
@@ -607,8 +600,8 @@ if "line_id" not in st.session_state:
                         url.searchParams.set('line_id', profile.userId);
                         url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
                         
-                        // リダイレクト実行 (replaceで履歴を残さない)
-                        window.top.location.replace(url.toString());
+                        // リダイレクト実行
+                        window.location.replace(url.toString());
                         
                     }).catch(err => {
                         document.getElementById('debug_msg').innerText = "Profile Error: " + err;
@@ -617,6 +610,9 @@ if "line_id" not in st.session_state:
                     // 未ログイン時
                     document.getElementById('loader').style.display = 'none';
                     document.getElementById('login_btn_container').style.display = 'flex';
+                    document.getElementById('manual_login_btn').onclick = function() {
+                        liff.login();
+                    };
                 }
             }).catch(err => {
                 document.getElementById('debug_msg').innerText = "LIFF Init Error: " + err;
@@ -628,6 +624,7 @@ if "line_id" not in st.session_state:
     liff_js = liff_js_template.replace("LIFF_ID_VAL", liff_id).replace("APP_URL_VAL", app_url)
     components.html(liff_js, height=350)
     st.stop()
+
 
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
