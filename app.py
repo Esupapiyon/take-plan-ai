@@ -3,9 +3,6 @@ import datetime
 import statistics
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-
-# 必要なモジュールのインポート
-import streamlit.components.v1 as components
 import urllib.parse
 import requests
 
@@ -204,6 +201,10 @@ if "max_q" not in st.session_state:
     st.session_state.max_q = 30 # 初期は30問で設定
 if "user_data" not in st.session_state:
     st.session_state.user_data = {}
+if "line_id" not in st.session_state:
+    st.session_state.line_id = None
+if "line_name" not in st.session_state:
+    st.session_state.line_name = None
 
 # ==========================================
 # ロジック・コールバック関数群
@@ -325,7 +326,7 @@ def calculate_sanmeigaku(year, month, day, time_str):
     }
 
 def start_test(line_name, line_id, dob_str, btime, gender):
-    """基本情報の入力完了・バリデーション・テスト開始（LIFF連携対応）"""
+    """基本情報の入力完了・バリデーション・テスト開始"""
     # 生年月日のチェック
     if not dob_str.isdigit() or len(dob_str) != 8:
         st.error("⚠️ 生年月日は8桁の半角数字で入力してください（例：19961229）")
@@ -344,8 +345,8 @@ def start_test(line_name, line_id, dob_str, btime, gender):
         return
 
     st.session_state.user_data = {
-        "User_ID": line_name,    # 自動取得したLINE名
-        "LINE_ID": line_id,      # 自動取得したLINE_ID
+        "User_ID": line_name,    # URLから取得したLINE名（またはゲスト）
+        "LINE_ID": line_id,      # URLから取得したLINE_ID
         "DOB": formatted_dob,
         "Birth_Time": btime.strip() if btime else "",
         "Gender": gender
@@ -513,7 +514,11 @@ def save_to_spreadsheet():
 # UI レンダリング
 # ==========================================
 
-# 【修正：無限ループ防止・パラメータ取得ロジック】
+# ---------------------------------------------------------
+# 【仕様変更】LIFF廃止・URLパラメータ受取方式への一本化
+# ---------------------------------------------------------
+
+# 1. 堅牢なパラメータ取得関数
 def get_params_robust():
     """新旧バージョン・型違いに対応したパラメータ取得"""
     params = {}
@@ -531,111 +536,51 @@ def get_params_robust():
             pass
     return params
 
-# パラメータ取得
-raw_params = get_params_robust()
+# 2. 認証ロジック実行
+# すでにセッションにIDがある場合はスキップ
+if not st.session_state.line_id:
+    raw_params = get_params_robust()
+    
+    # 値抽出（リスト・文字列両対応）
+    p_line_id = raw_params.get("line_id", "")
+    if isinstance(p_line_id, list) and len(p_line_id) > 0:
+        p_line_id = p_line_id[0]
 
-# 値抽出（リスト・文字列両対応）
-p_line_id = raw_params.get("line_id", "")
-if isinstance(p_line_id, list) and len(p_line_id) > 0:
-    p_line_id = p_line_id[0]
-
-p_line_name = raw_params.get("line_name", "")
-if isinstance(p_line_name, list) and len(p_line_name) > 0:
-    p_line_name = p_line_name[0]
-
-# セッション保存（IDさえあれば許可・名前は任意）
-if "line_id" not in st.session_state and p_line_id:
-    st.session_state.line_id = p_line_id
-    # 名前が取れていれば保存、なければゲスト扱い
-    if p_line_name:
-        st.session_state.line_name = urllib.parse.unquote(p_line_name)
+    p_line_name = raw_params.get("line_name", "")
+    if isinstance(p_line_name, list) and len(p_line_name) > 0:
+        p_line_name = p_line_name[0]
+        
+    # URLパラメータチェック
+    if p_line_id:
+        # IDがあればセッションに保存して承認
+        st.session_state.line_id = p_line_id
+        
+        if p_line_name:
+            st.session_state.line_name = urllib.parse.unquote(p_line_name)
+        else:
+            st.session_state.line_name = "ゲスト様"
+            
+        # 画面をリフレッシュしてクリーンなURLにする（任意だがパラメータ維持でもOK）
+        # ここではループ防止のためリランせずそのまま処理を進める
     else:
-        st.session_state.line_name = "ゲスト"
-    st.rerun()
-
-# まだセッションに無い場合 -> LIFF認証へ
-if "line_id" not in st.session_state:
-    app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/"
-    liff_id = "2009158681-7tv2nwIm"
-    
-    # ループ防止機能付きLIFFコード
-    liff_js_template = """
-    <div id="loader" style="text-align:center; font-family:sans-serif; color:#666; margin-top: 20px;">
-        🔄 認証状況を確認中...
-    </div>
-    
-    <div id="start_btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px;">
-        <a id="start_link" href="#" target="_top" style="display:block; width:90%; text-align:center; padding: 25px 0; background-color: #06C755; color: white; text-decoration: none; border-radius: 12px; font-size: 20px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
-            🚀 診断をスタートする
-        </a>
-        <p style="text-align:center; font-size:12px; color:#999; margin-top:10px;">※自動で始まらない場合はタップしてください</p>
-    </div>
-
-    <div id="login_btn_container" style="display:none; justify-content:center; align-items:center; margin-top: 20px;">
-         <button id="manual_login_btn" style="width:90%; padding: 20px 0; background-color: #06C755; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold;">
-            LINEでログインして開始
-         </button>
-    </div>
-    
-    <div id="debug_msg" style="color:red; font-size:10px; text-align:center; margin-top:20px;"></div>
-
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // 【重要】すでにURLにline_idがある場合、LIFF処理をスキップしてループを止める
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('line_id')) {
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('start_btn_container').style.display = 'flex';
-                // 現在のURLを再読み込みするリンクを設定
-                document.getElementById('start_link').href = window.location.href;
-                return; // ここで処理終了（無限ループ回避）
-            }
-
-            // URLにIDがない場合のみ、LIFF初期化を行う
-            liff.init({ liffId: "LIFF_ID_VAL" }).then(() => {
-                if (liff.isLoggedIn()) {
-                    liff.getProfile().then(profile => {
-                        const url = new URL("APP_URL_VAL");
-                        url.searchParams.set('line_id', profile.userId);
-                        url.searchParams.set('line_name', encodeURIComponent(profile.displayName));
-                        
-                        // リダイレクト実行
-                        window.location.replace(url.toString());
-                        
-                    }).catch(err => {
-                        document.getElementById('debug_msg').innerText = "Profile Error: " + err;
-                    });
-                } else {
-                    // 未ログイン時
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('login_btn_container').style.display = 'flex';
-                    document.getElementById('manual_login_btn').onclick = function() {
-                        liff.login();
-                    };
-                }
-            }).catch(err => {
-                document.getElementById('debug_msg').innerText = "LIFF Init Error: " + err;
-            });
-        });
-    </script>
-    """
-    
-    liff_js = liff_js_template.replace("LIFF_ID_VAL", liff_id).replace("APP_URL_VAL", app_url)
-    components.html(liff_js, height=350)
-    st.stop()
-
+        # IDが無い場合はアクセス拒否
+        st.warning("⚠️ このページは専用リンクからアクセスしてください。")
+        st.info("LINE公式アカウントのメニューから再度アクセスをお願いします。")
+        st.stop() # 処理をここで完全に停止
 
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
     
-    # ようこそメッセージ（LINE名表示）
-    st.markdown(f"### ようこそ、{st.session_state.line_name} さん！")
+    # ユーザー名表示（入力欄廃止）
+    display_name = st.session_state.line_name if st.session_state.line_name else "ゲスト様"
+    st.markdown(f"### ようこそ、{display_name}！")
     
     st.title("【完全版】プレミアム裏ステータス診断")
     st.write("数億通りのAI×宿命アルゴリズムで、あなたの深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
     
     with st.form("info_form"):
+        # User_ID入力欄は廃止（st.session_state.line_name を内部で使用）
+        
         # 生年月日の8桁数字入力
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
         dob_input = st.text_input("生年月日", max_chars=8, placeholder="例 19961229", label_visibility="collapsed")
@@ -649,7 +594,7 @@ if st.session_state.step == "user_info":
         # 送信ボタン
         submitted = st.form_submit_button("適性テストを開始する", type="primary")
         if submitted:
-            # 自動取得したLINE情報を渡して開始
+            # start_testには line_name と line_id を渡す
             start_test(st.session_state.line_name, st.session_state.line_id, dob_input, btime, gender)
             
             if st.session_state.step == "test":
