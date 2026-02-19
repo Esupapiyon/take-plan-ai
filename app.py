@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import datetime
 import statistics
 import gspread
@@ -7,14 +8,27 @@ import urllib.parse
 import requests
 
 # ==========================================
-# ページ設定
+# 1. ページ設定とUI改善CSS（一番上に書く）
 # ==========================================
 st.set_page_config(
-    page_title="性格適性診断 | オンボーディング",
+    page_title="プレミアム裏ステータス診断",
     page_icon="✨",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
+
+# 【追加・修正①：ボタン余白を削る魔法のCSS】
+st.markdown("""
+    <style>
+    div[data-testid="stButton"] button {
+        padding: 0.2rem 0.5rem;
+        min-height: 2.5rem;
+    }
+    div.stButton {
+        margin-bottom: -15px; 
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # CSS: 強制ライトモード ＆ ユニバーサルデザイン ＆ 余白極小化 ＆ LINEボタン化
@@ -205,6 +219,8 @@ if "line_id" not in st.session_state:
     st.session_state.line_id = None
 if "line_name" not in st.session_state:
     st.session_state.line_name = None
+if "stripe_id" not in st.session_state:
+    st.session_state.stripe_id = "" # Stripe ID用のステートを追加
 
 # ==========================================
 # ロジック・コールバック関数群
@@ -464,16 +480,20 @@ def save_to_spreadsheet():
         # Big5スコアの計算
         scores = calculate_scores()
         
-        # 算命学パラメータの自動計算（五鼠遁と堅牢な時間パース対応済）
+        # 算命学パラメータの自動計算
         ud = st.session_state.user_data
         y, m, d = map(int, ud["DOB"].split('/'))
         sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
         
-        # スプレッドシートの書き込み枠（8枠完全対応 + LINE ID統合）
+        # セッションからStripe IDを取得
+        stripe_id = st.session_state.get("stripe_id", "")
+        
+        # 【修正③：保存するデータの配列に stripe_id を追加】
+        # A列: LINE_ID, B列: Stripe_ID, C列: LINE_NAME の順に格納
         row_data = [
-            ud["User_ID"],          # User_ID (自動取得したLINE名)
-            "",                     # Stripe_ID (空白)
-            ud["LINE_ID"],          # LINE_ID (自動取得したLINE_ID)
+            ud["LINE_ID"],          # A列: LINEのID
+            stripe_id,              # B列: Stripe決済ID（★追加部分）
+            ud["User_ID"],          # C列: LINEの登録名 (User_ID枠に入っている)
             ud["DOB"],              # 生年月日 (YYYY/MM/DD)
             ud["Birth_Time"],       # 出生時間 (空白許容)
             ud["Gender"],           # 性別
@@ -483,8 +503,8 @@ def save_to_spreadsheet():
             sanmeigaku["初年"],      # 占い枠4
             sanmeigaku["中年"],      # 占い枠5
             sanmeigaku["晩年"],      # 占い枠6
-            sanmeigaku["時干支"],    # 占い枠7（動的変動）
-            sanmeigaku["最晩年"]     # 占い枠8（動的変動）
+            sanmeigaku["時干支"],    # 占い枠7
+            sanmeigaku["最晩年"]     # 占い枠8
         ]
         
         # Q1〜Q50の回答 (未回答部分は空白)
@@ -515,29 +535,24 @@ def save_to_spreadsheet():
 # ==========================================
 
 # ---------------------------------------------------------
-# 【仕様変更】LIFF廃止・URLパラメータ受取方式への一本化
+# 2. URLからのデータ受け取り（LIFF廃止・パラメータ一本化）
 # ---------------------------------------------------------
-
-# 1. 堅牢なパラメータ取得関数
 def get_params_robust():
     """新旧バージョン・型違いに対応したパラメータ取得"""
     params = {}
     try:
-        # 新しいAPI (st.query_params)
         if hasattr(st.query_params, "to_dict"):
             params = st.query_params.to_dict()
         else:
             params = dict(st.query_params)
     except:
         try:
-            # 古いAPI
             params = st.experimental_get_query_params()
         except:
             pass
     return params
 
-# 2. 認証ロジック実行
-# すでにセッションにIDがある場合はスキップ
+# セッションにまだIDがない場合のみ取得処理を行う
 if not st.session_state.line_id:
     raw_params = get_params_robust()
     
@@ -550,37 +565,42 @@ if not st.session_state.line_id:
     if isinstance(p_line_name, list) and len(p_line_name) > 0:
         p_line_name = p_line_name[0]
         
+    # 【追加②：Stripe IDを受け取る】
+    p_stripe_id = raw_params.get("stripe_id", "")
+    if isinstance(p_stripe_id, list) and len(p_stripe_id) > 0:
+        p_stripe_id = p_stripe_id[0]
+
     # URLパラメータチェック
-    if p_line_id:
+    if p_line_id and p_line_id != "不明":
         # IDがあればセッションに保存して承認
         st.session_state.line_id = p_line_id
+        st.session_state.stripe_id = p_stripe_id
         
-        if p_line_name:
+        if p_line_name and p_line_name != "ゲスト":
             st.session_state.line_name = urllib.parse.unquote(p_line_name)
         else:
-            st.session_state.line_name = "ゲスト様"
-            
-        # 画面をリフレッシュしてクリーンなURLにする（任意だがパラメータ維持でもOK）
-        # ここではループ防止のためリランせずそのまま処理を進める
+            st.session_state.line_name = "ゲスト"
     else:
         # IDが無い場合はアクセス拒否
         st.warning("⚠️ このページは専用リンクからアクセスしてください。")
-        st.info("LINE公式アカウントのメニューから再度アクセスをお願いします。")
+        st.info("LINE公式アカウントのメニュー、または決済完了ページから再度アクセスをお願いします。")
         st.stop() # 処理をここで完全に停止
 
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
     
-    # ユーザー名表示（入力欄廃止）
-    display_name = st.session_state.line_name if st.session_state.line_name else "ゲスト様"
-    st.markdown(f"### ようこそ、{display_name}！")
+    # 【追加・修正③：ようこそ画面の表示】
+    st.markdown(f"""
+        <div style='text-align: center;'>
+            <h3>ようこそ</h3>
+            <span style='color: #FF4B4B; font-size: 1.8em; font-weight: bold;'>{st.session_state.line_name}</span> <h3>様！</h3>
+            <p style='margin-top: 10px;'>プレミアム裏ステータス診断へ</p>
+        </div>
+    """, unsafe_allow_html=True)
     
-    st.title("【完全版】プレミアム裏ステータス診断")
     st.write("数億通りのAI×宿命アルゴリズムで、あなたの深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
     
     with st.form("info_form"):
-        # User_ID入力欄は廃止（st.session_state.line_name を内部で使用）
-        
         # 生年月日の8桁数字入力
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
         dob_input = st.text_input("生年月日", max_chars=8, placeholder="例 19961229", label_visibility="collapsed")
