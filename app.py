@@ -589,16 +589,17 @@ if not st.session_state.line_id:
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
     
-    # 【追加・修正③：ようこそ画面の表示】
-    st.markdown(f"""
-        <div style='text-align: center;'>
-            <h3>ようこそ</h3>
-            <span style='color: #FF4B4B; font-size: 1.8em; font-weight: bold;'>{st.session_state.line_name}</span> <h3>様！</h3>
-            <p style='margin-top: 10px;'>プレミアム裏ステータス診断へ</p>
+# ==========================================
+    # 3. タイトルと説明文の表示（差し替え）
+    # ==========================================
+    st.markdown("""
+        <div style='text-align: center; margin-bottom: 20px;'>
+            <h2 style='font-weight: bold;'>プレミアム裏ステータス診断へ</h2>
         </div>
     """, unsafe_allow_html=True)
     
-    st.write("数億通りのAI×宿命アルゴリズムで、あなたの深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
+    # 名前はセッションステートから呼び出して太字で表示
+    st.markdown(f"数億通りのAI×宿命アルゴリズムで、**{st.session_state.line_name}さん**の深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
     
     with st.form("info_form"):
         # 生年月日の8桁数字入力
