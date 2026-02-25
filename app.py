@@ -530,7 +530,7 @@ def send_line_result(line_id, sanmeigaku, scores):
         print(f"LINE送信エラー: {e}")
 
 def save_to_spreadsheet():
-    """Googleスプレッドシートへの書き込み処理"""
+    """Googleスプレッドシートへの書き込み処理とOpenAIによるレポート生成"""
     try:
         # Streamlit secretsから認証情報を取得
         creds_dict = st.secrets["gcp_service_account"]
@@ -553,14 +553,13 @@ def save_to_spreadsheet():
         # セッションからStripe IDを取得
         stripe_id = st.session_state.get("stripe_id", "")
         
-        # 【修正③：保存するデータの配列に stripe_id を追加】
-        # A列: LINE_ID, B列: Stripe_ID, C列: LINE_NAME の順に格納
+        # 保存するデータの配列
         row_data = [
             ud["LINE_ID"],          # A列: LINEのID
-            stripe_id,              # B列: Stripe決済ID（★追加部分）
-            ud["User_ID"],          # C列: LINEの登録名 (User_ID枠に入っている)
-            ud["DOB"],              # 生年月日 (YYYY/MM/DD)
-            ud["Birth_Time"],       # 出生時間 (空白許容)
+            stripe_id,              # B列: Stripe決済ID
+            ud["User_ID"],          # C列: LINEの登録名
+            ud["DOB"],              # 生年月日
+            ud["Birth_Time"],       # 出生時間
             ud["Gender"],           # 性別
             sanmeigaku["日干支"],    # 占い枠1
             sanmeigaku["天中殺"],    # 占い枠2
@@ -572,7 +571,7 @@ def save_to_spreadsheet():
             sanmeigaku["最晩年"]     # 占い枠8
         ]
         
-        # Q1〜Q50の回答 (未回答部分は空白)
+        # Q1〜Q50の回答
         for i in range(1, 51):
             row_data.append(st.session_state.answers.get(i, ""))
             
@@ -583,12 +582,30 @@ def save_to_spreadsheet():
         today_str = datetime.date.today().strftime("%Y/%m/%d")
         row_data.extend([today_str, "FALSE", "FALSE", 3])
         
-        # 【追加】LLM用プロンプトを生成し、スプレッドシートの最終列に保存する
+        # プロンプトの生成とスプレッドシートへの保存
         llm_prompt = generate_report_prompt(sanmeigaku, scores)
         row_data.append(llm_prompt)
-        
-        # 書き込み
         sheet.append_row(row_data)
+
+        # -----------------------------------------------------
+        # ▼ 【追加】OpenAI APIによる極秘レポートの生成とエラー出力
+        # -----------------------------------------------------
+        try:
+            client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "あなたは、東洋哲学の最高峰「算命学」と、最新の行動心理学「Big5」を完全に統合した、国内唯一の『戦略的ライフ・コンサルタント』です。"},
+                    {"role": "user", "content": llm_prompt}
+                ],
+                temperature=0.7
+            )
+            st.session_state.secret_report = response.choices[0].message.content
+        except Exception as e:
+            print(f"OpenAI API Error: {e}")
+            st.session_state.secret_report = "" # エラー時は空にする
+            # 画面上に詳細なエラー文を出力（デバッグ用）
+            st.error(f"【開発者向け詳細エラー(OpenAI)】: {e}")
         
         # 完了時のLINEへのダイレクトプッシュ送信
         send_line_result(ud["LINE_ID"], sanmeigaku, scores)
@@ -596,7 +613,8 @@ def save_to_spreadsheet():
         return True
         
     except Exception as e:
-        st.error(f"データ保存中にエラーが発生しました: {e}")
+        # スプレッドシート保存などの致命的なエラー用
+        st.error(f"【開発者向け詳細エラー(Spreadsheet/System)】: {e}")
         return False
 
 # ==========================================
