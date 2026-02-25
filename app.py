@@ -719,105 +719,37 @@ elif st.session_state.step == "test":
 
 # --- 3. 処理・完了画面 ---
 elif st.session_state.step == "processing":
-    with st.spinner("AIがあなたの深層心理を解析し、データベースに保存しています..."):
+    with st.spinner("AIがあなた専用の極秘レポートを執筆しています...（約10〜20秒）"):
         success = save_to_spreadsheet()
         
     if success:
-        # 【追加】OpenAI APIによる極秘レポートの生成
-        with st.spinner("AIがあなた専用の極秘レポートを執筆しています...（約10秒）"):
-            try:
-                # レポート生成のためにデータを再計算して取得（処理自体は一瞬です）
-                scores = calculate_scores()
-                ud = st.session_state.user_data
-                y, m, d = map(int, ud["DOB"].split('/'))
-                sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
-                
-                # 先ほど作成したプロンプト生成関数を呼び出して変数を流し込む
-                prompt = generate_report_prompt(sanmeigaku, scores)
-                
-                # OpenAI APIの呼び出し
-                client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "あなたは、東洋哲学の最高峰「算命学」と、最新の行動心理学「Big5」を完全に統合した、国内唯一の『戦略的ライフ・コンサルタント』です。"},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7
-                )
-                
-                # 生成されたテキストをセッションに保存
-                st.session_state.secret_report = response.choices[0].message.content
-                
-            except Exception as e:
-                # エラー時のハンドリング（アプリをクラッシュさせない）
-                print(f"OpenAI API Error: {e}")
-                st.session_state.secret_report = "error" # エラーフラグとして保存
-
-        # 処理完了後に done ステップへ移行
         st.session_state.step = "done"
         st.rerun()
 
 elif st.session_state.step == "done":
-    st.success("解析が完了しました。")
+    st.success("解析と極秘レポートの作成が完了しました！")
     
     # ---------------------------------------------------------
-    # 【追加・修正】極秘レポートの表示UIとエラーハンドリング
+    # 極秘レポートの豪華な表示エリア
     # ---------------------------------------------------------
-    if st.session_state.secret_report == "error":
-        # エラー発生時のフォールバック表示
-        st.warning("⚠️ 現在アクセスが集中しており、レポートの生成に失敗しました。")
-        st.info("後ほどLINEにて詳細なレポートをお送りいたしますので、このままLINEへお戻りください。")
-        
-    elif st.session_state.secret_report:
-        # レポートを特別感のあるデザインで囲むためのCSSと表示
+    if "secret_report" in st.session_state and st.session_state.secret_report:
         st.markdown("""
-        <style>
-            .secret-report-box {
-                background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%);
-                border: 2px solid #D32F2F; /* プレミアム感を出す深い赤の枠線 */
-                border-radius: 15px;
-                padding: 30px 20px;
-                margin-top: 20px;
-                margin-bottom: 30px;
-                box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-            }
-            /* レポート内の見出し装飾 */
-            .secret-report-box h2 {
-                color: #C62828 !important;
-                font-size: 1.6rem !important;
-                text-align: center;
-                border-bottom: 2px solid #FFEBEE;
-                padding-bottom: 15px;
-                margin-bottom: 25px;
-            }
-            .secret-report-box h3 {
-                color: #111111 !important;
-                font-size: 1.3rem !important;
-                border-left: 5px solid #D32F2F;
-                padding-left: 10px;
-                margin-top: 35px !important;
-                margin-bottom: 15px !important;
-            }
-            .secret-report-box p, .secret-report-box li {
-                font-size: 1.05rem;
-                line-height: 1.8;
-                color: #333333;
-            }
-        </style>
+        <div style="padding: 1.5rem; background-color: #FFFCF9; border: 2px solid #FCEADE; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0px 4px 10px rgba(0,0,0,0.05);">
         """, unsafe_allow_html=True)
         
-        # コンテナの中にマークダウンを展開
-        st.markdown("<div class='secret-report-box'>", unsafe_allow_html=True)
+        # AIが生成したレポート本体を表示
         st.markdown(st.session_state.secret_report)
+        
         st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ レポートの表示に時間がかかっています。データは正常に保存されました。")
 
     # ---------------------------------------------------------
-    # LINE誘導アクション
+    # LINEへの誘導ボタン
     # ---------------------------------------------------------
-    st.markdown("<h3 style='text-align: center;'>LINEに戻って日々の最適化アクションを受け取る</h3>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center; font-weight: bold;'>▼ 日々の最適化アクションを受け取る ▼</h4>", unsafe_allow_html=True)
     
     # 本番LINE URLの直接埋め込み
-    st.link_button("👉 LINEに戻って結果を受け取る", "https://lin.ee/FrawIyY", type="primary", use_container_width=True)
+    st.link_button("LINEに戻る", "https://lin.ee/FrawIyY", type="primary")
     
-    st.info("※このウィンドウは閉じて構いません。レポートはスクリーンショット等で保存しておくことをお勧めします。")
+    st.info("このウィンドウは閉じて構いません。レポートはスクリーンショット等で保存することをお勧めします。")
