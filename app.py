@@ -614,13 +614,18 @@ def save_to_spreadsheet():
         # O, C, E, A, N Scores
         row_data.extend([scores["O"], scores["C"], scores["E"], scores["A"], scores["N"]])
         
-        # 課金開始日, 極秘ライブラリ解放権限, 残回数
+       # 課金開始日, 極秘ライブラリ解放権限, 残回数
         today_str = datetime.date.today().strftime("%Y/%m/%d")
         row_data.extend([today_str, "FALSE", "FALSE", 3])
         
-        # プロンプトの生成とスプレッドシートへの保存
+        # 【追加】BV列用として空白を1つ追加
+        row_data.append("")
+        
+        # プロンプトの生成とスプレッドシートへの保存（BW列に保存される）
         llm_prompt = generate_report_prompt(sanmeigaku, scores)
         row_data.append(llm_prompt)
+        
+        # スプレッドシートへの書き込み実行
         sheet.append_row(row_data)
 
         # -----------------------------------------------------
