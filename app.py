@@ -526,7 +526,7 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
     return prompt
 
 def send_line_result(line_id, sanmeigaku, scores):
-    """【要件定義4】LINEへのダイレクト結果送信（Messaging API）"""
+    """【要件定義4】LINEへのダイレクト結果送信（Messaging API）とマイページURL送信"""
     if not line_id:
         return
         
@@ -537,6 +537,25 @@ def send_line_result(line_id, sanmeigaku, scores):
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}"
         }
+        
+        # 本番のStreamlitアプリURL
+        app_url = "https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app"
+        report_url = f"{app_url}?mode=report&line_id={line_id}"
+        
+        # マイページ閲覧用のテキスト
+        text = "✨ 極秘レポートが完成しました！\n\n"
+        text += "あなた専用の取扱説明書（完全版）は、以下の専用リンクからいつでも何度でも読み返すことができます。\n\n"
+        text += "▼ あなたの極秘レポートを開く ▼\n"
+        text += report_url
+
+        payload = {
+            "to": line_id,
+            "messages": [{"type": "text", "text": text}]
+        }
+        requests.post(url, headers=headers, json=payload)
+    except Exception as e:
+        # 送信に失敗してもアプリ側の処理は止めない
+        print(f"LINE送信エラー: {e}")
         
         # 美しくフォーマットされた結果テキスト
         text = "✨ 診断が完了しました！\n\n"
@@ -739,6 +758,89 @@ if not st.session_state.line_id:
         st.warning("⚠️ このページは専用リンクからアクセスしてください。")
         st.info("LINE公式アカウントのメニュー、または決済完了ページから再度アクセスをお願いします。")
         st.stop() # 処理をここで完全に停止
+
+# 【追加③：modeパラメータを受け取る（レポート閲覧モード用）】
+    p_mode = raw_params.get("mode", "")
+    if isinstance(p_mode, list) and len(p_mode) > 0:
+        p_mode = p_mode[0]
+
+    # ==========================================
+    # レポート閲覧（マイページ）モードのルーティング
+    # ==========================================
+    if p_mode == "report" and p_line_id:
+        st.markdown("<h2 style='text-align: center; color: #C62828;'>極秘レポート閲覧ルーム</h2>", unsafe_allow_html=True)
+        
+        with st.spinner("あなた専用の極秘レポートをデータベースから検索しています..."):
+            try:
+                # gspreadの認証ロジック
+                creds_dict = st.secrets["gcp_service_account"]
+                scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                client = gspread.authorize(creds)
+                
+                sheet_url = st.secrets["spreadsheet_url"]
+                sheet = client.open_by_url(sheet_url).sheet1
+                
+                # 全データを取得して検索 (A列=index 0, BV列=index 73)
+                all_data = sheet.get_all_values()
+                report_text = None
+                
+                # リストを後ろから検索（最新の診断結果を優先取得するため）
+                for row in reversed(all_data):
+                    if len(row) > 0 and row[0] == p_line_id:
+                        # BV列（インデックス73）にデータが存在するかチェック
+                        if len(row) > 73 and row[73].strip() != "":
+                            report_text = row[73]
+                        break
+                
+                if report_text:
+                    st.success("レポートの取得に成功しました！")
+                    st.markdown("""
+                    <style>
+                        .secret-report-box {
+                            background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%);
+                            border: 2px solid #D32F2F;
+                            border-radius: 15px;
+                            padding: 30px 20px;
+                            margin-top: 10px;
+                            margin-bottom: 30px;
+                            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+                        }
+                        .secret-report-box h2 {
+                            color: #C62828 !important;
+                            font-size: 1.6rem !important;
+                            text-align: center;
+                            border-bottom: 2px solid #FFEBEE;
+                            padding-bottom: 15px;
+                            margin-bottom: 25px;
+                        }
+                        .secret-report-box h3 {
+                            color: #111111 !important;
+                            font-size: 1.3rem !important;
+                            border-left: 5px solid #D32F2F;
+                            padding-left: 10px;
+                            margin-top: 35px !important;
+                            margin-bottom: 15px !important;
+                        }
+                        .secret-report-box p, .secret-report-box li {
+                            font-size: 1.05rem;
+                            line-height: 1.8;
+                            color: #333333;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("<div class='secret-report-box'>", unsafe_allow_html=True)
+                    st.markdown(report_text)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
+                    
+            except Exception as e:
+                st.error(f"データベース通信エラーが発生しました: {e}")
+                
+        # 表示が終わったらここで処理を強制終了（下の診断UIを出さない）
+        st.stop()
 
 # --- 1. 基本情報入力画面 ---
 if st.session_state.step == "user_info":
