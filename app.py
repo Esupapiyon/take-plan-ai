@@ -614,19 +614,48 @@ def save_to_spreadsheet():
         # O, C, E, A, N Scores
         row_data.extend([scores["O"], scores["C"], scores["E"], scores["A"], scores["N"]])
         
-       # 課金開始日, 極秘ライブラリ解放権限, 残回数
+      # 課金開始日, 極秘ライブラリ解放権限, 残回数
         today_str = datetime.date.today().strftime("%Y/%m/%d")
         row_data.extend([today_str, "FALSE", "FALSE", 3])
         
-        # 【追加】BV列用として空白を1つ追加
+        # BV列用として空白を1つ追加
         row_data.append("")
         
-        # プロンプトの生成とスプレッドシートへの保存（BW列に保存される）
+        # LLM用プロンプトの生成
         llm_prompt = generate_report_prompt(sanmeigaku, scores)
-        row_data.append(llm_prompt)
         
-        # スプレッドシートへの書き込み実行
+        # -----------------------------------------------------
+        # ▼ OpenAI APIによる極秘レポートの生成
+        # -----------------------------------------------------
+        generated_report = "" # 保存用の変数を初期化
+        try:
+            client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "あなたは、東洋哲学の最高峰「算命学」と、最新の行動心理学「Big5」を完全に統合した、国内唯一の『戦略的ライフ・コンサルタント』です。"},
+                    {"role": "user", "content": llm_prompt}
+                ],
+                temperature=0.7
+            )
+            # 生成されたテキストを取得
+            generated_report = response.choices[0].message.content
+            st.session_state.secret_report = generated_report
+        except Exception as e:
+            print(f"OpenAI API Error: {e}")
+            st.session_state.secret_report = "" # エラー時は空にする
+            st.error(f"【開発者向け詳細エラー(OpenAI)】: {e}")
+        
+        # 【修正】プロンプトではなく、AIが生成したテキスト結果をBW列に追加
+        row_data.append(generated_report)
+        
+        # ▼ 最後にスプレッドシートへの書き込みを実行する
         sheet.append_row(row_data)
+        
+        # 完了時のLINEへのダイレクトプッシュ送信
+        send_line_result(ud["LINE_ID"], sanmeigaku, scores)
+        
+        return True
 
         # -----------------------------------------------------
         # ▼ 【追加】OpenAI APIによる極秘レポートの生成とエラー出力
