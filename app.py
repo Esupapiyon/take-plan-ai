@@ -618,9 +618,6 @@ def save_to_spreadsheet():
         today_str = datetime.date.today().strftime("%Y/%m/%d")
         row_data.extend([today_str, "FALSE", "FALSE", 3])
         
-        # BV列用として空白を1つ追加
-        row_data.append("")
-        
         # LLM用プロンプトの生成
         llm_prompt = generate_report_prompt(sanmeigaku, scores)
         
@@ -646,7 +643,7 @@ def save_to_spreadsheet():
             st.session_state.secret_report = "" # エラー時は空にする
             st.error(f"【開発者向け詳細エラー(OpenAI)】: {e}")
         
-        # 【修正】プロンプトではなく、AIが生成したテキスト結果をBW列に追加
+        # AIが生成したテキスト結果をBV列に追加
         row_data.append(generated_report)
         
         # ▼ 最後にスプレッドシートへの書き込みを実行する
