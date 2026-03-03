@@ -8,3 +8,5 @@ gspread
 oauth2client
 requests
 openai
+gspread==5.12.0
+google-auth==2.23.0
