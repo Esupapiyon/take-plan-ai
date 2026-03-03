@@ -737,14 +737,45 @@ def get_user_status(line_id):
         return False
 
 # ==========================================
-# UI レンダリング
+# UI レンダリング と 統合ポータル
 # ==========================================
 
+def get_user_status(line_id):
+    """マイページ用にユーザーのEXPとテーマを取得する関数"""
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        from oauth2client.service_account import ServiceAccountCredentials
+        import gspread
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        
+        sheet_url = st.secrets["spreadsheet_url"]
+        premium_sheet = client.open_by_url(sheet_url).worksheet("シート1")
+        all_data = premium_sheet.get_all_values()
+        
+        headers = all_data[0]
+        exp_idx = -1
+        theme_idx = -1
+        for i, h in enumerate(headers):
+            if h == 'EXP': exp_idx = i
+            if h == '次週のテーマ': theme_idx = i
+            
+        for row in reversed(all_data[1:]):
+            if len(row) > 0 and row[0] == line_id:
+                exp = int(row[exp_idx]) if exp_idx != -1 and len(row) > exp_idx and str(row[exp_idx]).isdigit() else 0
+                theme = row[theme_idx] if theme_idx != -1 and len(row) > theme_idx else "未装備（算命学の自動選択）"
+                if not theme: theme = "未装備（算命学の自動選択）"
+                return exp, theme
+        return 0, "データが見つかりません"
+    except Exception as e:
+        print(f"データベース接続エラー: {e}")
+        return 0, "エラー"
+
 # ---------------------------------------------------------
-# 2. URLからのデータ受け取り（LIFF廃止・パラメータ一本化）
+# URLからのデータ受け取り（安全なグローバル取得）
 # ---------------------------------------------------------
 def get_params_robust():
-    """新旧バージョン・型違いに対応したパラメータ取得"""
     params = {}
     try:
         if hasattr(st.query_params, "to_dict"):
@@ -758,120 +789,109 @@ def get_params_robust():
             pass
     return params
 
-# セッションにまだIDがない場合のみ取得処理を行う
-if not st.session_state.line_id:
-    raw_params = get_params_robust()
+raw_params = get_params_robust()
+
+p_line_id = raw_params.get("line_id", "")
+if isinstance(p_line_id, list) and len(p_line_id) > 0: p_line_id = p_line_id[0]
+
+p_line_name = raw_params.get("line_name", "")
+if isinstance(p_line_name, list) and len(p_line_name) > 0: p_line_name = p_line_name[0]
+
+p_stripe_id = raw_params.get("stripe_id", "")
+if isinstance(p_stripe_id, list) and len(p_stripe_id) > 0: p_stripe_id = p_stripe_id[0]
+
+p_mode = raw_params.get("mode", "")
+if isinstance(p_mode, list) and len(p_mode) > 0: p_mode = p_mode[0]
+
+# セッションへの保存
+if p_line_id and p_line_id != "不明":
+    st.session_state.line_id = p_line_id
+    st.session_state.stripe_id = p_stripe_id
+    if p_line_name and p_line_name != "ゲスト":
+        import urllib.parse
+        st.session_state.line_name = urllib.parse.unquote(p_line_name)
+    elif not st.session_state.line_name:
+        st.session_state.line_name = "ゲスト"
+elif not st.session_state.line_id:
+    st.warning("⚠️ このページは専用リンクからアクセスしてください。")
+    st.info("LINE公式アカウントのメニューから再度アクセスをお願いします。")
+    st.stop()
+
+# ==========================================
+# ★大統合ポータルモード（旧レポートリンクからのアクセスも統合）
+# ==========================================
+if p_mode in ["portal", "report"] and st.session_state.line_id:
+    st.markdown("<h2 style='text-align: center; color: #b8860b; margin-bottom: 20px;'>裏ステータス完全攻略ポータル</h2>", unsafe_allow_html=True)
     
-    # 値抽出（リスト・文字列両対応）
-    p_line_id = raw_params.get("line_id", "")
-    if isinstance(p_line_id, list) and len(p_line_id) > 0:
-        p_line_id = p_line_id[0]
+    tab1, tab2, tab3 = st.tabs(["🏠 マイページ", "📅 波乗りカレンダー", "📜 極秘レポート"])
+    
+    with tab1:
+        with st.spinner("ステータスを同期中..."):
+            exp, theme = get_user_status(st.session_state.line_id)
+            import math
+            level = math.floor(exp / 50) + 1
+            next_exp = level * 50
+            progress = (exp % 50) / 50.0
 
-    p_line_name = raw_params.get("line_name", "")
-    if isinstance(p_line_name, list) and len(p_line_name) > 0:
-        p_line_name = p_line_name[0]
+        st.markdown(f"""
+        <div style='background-color: #FAFAFA; padding: 20px; border-radius: 10px; border: 2px solid #b8860b; margin-bottom: 20px;'>
+            <h3 style='color: #b8860b; text-align: center; margin-top: 0;'>YOUR STATUS</h3>
+            <h1 style='color: #D32F2F; text-align: center; font-size: 3rem; margin: 10px 0;'>Lv. {level}</h1>
+        </div>
+        """, unsafe_allow_html=True)
         
-    # 【追加②：Stripe IDを受け取る】
-    p_stripe_id = raw_params.get("stripe_id", "")
-    if isinstance(p_stripe_id, list) and len(p_stripe_id) > 0:
-        p_stripe_id = p_stripe_id[0]
-
-    # URLパラメータチェック
-    if p_line_id and p_line_id != "不明":
-        # IDがあればセッションに保存して承認
-        st.session_state.line_id = p_line_id
-        st.session_state.stripe_id = p_stripe_id
+        st.progress(progress, text=f"次のレベルまで あと {next_exp - exp} EXP")
         
-        if p_line_name and p_line_name != "ゲスト":
-            st.session_state.line_name = urllib.parse.unquote(p_line_name)
-        else:
-            st.session_state.line_name = "ゲスト"
-    else:
-        # IDが無い場合はアクセス拒否
-        st.warning("⚠️ このページは専用リンクからアクセスしてください。")
-        st.info("LINE公式アカウントのメニュー、または決済完了ページから再度アクセスをお願いします。")
-        st.stop() # 処理をここで完全に停止
-
-# 【追加③：modeパラメータを受け取る（レポート閲覧モード用）】
-    p_mode = raw_params.get("mode", "")
-    if isinstance(p_mode, list) and len(p_mode) > 0:
-        p_mode = p_mode[0]
+        col1, col2 = st.columns(2)
+        col1.metric(label="獲得累計 EXP", value=f"{exp} ✨")
+        col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
         
-    # ==========================================
-    # ★追加：大統合ポータルモード（mode=portal）
-    # ==========================================
-    if p_mode == "portal" and p_line_id:
-        st.markdown("<h2 style='text-align: center; color: #b8860b; margin-bottom: 20px;'>裏ステータス完全攻略ポータル</h2>", unsafe_allow_html=True)
-        
-        # 3つのタブを作成
-        tab1, tab2, tab3 = st.tabs(["🏠 マイページ", "📅 波乗りカレンダー", "📜 極秘レポート"])
-        
-        # -------------------
-        # タブ1：マイページ
-        # -------------------
-        with tab1:
-            with st.spinner("ステータスを同期中..."):
-                exp, theme = get_user_status(p_line_id)
-                level = math.floor(exp / 50) + 1
-                next_exp = level * 50
-                progress = (exp % 50) / 50.0
+        st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
 
-            st.markdown(f"""
-            <div style='background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 2px solid #b8860b; margin-bottom: 20px;'>
-                <h3 style='color: #b8860b; text-align: center; margin-top: 0;'>YOUR STATUS</h3>
-                <h1 style='color: #ffeb3b; text-align: center; font-size: 3rem; margin: 10px 0;'>Lv. {level}</h1>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.progress(progress, text=f"次のレベルまで あと {next_exp - exp} EXP")
-            
-            col1, col2 = st.columns(2)
-            col1.metric(label="獲得累計 EXP", value=f"{exp} ✨")
-            col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
-            
-            st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
+    with tab2:
+        st.subheader("📅 運命の波乗りカレンダー")
+        st.write("ここに『算命学バイオリズムと行動指針のアルゴリズム』を実装します。")
+        st.info("現在、システム開発中です...")
 
-        # -------------------
-        # タブ2：カレンダー
-        # -------------------
-        with tab2:
-            st.subheader("📅 運命の波乗りカレンダー")
-            st.write("ここに、社長が設計する『算命学バイオリズムと行動指針のアルゴリズム』を実装します。")
-            st.info("現在、システム開発中です...")
-
-        # -------------------
-        # タブ3：極秘レポート
-        # -------------------
-        with tab3:
-            st.subheader("📜 極秘レポート完全版")
-            with st.spinner("データベースからレポートを検索しています..."):
-                try:
-                    creds_dict = st.secrets["gcp_service_account"]
-                    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-                    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-                    client = gspread.authorize(creds)
-                    sheet_url = st.secrets["spreadsheet_url"]
-                    sheet = client.open_by_url(sheet_url).sheet1
-                    all_data = sheet.get_all_values()
-                    
-                    report_text = None
-                    for row in reversed(all_data):
-                        if len(row) > 0 and row[0] == p_line_id:
-                            if len(row) > 73 and row[73].strip() != "":
-                                report_text = row[73]
-                            break
-                    
-                    if report_text:
-                        st.markdown("<div style='background: #FAFAFA; border: 2px solid #D32F2F; border-radius: 10px; padding: 20px;'>", unsafe_allow_html=True)
-                        st.markdown(report_text)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    else:
-                        st.warning("⚠️ レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
-                except Exception as e:
-                    st.error(f"データベース通信エラー: {e}")
-
-        # ポータル画面の表示が終わったらここで処理を強制終了
-        st.stop()
+    with tab3:
+        st.subheader("📜 極秘レポート完全版")
+        with st.spinner("データベースからレポートを検索しています..."):
+            try:
+                creds_dict = st.secrets["gcp_service_account"]
+                scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                from oauth2client.service_account import ServiceAccountCredentials
+                import gspread
+                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                client = gspread.authorize(creds)
+                sheet_url = st.secrets["spreadsheet_url"]
+                sheet = client.open_by_url(sheet_url).sheet1
+                all_data = sheet.get_all_values()
+                
+                report_text = None
+                for row in reversed(all_data):
+                    if len(row) > 0 and row[0] == st.session_state.line_id:
+                        if len(row) > 73 and row[73].strip() != "":
+                            report_text = row[73]
+                        break
+                
+                if report_text:
+                    st.markdown("""
+                    <style>
+                        .secret-report-box { background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%); border: 2px solid #D32F2F; border-radius: 15px; padding: 30px 20px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+                        .secret-report-box h2 { color: #C62828 !important; font-size: 1.6rem !important; text-align: center; border-bottom: 2px solid #FFEBEE; padding-bottom: 15px; margin-bottom: 25px; }
+                        .secret-report-box h3 { color: #111111 !important; font-size: 1.3rem !important; border-left: 5px solid #D32F2F; padding-left: 10px; margin-top: 35px !important; margin-bottom: 15px !important; }
+                        .secret-report-box p, .secret-report-box li { font-size: 1.05rem; line-height: 1.8; color: #333333; }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    st.markdown("<div class='secret-report-box'>", unsafe_allow_html=True)
+                    st.markdown(report_text)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
+            except Exception as e:
+                st.error(f"データベース通信エラー: {e}")
+    
+    st.stop() # ポータル画面の表示が終わったらここで処理を強制終了
         
     # ==========================================
     # レポート閲覧（マイページ）モードのルーティング
