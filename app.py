@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
+import math
 import statistics
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -639,6 +640,38 @@ def save_to_spreadsheet():
         
         # LLM用プロンプトの生成
         llm_prompt = generate_report_prompt(sanmeigaku, scores)
+
+def get_user_status(line_id):
+    """【追加】マイページ用にユーザーのEXPとテーマを取得する関数"""
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        
+        sheet_url = st.secrets["spreadsheet_url"]
+        premium_sheet = client.open_by_url(sheet_url).worksheet("シート1")
+        all_data = premium_sheet.get_all_values()
+        
+        # ヘッダーから列インデックスを探す
+        headers = all_data[0]
+        exp_idx = -1
+        theme_idx = -1
+        for i, h in enumerate(headers):
+            if h == 'EXP': exp_idx = i
+            if h == '次週のテーマ': theme_idx = i
+            
+        # 下から検索して最新データを取得
+        for row in reversed(all_data[1:]):
+            if len(row) > 0 and row[0] == line_id: # A列がLINE_ID
+                exp = int(row[exp_idx]) if exp_idx != -1 and row[exp_idx].isdigit() else 0
+                theme = row[theme_idx] if theme_idx != -1 and len(row) > theme_idx else "未装備（算命学の自動選択）"
+                if not theme: theme = "未装備（算命学の自動選択）"
+                return exp, theme
+        return 0, "データが見つかりません"
+    except Exception as e:
+        print(f"データベース接続エラー: {e}")
+        return 0, "エラー"
         
         # -----------------------------------------------------
         # ▼ OpenAI APIによる極秘レポートの生成
@@ -763,7 +796,83 @@ if not st.session_state.line_id:
     p_mode = raw_params.get("mode", "")
     if isinstance(p_mode, list) and len(p_mode) > 0:
         p_mode = p_mode[0]
+        
+    # ==========================================
+    # ★追加：大統合ポータルモード（mode=portal）
+    # ==========================================
+    if p_mode == "portal" and p_line_id:
+        st.markdown("<h2 style='text-align: center; color: #b8860b; margin-bottom: 20px;'>裏ステータス完全攻略ポータル</h2>", unsafe_allow_html=True)
+        
+        # 3つのタブを作成
+        tab1, tab2, tab3 = st.tabs(["🏠 マイページ", "📅 波乗りカレンダー", "📜 極秘レポート"])
+        
+        # -------------------
+        # タブ1：マイページ
+        # -------------------
+        with tab1:
+            with st.spinner("ステータスを同期中..."):
+                exp, theme = get_user_status(p_line_id)
+                level = math.floor(exp / 50) + 1
+                next_exp = level * 50
+                progress = (exp % 50) / 50.0
 
+            st.markdown(f"""
+            <div style='background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 2px solid #b8860b; margin-bottom: 20px;'>
+                <h3 style='color: #b8860b; text-align: center; margin-top: 0;'>YOUR STATUS</h3>
+                <h1 style='color: #ffeb3b; text-align: center; font-size: 3rem; margin: 10px 0;'>Lv. {level}</h1>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.progress(progress, text=f"次のレベルまで あと {next_exp - exp} EXP")
+            
+            col1, col2 = st.columns(2)
+            col1.metric(label="獲得累計 EXP", value=f"{exp} ✨")
+            col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
+            
+            st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
+
+        # -------------------
+        # タブ2：カレンダー
+        # -------------------
+        with tab2:
+            st.subheader("📅 運命の波乗りカレンダー")
+            st.write("ここに、社長が設計する『算命学バイオリズムと行動指針のアルゴリズム』を実装します。")
+            st.info("現在、システム開発中です...")
+
+        # -------------------
+        # タブ3：極秘レポート
+        # -------------------
+        with tab3:
+            st.subheader("📜 極秘レポート完全版")
+            with st.spinner("データベースからレポートを検索しています..."):
+                try:
+                    creds_dict = st.secrets["gcp_service_account"]
+                    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                    client = gspread.authorize(creds)
+                    sheet_url = st.secrets["spreadsheet_url"]
+                    sheet = client.open_by_url(sheet_url).sheet1
+                    all_data = sheet.get_all_values()
+                    
+                    report_text = None
+                    for row in reversed(all_data):
+                        if len(row) > 0 and row[0] == p_line_id:
+                            if len(row) > 73 and row[73].strip() != "":
+                                report_text = row[73]
+                            break
+                    
+                    if report_text:
+                        st.markdown("<div style='background: #FAFAFA; border: 2px solid #D32F2F; border-radius: 10px; padding: 20px;'>", unsafe_allow_html=True)
+                        st.markdown(report_text)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    else:
+                        st.warning("⚠️ レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
+                except Exception as e:
+                    st.error(f"データベース通信エラー: {e}")
+
+        # ポータル画面の表示が終わったらここで処理を強制終了
+        st.stop()
+        
     # ==========================================
     # レポート閲覧（マイページ）モードのルーティング
     # ==========================================
