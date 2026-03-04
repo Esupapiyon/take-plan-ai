@@ -381,12 +381,20 @@ def calculate_daily_score(user_nikkanshi, target_date):
     # -------------------------
     total_score = env_score + mind_score
     
-    # スコアから記号を決定
-    if total_score >= 9: symbol = "🟡"
-    elif total_score >= 7: symbol = "🔴"
-    elif total_score >= 5: symbol = "🟢"
-    elif total_score >= 3: symbol = "🔵"
-    else: symbol = "⚪️"
+   # スコアから記号を決定（五行カラーと形状を組み合わせたユニバーサルデザイン）
+    if total_score == 10: symbol = "🌟" # 黄金/特別な合
+    elif total_score == 9: symbol = "☀️" # 陽の極み
+    elif total_score == 8: symbol = "🔴" # 火性/前進
+    elif total_score == 7: symbol = "🔺" # 火性/上昇
+    elif total_score == 6: symbol = "🟢" # 木性/成長
+    elif total_score == 5: symbol = "🟩" # 木性/安定
+    elif total_score == 4: symbol = "🔵" # 水性/習得
+    elif total_score == 3: symbol = "🔷" # 水性/流動
+    elif total_score == 2: symbol = "⚪️" # 金性/休息
+    else: symbol = "⚫️" # 土性(無)/停止
+        
+    return {
+        "score": total_score,
         
     return {
         "score": total_score,
@@ -398,21 +406,9 @@ def calculate_daily_score(user_nikkanshi, target_date):
 
 def get_rule_based_stars(score, mind_reason):
     """AIを使わず、スコアと星の属性から瞬時に31日分の評価を自動生成する関数"""
-    if score >= 9:
-        base_star = "★★★"
-        one_liner = f"異次元の追い風が吹く日。自身のテーマに沿って最大の結果を出せます。"
-    elif score >= 7:
-        base_star = "★★☆"
-        one_liner = f"迷わず行動すべき日。計画を実行に移すのに最適なタイミングです。"
-    elif score >= 5:
-        base_star = "★★☆"
-        one_liner = f"安定した運気。焦らず着実に、目の前のタスクを進めると吉です。"
-    elif score >= 3:
-        base_star = "★☆☆"
-        one_liner = f"ノイズが入りやすい日。大きな決断は避け、内省や準備に時間を使いましょう。"
-    else:
-        base_star = "★☆☆"
-        one_liner = f"完全なリセット日。無理をせず、心と体を休めることを最優先にしてください。"
+    if score >= 9: base_star = "★★★"
+    elif score >= 5: base_star = "★★☆"
+    else: base_star = "★☆☆"
         
     # 特性に応じた星評価の自動調整
     stars = {
@@ -428,7 +424,7 @@ def get_rule_based_stars(score, mind_reason):
     if score <= 2:
         stars = {k: "★☆☆" for k in stars}
         
-    return one_liner, stars
+    return stars
 
 #（AIによる専門用語排除・運勢解説生成エンジン）
 def generate_daily_advice(today_res):
@@ -917,12 +913,13 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     df = pd.DataFrame(chart_data)
                     
                     # --- ▼追加：白背景、黒太線、絵文字マーカーの静的グラフ（Altair）▼ ---
+                    # 軸の文字色を「黒」に強制設定
                     base = alt.Chart(df).encode(
-                        x=alt.X('日付:O', axis=alt.Axis(labelAngle=-45, title=None))
+                        x=alt.X('日付:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='black', tickColor='black', domainColor='black'))
                     )
                     # 黒くて太い線
                     line = base.mark_line(color='black', strokeWidth=3).encode(
-                        y=alt.Y('運気スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='運気スコア (1-10)'))
+                        y=alt.Y('運気スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='運気スコア (1-10)', labelColor='black', titleColor='black', tickColor='black', domainColor='black'))
                     )
                     # 線の折れ目に絵文字（シンボル）を配置
                     symbols = base.mark_text(size=18, dy=0).encode(
@@ -935,7 +932,13 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.altair_chart(chart, use_container_width=True)
                     
                     # --- ▼追加：米印の注釈（少し小さい文字）▼ ---
-                    st.markdown("<p style='font-size: 0.85rem; color: #555555;'>※ 🔴：迷わず動く日 / 🟡：最高にツイてる日 / 🟢：味方が増える日 / 🔵：頭の中を整理する日 / ⚪️：心と体を休ませる日</p>", unsafe_allow_html=True)
+                    st.markdown("""
+                    <div style='font-size: 0.8rem; color: #555555; background-color: #F9F9F9; padding: 10px; border-radius: 8px;'>
+                    <b>【記号の意味（五行と波）】</b><br>
+                    🌟(10): 奇跡的発展 / ☀️(9): 絶好調 / 🔴(8): 迷わず動く / 🔺(7): 新たな挑戦 / 🟢(6): 味方が増える<br>
+                    🟩(5): 着実な前進 / 🔵(4): 頭の整理 / 🔷(3): 慎重な判断 / ⚪️(2): 心身の休息 / ⚫️(1): 完全なリセット
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     st.markdown("---")
 
@@ -950,12 +953,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         sym = data["シンボル"]
                         score = data["運気スコア"]
                         
-                        # ルールベース関数で評価と一言を即座に取得
-                        one_liner, stars = get_rule_based_stars(score, data["精神理由"])
+                        # ルールベース関数で星評価のみを取得
+                        stars = get_rule_based_stars(score, data["精神理由"])
                         
                         st.markdown(f"**{day_str} {sym} (スコア: {score})**")
-                        st.markdown(f"<span style='color: #444;'>{one_liner}</span>", unsafe_allow_html=True)
-                        st.markdown(f"<p style='font-size: 0.9rem; margin-top: -5px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛結婚: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族親子: {stars['家族親子']}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛結婚: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族親子: {stars['家族親子']}</p>", unsafe_allow_html=True)
                         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
                         
             except Exception as e:
