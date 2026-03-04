@@ -395,7 +395,8 @@ def calculate_daily_score(user_nikkanshi, target_date):
         "date_str": target_date.strftime("%Y/%m/%d")
     }
 
-    def generate_daily_advice(today_res):
+#（AIによる専門用語排除・運勢解説生成エンジン）
+def generate_daily_advice(today_res):
     """
     算命学の計算結果（today_res）をAIに渡し、
     専門用語を一切使わない現代の言葉で、7項目のアドバイスを生成する
@@ -419,7 +420,7 @@ def calculate_daily_score(user_nikkanshi, target_date):
     # 出力構成（以下のマークダウン形式で必ず出力すること）
 
     ## 今日の運命の波（総合解説）
-    [※10点満点のスコアとシンボル（{today_res['symbol']}）の意味を現代の言葉でキャッチーに解説し、今日1日をどう過ごすべきか総括してください。]
+    [※10点満点のスコアとシンボルの意味を現代の言葉でキャッチーに解説し、今日1日をどう過ごすべきか総括してください。]
 
     ## 7つの指針と詳細解説
     ※以下の各項目について、今日の運気に基づいた3段階評価（★☆☆、★★☆、★★★）を付け、1〜2文で具体的なアドバイスを記載してください。
