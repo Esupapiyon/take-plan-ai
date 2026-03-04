@@ -284,7 +284,6 @@ def get_date_kanshi(target_date):
         "day_branch_idx": day_branch
     }
 
-    #（10点満点ハイブリッド・運命の波計算エンジン)
 def calculate_daily_score(user_nikkanshi, target_date):
     """ユーザーの日干支と対象日の干支を比較し、1〜10点のスコアと根拠を算出する"""
     target = get_date_kanshi(target_date)
@@ -304,10 +303,9 @@ def calculate_daily_score(user_nikkanshi, target_date):
     # -------------------------
     # 要素A：環境の波（位相法・天中殺） 1〜5点
     # -------------------------
-    env_score = 3 # デフォルト（安定）
+    env_score = 3
     env_reason = "安定した通常の日"
     
-    # 天中殺の簡易判定（日干支から）
     tenchusatsu_map = {0: [11, 12], 2: [9, 10], 4: [7, 8], 6: [5, 6], 8: [3, 4], 10: [1, 2]}
     diff = (user_branch - user_stem) % 12
     t_branches = tenchusatsu_map.get(diff, [])
@@ -316,12 +314,9 @@ def calculate_daily_score(user_nikkanshi, target_date):
         env_score = 1
         env_reason = "天中殺（リセット・向かい風）"
     else:
-        # 位相法の簡易判定（日支同士の比較）
-        # 冲（衝突: 差が6）
         if abs(user_branch - target_branch) == 6:
             env_score = 1
             env_reason = "冲（衝突・リセット）"
-        # 大半会・半会（異次元の発展: 差が4か8）
         elif abs(user_branch - target_branch) in [4, 8]:
             if user_stem == target_stem:
                 env_score = 5
@@ -329,12 +324,10 @@ def calculate_daily_score(user_nikkanshi, target_date):
             else:
                 env_score = 4
                 env_reason = "半会（スムーズな前進）"
-        # 支合（まとまる）
-        elif (user_branch + target_branch) % 12 in [3, 5]: # 簡易的な支合判定
+        elif (user_branch + target_branch) % 12 in [3, 5]:
             env_score = 4
             env_reason = "支合（結びつき・前進）"
-        # 刑・害・破（ノイズ）
-        elif abs(user_branch - target_branch) in [3, 9, 2, 10]: # 簡易判定
+        elif abs(user_branch - target_branch) in [3, 9, 2, 10]:
             env_score = 2
             env_reason = "刑・害（調整・ノイズ）"
             
@@ -344,18 +337,17 @@ def calculate_daily_score(user_nikkanshi, target_date):
     mind_score = 3
     mind_reason = "通常の精神状態"
     
-    # ユーザーの日干(me)と、今日の日干(other)の五行による関係
     me_el = (user_stem - 1) // 2
     other_el = (target_stem - 1) // 2
     rel = (other_el - me_el) % 5
     same_parity = (user_stem % 2) == (target_stem % 2)
     
     stars_matrix = [
-        ["貫索星(独立/守り)", "石門星(協調/政治)"], # 比和 (0)
-        ["鳳閣星(表現/伝達)", "調舒星(孤独/芸術)"], # 相生(漏) (1)
-        ["禄存星(引力/回転財)", "司禄星(蓄積/家庭)"], # 相剋(財) (2)
-        ["車騎星(攻撃/前進)", "牽牛星(責任/名誉)"], # 相剋(官) (3)
-        ["龍高星(変化/忍耐)", "玉堂星(伝統/静寂)"]  # 相生(印) (4)
+        ["貫索星(独立/守り)", "石門星(協調/政治)"],
+        ["鳳閣星(表現/伝達)", "調舒星(孤独/芸術)"],
+        ["禄存星(引力/回転財)", "司禄星(蓄積/家庭)"],
+        ["車騎星(攻撃/前進)", "牽牛星(責任/名誉)"],
+        ["龍高星(変化/忍耐)", "玉堂星(伝統/静寂)"]
     ]
     
     star_name = stars_matrix[rel][0 if same_parity else 1]
@@ -372,7 +364,7 @@ def calculate_daily_score(user_nikkanshi, target_date):
     elif "龍高星" in star_name or "調舒星" in star_name:
         mind_score = 2
         mind_reason = star_name
-    else: # 牽牛星、玉堂星
+    else:
         mind_score = 1
         mind_reason = star_name
 
@@ -381,20 +373,17 @@ def calculate_daily_score(user_nikkanshi, target_date):
     # -------------------------
     total_score = env_score + mind_score
     
-   # スコアから記号を決定（五行カラーと形状を組み合わせたユニバーサルデザイン）
-    if total_score == 10: symbol = "🌟" # 黄金/特別な合
-    elif total_score == 9: symbol = "☀️" # 陽の極み
-    elif total_score == 8: symbol = "🔴" # 火性/前進
-    elif total_score == 7: symbol = "🔺" # 火性/上昇
-    elif total_score == 6: symbol = "🟢" # 木性/成長
-    elif total_score == 5: symbol = "🟩" # 木性/安定
-    elif total_score == 4: symbol = "🔵" # 水性/習得
-    elif total_score == 3: symbol = "🔷" # 水性/流動
-    elif total_score == 2: symbol = "⚪️" # 金性/休息
-    else: symbol = "⚫️" # 土性(無)/停止
-        
-    return {
-        "score": total_score,
+    # スコアから記号を決定（五行カラーと形状を組み合わせたユニバーサルデザイン）
+    if total_score == 10: symbol = "🌟"
+    elif total_score == 9: symbol = "☀️"
+    elif total_score == 8: symbol = "🔴"
+    elif total_score == 7: symbol = "🔺"
+    elif total_score == 6: symbol = "🟢"
+    elif total_score == 5: symbol = "🟩"
+    elif total_score == 4: symbol = "🔵"
+    elif total_score == 3: symbol = "🔷"
+    elif total_score == 2: symbol = "⚪️"
+    else: symbol = "⬛️"
         
     return {
         "score": total_score,
