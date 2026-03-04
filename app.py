@@ -420,17 +420,29 @@ def get_rule_based_stars(score, mind_reason):
         
     return stars
 
-#（AIによる専門用語排除・運勢解説生成エンジン）
+def calculate_scores():
+    scores = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
+    counts = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
+    for q_id, val in st.session_state.answers.items():
+        question = QUESTIONS[q_id - 1]
+        trait = question["trait"]
+        is_reverse = question["is_reverse"]
+        actual_val = 6 - val if is_reverse else val
+        scores[trait] += actual_val
+        counts[trait] += 1
+    for t in scores:
+        scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
+    return scores
+
 def generate_daily_advice(today_res):
     """
     算命学の計算結果（today_res）をAIに渡し、
     専門用語を一切使わない現代の言葉で、7項目のアドバイスを生成する
     """
-    # AIプロンプトの内部で具体例の要件と星3つの強制を追加
     prompt = f"""
     あなたは、日本で最も予約が取れない戦略的ライフ・コンサルタントです。
     以下のデータをもとに、今日のユーザーへのアドバイスを作成してください。
-    [スコア: {_res['score']}点, シンボル: {_res['symbol']}, 環境: {_res['env_reason']}, 精神: {_res['mind_reason']}]
+    [スコア: {today_res['score']}点, シンボル: {today_res['symbol']}, 環境: {today_res['env_reason']}, 精神: {today_res['mind_reason']}]
 
     # 【絶対遵守の出力ルール】
     1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
@@ -439,32 +451,23 @@ def generate_daily_advice(today_res):
     4. 【重要】ユーザーが行動をイメージしやすいように「例えば、車などの大きな契約は避けてください」といった『具体的なアクション例』を必ず各項目に入れてください。
 
     出力はマークダウン形式で「## 今日の運命の波（総合解説）」と「## 7つの指針と詳細解説」の構成にしてください。
-    """
 
     ## 今日の運命の波（総合解説）
-    [※10点満点のスコアとシンボルの意味を現代の言葉でキャッチーに解説し、今日1日をどう過ごすべきか総括してください。]
+    今日のスコアとシンボルの意味を現代の言葉でキャッチーに解説し、今日1日をどう過ごすべきか総括してください。
 
     ## 7つの指針と詳細解説
-    ※以下の各項目について、今日の運気に基づいた3段階評価（★☆☆、★★☆、★★★）を付け、1〜2文で具体的なアドバイスを記載してください。
-
     ### 1. 総合運 [評価]
     [解説]
-
     ### 2. 人間関係運 [評価]
     [解説]
-
     ### 3. 仕事運 [評価]
     [解説]
-
     ### 4. 恋愛＆結婚運 [評価]
     [解説]
-
     ### 5. 金運（契約・買い物） [評価]
     [解説]
-
     ### 6. 健康運 [評価]
     [解説]
-
     ### 7. 家族・親子運 [評価]
     [解説]
     """
@@ -572,6 +575,20 @@ def calculate_scores():
         scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
     return scores
     
+def calculate_scores():
+    scores = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
+    counts = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
+    for q_id, val in st.session_state.answers.items():
+        question = QUESTIONS[q_id - 1]
+        trait = question["trait"]
+        is_reverse = question["is_reverse"]
+        actual_val = 6 - val if is_reverse else val
+        scores[trait] += actual_val
+        counts[trait] += 1
+    for t in scores:
+        scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
+    return scores
+    
 def generate_report_prompt(sanmeigaku, scores):
     prompt = f"""あなたは、専門用語を一切使わず、日常的でユーモアのある表現（例え話など）を使ってユーザーの心を鷲掴みにする、大人気の天才占い師兼ライフ・コンサルタントです。
 以下の【ユーザーの分析データ】をインプットとしますが、出力する文章には「癸酉」「石門星」「天将星」「Big5」「開放性」といった【専門用語は絶対にそのまま出力しないでください】。すべて日常的な言葉に翻訳してください。
@@ -657,6 +674,60 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 明日から踏み出す「科学的な小さな一歩」を提案し、背中を押す言葉で締めくくってください。
 """
     return prompt
+
+#（AIによる専門用語排除・運勢解説生成エンジン）
+def generate_daily_advice(today_res):
+    """
+    算命学の計算結果（today_res）をAIに渡し、
+    専門用語を一切使わない現代の言葉で、7項目のアドバイスを生成する
+    """
+    prompt = f"""
+    あなたは、日本で最も予約が取れない戦略的ライフ・コンサルタントです。
+    以下のデータをもとに、今日のユーザーへのアドバイスを作成してください。
+    [スコア: {today_res['score']}点, シンボル: {today_res['symbol']}, 環境: {today_res['env_reason']}, 精神: {today_res['mind_reason']}]
+
+    # 【絶対遵守の出力ルール】
+    1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
+    2. モチベーションを上げる力強いトーンで書くこと。
+    3. 7つの項目（総合、人間関係、仕事、恋愛結婚、金運、健康、家族）について、必ず【3段階評価（★☆☆、★★☆、★★★ のいずれか）】を付けてください。※絶対に5段階評価（★★★★★等）や4段階評価は使用しないでください。
+    4. 【重要】ユーザーが行動をイメージしやすいように「例えば、車などの大きな契約は避けてください」といった『具体的なアクション例』を必ず各項目に入れてください。
+
+    出力はマークダウン形式で「## 今日の運命の波（総合解説）」と「## 7つの指針と詳細解説」の構成にしてください。
+
+    ## 今日の運命の波（総合解説）
+    今日のスコアとシンボルの意味を現代の言葉でキャッチーに解説し、今日1日をどう過ごすべきか総括してください。
+
+    ## 7つの指針と詳細解説
+    ### 1. 総合運 [評価]
+    [解説]
+    ### 2. 人間関係運 [評価]
+    [解説]
+    ### 3. 仕事運 [評価]
+    [解説]
+    ### 4. 恋愛＆結婚運 [評価]
+    [解説]
+    ### 5. 金運（契約・買い物） [評価]
+    [解説]
+    ### 6. 健康運 [評価]
+    [解説]
+    ### 7. 家族・親子運 [評価]
+    [解説]
+    """
+
+    try:
+        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"OpenAI API Error (Daily Advice): {e}")
+        return "⚠️ 現在、AIアドバイザーが混み合っております。少し時間をおいて再度お試しください。"
 
 def send_line_result(line_id, sanmeigaku, scores):
     if not line_id: return
