@@ -8,6 +8,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 import urllib.parse
 import requests
 import openai
+import calendar
+from datetime import timedelta
 
 # ==========================================
 # 1. ページ設定とUI改善CSS
@@ -240,6 +242,224 @@ def calculate_sanmeigaku(year, month, day, time_str):
     
     star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
     chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
+
+    #（カレンダー用・干支計算エンジン）
+def get_date_kanshi(target_date):
+    """指定した日付の『日・月・年』の干支を自動計算する関数"""
+    # 日干支の計算
+    elapsed = (target_date - datetime.date(1900, 1, 1)).days
+    day_kanshi_num = (10 + elapsed) % 60 + 1
+    day_stem = (day_kanshi_num - 1) % 10 + 1
+    day_branch = (day_kanshi_num - 1) % 12 + 1
+    
+    stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+    branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+    
+    # 月干支・年干支の計算（簡易節入り：毎月5日基準）
+    solar_m = target_date.month if target_date.day >= 5 else target_date.month - 1
+    solar_y = target_date.year
+    if solar_m == 0:
+        solar_m = 12
+        solar_y -= 1
+    if solar_m == 1:
+        solar_y -= 1
+        
+    month_branch = (solar_m + 1) % 12
+    if month_branch == 0: month_branch = 12
+    year_branch = (solar_y - 3) % 12
+    if year_branch == 0: year_branch = 12
+    
+    # 年と月の十干
+    month_stem = ((solar_y % 10) * 2 + solar_m) % 10
+    if month_stem == 0: month_stem = 10
+    year_stem = (solar_y - 3) % 10
+    if year_stem == 0: year_stem = 10
+    
+    return {
+        "day": stems_str[day_stem] + branches_str[day_branch],
+        "month": stems_str[month_stem] + branches_str[month_branch],
+        "year": stems_str[year_stem] + branches_str[year_branch],
+        "day_stem_idx": day_stem,
+        "day_branch_idx": day_branch
+    }
+
+    #（10点満点ハイブリッド・運命の波計算エンジン)
+def calculate_daily_score(user_nikkanshi, target_date):
+    """ユーザーの日干支と対象日の干支を比較し、1〜10点のスコアと根拠を算出する"""
+    target = get_date_kanshi(target_date)
+    
+    # ユーザーの日干と日支を分離
+    stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+    branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+    
+    user_stem_str = user_nikkanshi[0]
+    user_branch_str = user_nikkanshi[1]
+    user_stem = stems_str.index(user_stem_str)
+    user_branch = branches_str.index(user_branch_str)
+    
+    target_stem = target["day_stem_idx"]
+    target_branch = target["day_branch_idx"]
+    
+    # -------------------------
+    # 要素A：環境の波（位相法・天中殺） 1〜5点
+    # -------------------------
+    env_score = 3 # デフォルト（安定）
+    env_reason = "安定した通常の日"
+    
+    # 天中殺の簡易判定（日干支から）
+    tenchusatsu_map = {0: [11, 12], 2: [9, 10], 4: [7, 8], 6: [5, 6], 8: [3, 4], 10: [1, 2]}
+    diff = (user_branch - user_stem) % 12
+    t_branches = tenchusatsu_map.get(diff, [])
+    
+    if target_branch in t_branches:
+        env_score = 1
+        env_reason = "天中殺（リセット・向かい風）"
+    else:
+        # 位相法の簡易判定（日支同士の比較）
+        # 冲（衝突: 差が6）
+        if abs(user_branch - target_branch) == 6:
+            env_score = 1
+            env_reason = "冲（衝突・リセット）"
+        # 大半会・半会（異次元の発展: 差が4か8）
+        elif abs(user_branch - target_branch) in [4, 8]:
+            if user_stem == target_stem:
+                env_score = 5
+                env_reason = "大半会（異常な追い風）"
+            else:
+                env_score = 4
+                env_reason = "半会（スムーズな前進）"
+        # 支合（まとまる）
+        elif (user_branch + target_branch) % 12 in [3, 5]: # 簡易的な支合判定
+            env_score = 4
+            env_reason = "支合（結びつき・前進）"
+        # 刑・害・破（ノイズ）
+        elif abs(user_branch - target_branch) in [3, 9, 2, 10]: # 簡易判定
+            env_score = 2
+            env_reason = "刑・害（調整・ノイズ）"
+            
+    # -------------------------
+    # 要素B：精神の波（十大主星） 1〜5点
+    # -------------------------
+    mind_score = 3
+    mind_reason = "通常の精神状態"
+    
+    # ユーザーの日干(me)と、今日の日干(other)の五行による関係
+    me_el = (user_stem - 1) // 2
+    other_el = (target_stem - 1) // 2
+    rel = (other_el - me_el) % 5
+    same_parity = (user_stem % 2) == (target_stem % 2)
+    
+    stars_matrix = [
+        ["貫索星(独立/守り)", "石門星(協調/政治)"], # 比和 (0)
+        ["鳳閣星(表現/伝達)", "調舒星(孤独/芸術)"], # 相生(漏) (1)
+        ["禄存星(引力/回転財)", "司禄星(蓄積/家庭)"], # 相剋(財) (2)
+        ["車騎星(攻撃/前進)", "牽牛星(責任/名誉)"], # 相剋(官) (3)
+        ["龍高星(変化/忍耐)", "玉堂星(伝統/静寂)"]  # 相生(印) (4)
+    ]
+    
+    star_name = stars_matrix[rel][0 if same_parity else 1]
+    
+    if "車騎星" in star_name or "禄存星" in star_name:
+        mind_score = 5
+        mind_reason = star_name
+    elif "貫索星" in star_name or "鳳閣星" in star_name:
+        mind_score = 4
+        mind_reason = star_name
+    elif "石門星" in star_name or "司禄星" in star_name:
+        mind_score = 3
+        mind_reason = star_name
+    elif "龍高星" in star_name or "調舒星" in star_name:
+        mind_score = 2
+        mind_reason = star_name
+    else: # 牽牛星、玉堂星
+        mind_score = 1
+        mind_reason = star_name
+
+    # -------------------------
+    # 最終スコア（ハイブリッド10点満点）
+    # -------------------------
+    total_score = env_score + mind_score
+    
+    # スコアから記号を決定
+    if total_score >= 9: symbol = "🟡"
+    elif total_score >= 7: symbol = "🔴"
+    elif total_score >= 5: symbol = "🟢"
+    elif total_score >= 3: symbol = "🔵"
+    else: symbol = "⚪️"
+        
+    return {
+        "score": total_score,
+        "symbol": symbol,
+        "env_reason": env_reason,
+        "mind_reason": mind_reason,
+        "date_str": target_date.strftime("%Y/%m/%d")
+    }
+
+    def generate_daily_advice(today_res):
+    """
+    算命学の計算結果（today_res）をAIに渡し、
+    専門用語を一切使わない現代の言葉で、7項目のアドバイスを生成する
+    """
+    prompt = f"""
+    あなたは、日本で最も予約が取れない、大人気の戦略的ライフ・コンサルタントです。
+    以下の【本日の運気データ（算命学の裏ロジック）】をもとに、今日のユーザーへのアドバイスを作成してください。
+
+    # 本日の運気データ
+    ・総合スコア: 10点満点中 {today_res['score']} 点
+    ・本日のシンボル: {today_res['symbol']}
+    ・環境の波（位相法）: {today_res['env_reason']}
+    ・精神の波（十大主星）: {today_res['mind_reason']}
+
+    # 【絶対遵守の出力ルール】
+    1. 「天中殺」「半会」「禄存星」などの**算命学・四柱推命の専門用語は【絶対に】出力しないでください。**
+       必ず「今は少し向かい風が吹いています」「今日は異次元の発展が期待できる日です」「引力と魅力が高まっています」など、現代の日常的な言葉に翻訳して伝えてください。
+    2. ユーザーのモチベーションを爆発させる、力強く、かつ温かいトーンで執筆してください。
+    3. 以下の7つの項目について、具体的な行動指針（例：金運なら「今日は車などの大きな契約は避けて」など）を含めて、詳細に解説してください。
+
+    # 出力構成（以下のマークダウン形式で必ず出力すること）
+
+    ## 今日の運命の波（総合解説）
+    [※10点満点のスコアとシンボル（{today_res['symbol']}）の意味を現代の言葉でキャッチーに解説し、今日1日をどう過ごすべきか総括してください。]
+
+    ## 7つの指針と詳細解説
+    ※以下の各項目について、今日の運気に基づいた3段階評価（★☆☆、★★☆、★★★）を付け、1〜2文で具体的なアドバイスを記載してください。
+
+    ### 1. 総合運 [評価]
+    [解説]
+
+    ### 2. 人間関係運 [評価]
+    [解説]
+
+    ### 3. 仕事運 [評価]
+    [解説]
+
+    ### 4. 恋愛＆結婚運 [評価]
+    [解説]
+
+    ### 5. 金運（契約・買い物） [評価]
+    [解説]
+
+    ### 6. 健康運 [評価]
+    [解説]
+
+    ### 7. 家族・親子運 [評価]
+    [解説]
+    """
+
+    try:
+        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"OpenAI API Error (Daily Advice): {e}")
+        return "⚠️ 現在、AIアドバイザーが混み合っております。少し時間をおいて再度お試しください。"
     
     def get_12star(target_branch):
         if day_stem % 2 != 0:
@@ -572,8 +792,76 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
     with tab2:
         st.subheader("📅 運命の波乗りカレンダー")
-        st.write("ここに『算命学バイオリズムと行動指針のアルゴリズム』を実装します。")
-        st.info("現在、システム開発中です...")
+        with st.spinner("運命の波を計算中..."):
+            try:
+                # ユーザーの日干支をスプレッドシートから取得
+                creds_dict = st.secrets["gcp_service_account"]
+                scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                from oauth2client.service_account import ServiceAccountCredentials
+                import gspread
+                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                client = gspread.authorize(creds)
+                sheet_url = st.secrets["spreadsheet_url"]
+                sheet = client.open_by_url(sheet_url).sheet1
+                all_data = sheet.get_all_values()
+                
+                user_nikkanshi = None
+                for row in reversed(all_data):
+                    if len(row) > 6 and row[0] == st.session_state.line_id:
+                        user_nikkanshi = row[6] # G列が日干支
+                        break
+                
+                if not user_nikkanshi:
+                    st.warning("⚠️ 運勢を計算するためのデータが見つかりません。先に診断を完了してください。")
+                else:
+                    import datetime
+                    import pandas as pd
+                    today = datetime.date.today()
+                    
+                    # 直近30日のデータ生成とグラフ化
+                    start_date = today - datetime.timedelta(days=15)
+                    dates = [start_date + datetime.timedelta(days=i) for i in range(31)]
+                    chart_data = []
+                    for d in dates:
+                        res = calculate_daily_score(user_nikkanshi, d)
+                        chart_data.append({"日付": d.strftime("%m/%d"), "運気スコア": res["score"]})
+                    
+                    df = pd.DataFrame(chart_data)
+                    df.set_index("日付", inplace=True)
+                    
+                    st.markdown("### 🌊 直近1ヶ月の運命の波")
+                    st.line_chart(df["運気スコア"], color="#D32F2F")
+                    
+                    st.markdown("### 🗓 今日の運勢")
+                    today_res = calculate_daily_score(user_nikkanshi, today)
+                    st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<h1 style='text-align: center; font-size: 4rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
+                    st.markdown(f"<h2 style='text-align: center; color: #b8860b;'>スコア: {today_res['score']} / 10</h2>", unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
+                        # キャッシュを使って毎回APIを叩かないようにする（コスト削減）
+                        @st.cache_data(ttl=3600) # 1時間キャッシュ
+                        def get_cached_advice(date_str, _res):
+                            return generate_daily_advice(_res)
+                            
+                        daily_advice = get_cached_advice(today.strftime("%Y%m%d"), today_res)
+                        
+                        st.markdown("""
+                        <style>
+                            .daily-advice-box { background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%); border: 2px solid #b8860b; border-radius: 12px; padding: 25px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                            .daily-advice-box h2 { color: #b8860b !important; font-size: 1.4rem !important; border-bottom: 1px solid #E0E0E0; padding-bottom: 10px; margin-bottom: 20px; }
+                            .daily-advice-box h3 { color: #333333 !important; font-size: 1.1rem !important; margin-top: 20px !important; margin-bottom: 10px !important; border-left: 4px solid #b8860b; padding-left: 10px;}
+                            .daily-advice-box p, .daily-advice-box li { font-size: 1rem; line-height: 1.7; color: #444444; }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown("<div class='daily-advice-box'>", unsafe_allow_html=True)
+                        st.markdown(daily_advice)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+            except Exception as e:
+                st.error(f"エラーが発生しました: {e}")
 
     with tab3:
         st.subheader("📜 極秘レポート完全版")
