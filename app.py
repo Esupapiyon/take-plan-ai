@@ -288,7 +288,6 @@ def calculate_daily_score(user_nikkanshi, target_date):
     """ユーザーの日干支と対象日の干支を比較し、1〜10点のスコアと根拠を算出する"""
     target = get_date_kanshi(target_date)
     
-    # ユーザーの日干と日支を分離
     stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
     branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
     
@@ -368,26 +367,32 @@ def calculate_daily_score(user_nikkanshi, target_date):
         mind_score = 1
         mind_reason = star_name
 
-    # -------------------------
-    # 最終スコア（ハイブリッド10点満点）
-    # -------------------------
     total_score = env_score + mind_score
     
-    # スコアから記号を決定（五行カラーと形状を組み合わせたユニバーサルデザイン）
-    if total_score == 10: symbol = "🌟"
-    elif total_score == 9: symbol = "☀️"
-    elif total_score == 8: symbol = "🔴"
-    elif total_score == 7: symbol = "🔺"
-    elif total_score == 6: symbol = "🟢"
-    elif total_score == 5: symbol = "🟩"
-    elif total_score == 4: symbol = "🔵"
-    elif total_score == 3: symbol = "🔷"
-    elif total_score == 2: symbol = "⚪️"
-    else: symbol = "⬛️"
+    # --- 10段階のオリジナル記号とアクション定義 ---
+    action_dict = {
+        10: {"sym": "🌈", "title": "超幸運の日", "desc": "限界を超えて物事が予想以上の規模で大きく広がる奇跡的なタイミングです。普段なら届かない目標にも手が届く、異次元の追い風が吹いています。", "points": ["限界を決めずにスケールの大きな目標を立てる", "直感を信じて、普段なら躊躇する大勝負に出る", "周囲を巻き込みながら、リーダーシップを発揮する"]},
+        9: {"sym": "⭐️", "title": "最高にツイてる日", "desc": "パズルのピースがピタッとハマるように物事が計画通りに進み、周囲から高く評価されるでしょう。大事な契約や決断に最適なタイミングです。", "points": ["夢の実現に向けて思い切って行動する", "自分の意見や感覚を大事にする", "ここで決めた目標や内容は、簡単には諦めない"]},
+        8: {"sym": "🔴", "title": "迷わず動く日", "desc": "心の奥底から情熱が湧き上がり、スピーディーに物事を前進させられる日です。行動量がそのまま結果に直結するため、立ち止まらないことが鍵です。", "points": ["頭で考える前に、まずは第一歩を踏み出す", "自分の思いやアイデアを積極的に発信する", "多少の失敗は気にせず、スピードを最優先する"]},
+        7: {"sym": "⚪️", "title": "思い切って決断する日", "desc": "これまでの曖昧な状態に白黒をつけ、新しいステージへ進むためのエネルギーに満ちています。重要な取捨選択を行い、覚悟を決めるのに最適な日です。", "points": ["先延ばしにしていた問題に明確な決断を下す", "不要な人間関係や悪習慣を思い切って断ち切る", "自分の信念を曲げず、毅然とした態度を貫く"]},
+        6: {"sym": "🟡", "title": "基礎を固める日", "desc": "派手な動きよりも、足元を固めて実力を蓄えることで運気が安定します。あなたの誠実さやサービス精神が周囲の信頼を集め、豊かさを引き寄せるでしょう。", "points": ["新しいことよりも、今あるタスクを丁寧に仕上げる", "周囲への感謝や手助けを惜しまない", "資産運用や貯蓄など、現実的な管理を見直す"]},
+        5: {"sym": "🟢", "title": "味方が増える日", "desc": "あなたの魅力が自然と伝わり、周囲との調和が生まれやすい日です。新しい人脈作りや、チームでの協力作業において、素晴らしい相乗効果を発揮できるでしょう。", "points": ["積極的に人と会い、コミュニケーションを楽しむ", "困っている人がいれば、損得抜きで手を差し伸べる", "新しいコミュニティや学びの場に参加してみる"]},
+        4: {"sym": "🔵", "title": "頭の中を整理する日", "desc": "外に向かって動くよりも、内省し、知識を吸収することで運気が研ぎ澄まされます。柔軟な思考が生まれやすいため、計画の練り直しや軌道修正にぴったりです。", "points": ["一人の時間を確保し、静かに自分と向き合う", "読書や勉強などで、新しい知識をインプットする", "現状のやり方に固執せず、柔軟な視点を取り入れる"]},
+        3: {"sym": "🟪", "title": "無理をしない日", "desc": "思い通りに進まないことや、人間関係での小さな摩擦が起きやすい調整期です。力技で解決しようとせず、相手に譲る余裕を持つことでトラブルを回避できます。", "points": ["スケジュールに余白を持たせ、時間に余裕を行動する", "意見が対立した時は、一歩引いて相手を立てる", "ストレスを感じたら、無理せず早めに休息をとる"]},
+        2: {"sym": "⬜️", "title": "不要なものを手放す日", "desc": "物事がぶつかり合い、変化を余儀なくされる日です。これはネガティブなことではなく、新しい運気を迎え入れるために不要なものを強制的に手放す重要な儀式です。", "points": ["執着している過去の栄光やネガティブな感情を捨てる", "部屋の掃除やデジタルデータの断捨離を徹底する", "予定が急に変わっても、焦らず流れに身を任せる"]},
+        1: {"sym": "⚫️", "title": "心と体を休ませる日", "desc": "現実の枠組みが外れ、コントロールが効かない「完全な休息とリセット」の期間です。ここで無理をして動くと空回りするため、エネルギーの充電に専念してください。", "points": ["新しい挑戦、大きな決断、高価な買い物は避ける", "損得勘定を捨て、ボランティアや人のために尽くす", "スマホやPCから離れ、たっぷりと睡眠をとる"]}
+    }
+    
+    # 1〜10の範囲に収める（安全対策）
+    safe_score = max(1, min(10, total_score))
+    action_data = action_dict[safe_score]
         
     return {
-        "score": total_score,
-        "symbol": symbol,
+        "score": safe_score,
+        "symbol": action_data["sym"],
+        "title": action_data["title"],
+        "desc": action_data["desc"],
+        "points": action_data["points"],
         "env_reason": env_reason,
         "mind_reason": mind_reason,
         "date_str": target_date.strftime("%Y/%m/%d")
@@ -843,28 +848,62 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     
                     today = datetime.date.today()
                     
-                    # --- ▼追加：今日の運勢（意味をカッコ書きで追加）▼ ---
+# --- ▼追加：今日の運勢（タイトルと箇条書きアクション付き）▼ ---
                     st.markdown("### 🗓 今日の運勢")
                     today_res = calculate_daily_score(user_nikkanshi, today)
-                    symbol_meaning_map = {
-                        "🟡": "最高にツイてる日", "🔴": "迷わず動く日", "🟢": "味方が増える日", 
-                        "🔵": "頭の中を整理する日", "⚪️": "心と体を休ませる日"
-                    }
-                    meaning = symbol_meaning_map.get(today_res['symbol'], "")
                     
                     st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
                     st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold; margin-top: -10px;'>（{meaning}）</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
                     st.markdown(f"<h2 style='text-align: center; color: #b8860b;'>スコア: {today_res['score']} / 10</h2>", unsafe_allow_html=True)
+                    
+                    # 固定の行動ガイド（箇条書き）を表示
+                    st.markdown(f"""
+                    <div style='background-color: #FAFAFA; border-left: 5px solid #b8860b; padding: 15px; margin: 20px 0; border-radius: 4px;'>
+                        <p style='font-size: 1.05rem; color: #333; margin-bottom: 15px;'>{today_res['desc']}</p>
+                        <p style='font-weight: bold; color: #b8860b; margin-bottom: 5px;'>○ポイント</p>
+                        <ul style='color: #444; line-height: 1.8;'>
+                            <li>{today_res['points'][0]}</li>
+                            <li>{today_res['points'][1]}</li>
+                            <li>{today_res['points'][2]}</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     st.markdown("---")
                     
-                    # --- ▼追加：AIによる詳細解説（具体例入り）▼ ---
+                    # --- ▼追加：AIによる詳細解説（具体例入りプロンプトへの変更）▼ ---
                     with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
                         @st.cache_data(ttl=3600)
                         def get_cached_advice(date_str, _res):
-                            return generate_daily_advice(_res)
-                            
+                            # AIプロンプトの内部で具体例の要件を追加
+                            prompt = f"""
+                            あなたは、日本で最も予約が取れない戦略的ライフ・コンサルタントです。
+                            以下のデータをもとに、今日のユーザーへのアドバイスを作成してください。
+                            [スコア: {_res['score']}点, シンボル: {_res['symbol']}, 環境: {_res['env_reason']}, 精神: {_res['mind_reason']}]
+
+                            # 【絶対遵守の出力ルール】
+                            1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
+                            2. モチベーションを上げる力強いトーンで書くこと。
+                            3. 7つの項目（総合、人間関係、仕事、恋愛結婚、金運、健康、家族）について、3段階評価（★☆☆等）を付け、1〜2文で解説すること。
+                            4. 【重要】ユーザーが行動をイメージしやすいように「例えば、車などの大きな契約は避けてください」といった『具体的なアクション例』を必ず各項目に入れてください。
+
+                            出力はマークダウン形式で「## 今日の運命の波（総合解説）」と「## 7つの指針と詳細解説」の構成にしてください。
+                            """
+                            try:
+                                openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                                response = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[
+                                        {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
+                                        {"role": "user", "content": prompt}
+                                    ],
+                                    temperature=0.7
+                                )
+                                return response.choices[0].message.content
+                            except Exception as e:
+                                return "⚠️ 現在、AIアドバイザーが混み合っております。少し時間をおいて再度お試しください。"
+
                         daily_advice = get_cached_advice(today.strftime("%Y%m%d"), today_res)
                         
                         st.markdown("""
