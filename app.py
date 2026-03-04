@@ -873,7 +873,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
         st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
 
-     with tab2:
+    with tab2:
         st.subheader("📅 運命の波乗りダッシュボード")
         with st.spinner("運命の波を計算中..."):
             try:
@@ -1043,7 +1043,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
                                 # 出力構成
                                 ## 今年の運命の波（総合解説）
-                                [今年のスコアとシンボルの意味を解説し、今年1年をどう過ごすべきか総括]
+                                今年のスコアとシンボルの意味を解説し、今年1年をどう過ごすべきか総括してください。
 
                                 ## 7つの指針と詳細解説（※星評価は書かない）
                                 ### 1. 総合運
@@ -1064,7 +1064,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 try:
                                     openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                                     response = openai_client.chat.completions.create(
-                                        model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.7
+                                        model="gpt-4o-mini", messages=[{"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"}, {"role": "user", "content": prompt}], temperature=0.7
                                     )
                                     return response.choices[0].message.content
                                 except:
@@ -1084,44 +1084,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
                 from oauth2client.service_account import ServiceAccountCredentials
                 import gspread
-                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-                client = gspread.authorize(creds)
-                sheet_url = st.secrets["spreadsheet_url"]
-                sheet = client.open_by_url(sheet_url).sheet1
-                all_data = sheet.get_all_values()
-                
-                report_text = None
-                for row in reversed(all_data):
-                    if len(row) > 0 and row[0] == st.session_state.line_id:
-                        if len(row) > 73 and row[73].strip() != "":
-                            report_text = row[73]
-                        break
-                
-                if report_text:
-                    st.markdown("""
-                    <style>
-                        .secret-report-box { background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%); border: 2px solid #D32F2F; border-radius: 15px; padding: 30px 20px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
-                        .secret-report-box h2 { color: #C62828 !important; font-size: 1.6rem !important; text-align: center; border-bottom: 2px solid #FFEBEE; padding-bottom: 15px; margin-bottom: 25px; }
-                        .secret-report-box h3 { color: #111111 !important; font-size: 1.3rem !important; border-left: 5px solid #D32F2F; padding-left: 10px; margin-top: 35px !important; margin-bottom: 15px !important; }
-                        .secret-report-box p, .secret-report-box li { font-size: 1.05rem; line-height: 1.8; color: #333333; }
-                    </style>
-                    """, unsafe_allow_html=True)
-                    st.markdown("<div class='secret-report-box'>", unsafe_allow_html=True)
-                    st.markdown(report_text)
-                    st.markdown("</div>", unsafe_allow_html=True)
-                else:
-                    st.warning("⚠️ レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
-            except Exception as e:
-                st.error(f"データベース通信エラー: {e}")
-    
-    st.stop()
-
-    with tab3:
-        st.subheader("📜 極秘レポート完全版")
-        with st.spinner("データベースからレポートを検索しています..."):
-            try:
-                creds_dict = st.secrets["gcp_service_account"]
-                scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
                 sheet_url = st.secrets["spreadsheet_url"]
