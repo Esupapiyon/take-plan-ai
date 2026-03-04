@@ -873,7 +873,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
         st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
 
-    with tab2:
+with tab2:
         st.subheader("📅 運命の波乗りダッシュボード")
         with st.spinner("運命の波を計算中..."):
             try:
@@ -902,9 +902,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     import calendar
                     
                     today = datetime.date.today()
+                    current_year = today.year
                     
                     # 画面をスッキリさせるための3つのサブタブ
-                    t_day, t_month, t_year = st.tabs(["🌊 今日の波と今月", "🗓 月間グラフ (17ヶ月)", "🗻 年間グラフ (5年)"])
+                    t_day, t_month, t_year = st.tabs(["🌊 今日の波と今月", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
                     
                     # ==========================================
                     # 【サブタブ1】今日の波と今月のカレンダー
@@ -977,23 +978,23 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
                     # ==========================================
-                    # 【サブタブ2】月間グラフ（直近4ヶ月前〜12ヶ月後）
+                    # 【サブタブ2】月間グラフ（前年10月〜今年12月の15ヶ月）
                     # ==========================================
                     with t_month:
-                        st.markdown("### 🗓 月間・運命の波（17ヶ月推移）")
-                        st.info("過去の答え合わせと、来年までの長期的な計画に活用してください。")
+                        st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
+                        st.info("前年終盤からの流れと、今年の着地点を確認して長期計画に活用してください。")
                         
                         months_data = []
-                        def add_months(sourcedate, months):
-                            month = sourcedate.month - 1 + months
-                            year = sourcedate.year + month // 12
-                            month = month % 12 + 1
-                            return datetime.date(year, month, 15)
-                            
-                        for i in range(-4, 13):
-                            m_date = add_months(today, i)
+                        # 前年の10月〜12月（3ヶ月）
+                        for m in range(10, 13):
+                            m_date = datetime.date(current_year - 1, m, 15)
                             res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
-                            months_data.append({"年月": m_date.strftime("%y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "解説": res["desc"], "精神理由": res["mind_reason"]})
+                            months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
+                        # 今年の1月〜12月（12ヶ月）
+                        for m in range(1, 13):
+                            m_date = datetime.date(current_year, m, 15)
+                            res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
+                            months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
                             
                         df_m = pd.DataFrame(months_data)
                         base_m = alt.Chart(df_m).encode(x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='black', tickColor='black', domainColor='black')))
@@ -1002,21 +1003,58 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.altair_chart((line_m + symbols_m).properties(height=300, background='#FFFFFF'), use_container_width=True)
                         
                         st.markdown("### 📝 各月の総合解説と7つの指針")
+                        
+                        # AIに15ヶ月分の固有解説を「一括で」書かせる（APIコストと速度の最適化）
+                        with st.spinner("AIが各月の固有テーマを分析中..."):
+                            @st.cache_data(ttl=86400) # 年が切り替わるまでキャッシュ
+                            def get_cached_monthly_advices(year_str, _months_data):
+                                prompt = "あなたは日本一の戦略的ライフ・コンサルタントです。\n"
+                                prompt += "以下の15ヶ月分のデータをもとに、各月の「総合解説（2〜3文）」を作成してください。\n"
+                                prompt += "【重要】同じスコアの月でも、環境と精神のテーマに合わせて全く違う切り口で具体的な解説を書いてください。専門用語は使わず現代語に翻訳してください。\n\n"
+                                prompt += "# データ\n"
+                                for d in _months_data:
+                                    prompt += f"- {d['年月']}: スコア{d['スコア']}, 環境({d['環境理由']}), 精神({d['精神理由']})\n"
+                                prompt += "\n# 出力形式（以下のフォーマットを厳守）\n"
+                                for d in _months_data:
+                                    prompt += f"■{d['年月']}\n[ここに独自の解説]\n"
+                                    
+                                try:
+                                    openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                                    response = openai_client.chat.completions.create(
+                                        model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.7
+                                    )
+                                    return response.choices[0].message.content
+                                except:
+                                    return ""
+                            
+                            raw_ai_text = get_cached_monthly_advices(str(current_year), months_data)
+                            ai_dict = {}
+                            if raw_ai_text:
+                                parts = raw_ai_text.split("■")
+                                for part in parts:
+                                    if "\n" in part:
+                                        lines = part.strip().split("\n", 1)
+                                        ym = lines[0].strip()
+                                        desc = lines[1].strip() if len(lines) > 1 else ""
+                                        ai_dict[ym] = desc
+                        
                         for data in months_data:
                             stars = get_rule_based_stars(data["スコア"], data["精神理由"])
+                            ai_desc = ai_dict.get(data['年月'], f"スコア{data['スコア']}の月です。自身のテーマに沿って着実に行動しましょう。")
+                            
                             st.markdown(f"#### {data['年月']} {data['シンボル']} {data['タイトル']} (スコア: {data['スコア']})")
-                            st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{data['解説']}</p>", unsafe_allow_html=True)
+                            st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{ai_desc}</p>", unsafe_allow_html=True)
                             st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
 
                     # ==========================================
-                    # 【サブタブ3】年間グラフ（5年間）と今年の詳細
+                    # 【サブタブ3】年間グラフ（過去2年+今年+未来5年 = 8年間）と今年の詳細
                     # ==========================================
                     with t_year:
-                        st.markdown("### 🗻 年間・運命の波（5年推移）")
+                        st.markdown("### 🗻 年間・運命の波（8年推移）")
                         years_data = []
-                        # 過去2年〜未来2年（計5年）
-                        for i in range(-2, 3):
-                            y_date = datetime.date(today.year + i, 6, 1)
+                        # 過去2年〜未来5年（計8年）
+                        for i in range(-2, 6):
+                            y_date = datetime.date(current_year + i, 6, 1)
                             res = calculate_period_score(user_nikkanshi, y_date, period_type="year")
                             years_data.append({"年": f"{y_date.year}年", "スコア": res["score"], "シンボル": res["symbol"], "res_obj": res})
                             if i == 0: this_year_res = res
@@ -1027,9 +1065,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         symbols_y = base_y.mark_text(size=24, dy=-5).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
                         st.altair_chart((line_y + symbols_y).properties(height=300, background='#FFFFFF'), use_container_width=True)
                         
-                        st.markdown(f"### 🎯 {today.year}年の年間テーマと詳細戦略")
-                        with st.spinner(f"AIが{today.year}年の年間戦略を執筆中..."):
-                            @st.cache_data(ttl=86400) # 年間は1日キャッシュ
+                        st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
+                        with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
+                            @st.cache_data(ttl=86400) # 年間は1日キャッシュ（年が変われば自動更新）
                             def get_cached_yearly_advice(year_str, _res):
                                 prompt = f"""
                                 あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間アドバイス】を作成してください。
@@ -1040,10 +1078,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 2. 1年間の長期的な視点で、ワクワクする力強いトーンで書くこと。
                                 3. 【重要】星評価（★☆☆など）は絶対に出力しないでください。文章のみで解説してください。
                                 4. 各項目に「具体的なアクション」を必ず入れること。
+                                5. 【重要】同じスコアや記号であっても、背景にある「環境」と「精神」のテーマ（例：今年は学びの年、今年は行動の年など）を反映し、その年ならではの独自の解説にしてください。
 
                                 # 出力構成
                                 ## 今年の運命の波（総合解説）
-                                今年のスコアとシンボルの意味を解説し、今年1年をどう過ごすべきか総括してください。
+                                今年のスコアとシンボルの意味を解説するとともに、「あなたにとって今年全体がどのような意味を持つ1年なのか（例：成長の年、手放しの年、飛躍の年など）」を追加して総括してください。
 
                                 ## 7つの指針と詳細解説（※星評価は書かない）
                                 ### 1. 総合運
@@ -1070,7 +1109,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 except:
                                     return "⚠️ エラーが発生しました。"
 
-                            yearly_advice = get_cached_yearly_advice(str(today.year), this_year_res)
+                            yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
                             st.markdown(f"<div class='advice-box'>{yearly_advice}</div>", unsafe_allow_html=True)
                             
             except Exception as e:
