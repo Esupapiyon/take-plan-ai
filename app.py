@@ -10,6 +10,7 @@ import requests
 import openai
 import calendar
 from datetime import timedelta
+import altair as alt
 
 # ==========================================
 # 1. ページ設定とUI改善CSS
@@ -395,6 +396,40 @@ def calculate_daily_score(user_nikkanshi, target_date):
         "date_str": target_date.strftime("%Y/%m/%d")
     }
 
+def get_rule_based_stars(score, mind_reason):
+    """AIを使わず、スコアと星の属性から瞬時に31日分の評価を自動生成する関数"""
+    if score >= 9:
+        base_star = "★★★"
+        one_liner = f"異次元の追い風が吹く日。自身のテーマに沿って最大の結果を出せます。"
+    elif score >= 7:
+        base_star = "★★☆"
+        one_liner = f"迷わず行動すべき日。計画を実行に移すのに最適なタイミングです。"
+    elif score >= 5:
+        base_star = "★★☆"
+        one_liner = f"安定した運気。焦らず着実に、目の前のタスクを進めると吉です。"
+    elif score >= 3:
+        base_star = "★☆☆"
+        one_liner = f"ノイズが入りやすい日。大きな決断は避け、内省や準備に時間を使いましょう。"
+    else:
+        base_star = "★☆☆"
+        one_liner = f"完全なリセット日。無理をせず、心と体を休めることを最優先にしてください。"
+        
+    # 特性に応じた星評価の自動調整
+    stars = {
+        "総合運": "★★★" if score >= 8 else ("★★☆" if score >= 4 else "★☆☆"),
+        "人間関係": "★★★" if "石門" in mind_reason or "禄存" in mind_reason else base_star,
+        "仕事運": "★★★" if "車騎" in mind_reason or "牽牛" in mind_reason else base_star,
+        "恋愛結婚": "★★★" if "禄存" in mind_reason or "司禄" in mind_reason else base_star,
+        "金運": "★★★" if "禄存" in mind_reason or "司禄" in mind_reason else base_star,
+        "健康運": "★★★" if score >= 5 else "★☆☆",
+        "家族親子": "★★★" if "玉堂" in mind_reason or "司禄" in mind_reason else base_star
+    }
+    # スコアが極端に低い場合はすべて★1に制限
+    if score <= 2:
+        stars = {k: "★☆☆" for k in stars}
+        
+    return one_liner, stars
+
 #（AIによる専門用語排除・運勢解説生成エンジン）
 def generate_daily_advice(today_res):
     """
@@ -415,7 +450,8 @@ def generate_daily_advice(today_res):
     1. 「天中殺」「半会」「禄存星」などの**算命学・四柱推命の専門用語は【絶対に】出力しないでください。**
        必ず「今は少し向かい風が吹いています」「今日は異次元の発展が期待できる日です」「引力と魅力が高まっています」など、現代の日常的な言葉に翻訳して伝えてください。
     2. ユーザーのモチベーションを爆発させる、力強く、かつ温かいトーンで執筆してください。
-    3. 以下の7つの項目について、具体的な行動指針（例：金運なら「今日は車などの大きな契約は避けて」など）を含めて、詳細に解説してください。
+    3. 以下の7つの項目について、今日の運気に基づいた3段階評価（★☆☆、★★☆、★★★）を付け、1〜2文で具体的なアドバイスを記載してください。
+       その際、ユーザーが行動をイメージしやすいように「例えば、車などの大きな契約は避けてください」「例えば、久しぶりの友人にLINEを送ってみると吉です」といった【具体的なアクション例】を必ず1つ以上入れてください。
 
     # 出力構成（以下のマークダウン形式で必ず出力すること）
 
@@ -795,7 +831,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.subheader("📅 運命の波乗りカレンダー")
         with st.spinner("運命の波を計算中..."):
             try:
-                # ユーザーの日干支をスプレッドシートから取得
+                # ユーザーの日干支を取得
                 creds_dict = st.secrets["gcp_service_account"]
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
                 from oauth2client.service_account import ServiceAccountCredentials
@@ -809,7 +845,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 user_nikkanshi = None
                 for row in reversed(all_data):
                     if len(row) > 6 and row[0] == st.session_state.line_id:
-                        user_nikkanshi = row[6] # G列が日干支
+                        user_nikkanshi = row[6]
                         break
                 
                 if not user_nikkanshi:
@@ -817,32 +853,30 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 else:
                     import datetime
                     import pandas as pd
+                    import altair as alt
+                    import calendar
+                    
                     today = datetime.date.today()
                     
-                    # 直近30日のデータ生成とグラフ化
-                    start_date = today - datetime.timedelta(days=15)
-                    dates = [start_date + datetime.timedelta(days=i) for i in range(31)]
-                    chart_data = []
-                    for d in dates:
-                        res = calculate_daily_score(user_nikkanshi, d)
-                        chart_data.append({"日付": d.strftime("%m/%d"), "運気スコア": res["score"]})
-                    
-                    df = pd.DataFrame(chart_data)
-                    df.set_index("日付", inplace=True)
-                    
-                    st.markdown("### 🌊 直近1ヶ月の運命の波")
-                    st.line_chart(df["運気スコア"], color="#D32F2F")
-                    
+                    # --- ▼追加：今日の運勢（意味をカッコ書きで追加）▼ ---
                     st.markdown("### 🗓 今日の運勢")
                     today_res = calculate_daily_score(user_nikkanshi, today)
+                    symbol_meaning_map = {
+                        "🟡": "最高にツイてる日", "🔴": "迷わず動く日", "🟢": "味方が増える日", 
+                        "🔵": "頭の中を整理する日", "⚪️": "心と体を休ませる日"
+                    }
+                    meaning = symbol_meaning_map.get(today_res['symbol'], "")
+                    
                     st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
-                    st.markdown(f"<h1 style='text-align: center; font-size: 4rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
+                    st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold; margin-top: -10px;'>（{meaning}）</p>", unsafe_allow_html=True)
                     st.markdown(f"<h2 style='text-align: center; color: #b8860b;'>スコア: {today_res['score']} / 10</h2>", unsafe_allow_html=True)
                     
                     st.markdown("---")
+                    
+                    # --- ▼追加：AIによる詳細解説（具体例入り）▼ ---
                     with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
-                        # キャッシュを使って毎回APIを叩かないようにする（コスト削減）
-                        @st.cache_data(ttl=3600) # 1時間キャッシュ
+                        @st.cache_data(ttl=3600)
                         def get_cached_advice(date_str, _res):
                             return generate_daily_advice(_res)
                             
@@ -850,17 +884,80 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         
                         st.markdown("""
                         <style>
-                            .daily-advice-box { background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%); border: 2px solid #b8860b; border-radius: 12px; padding: 25px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                            .daily-advice-box { background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%); border: 2px solid #b8860b; border-radius: 12px; padding: 25px; margin-top: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                             .daily-advice-box h2 { color: #b8860b !important; font-size: 1.4rem !important; border-bottom: 1px solid #E0E0E0; padding-bottom: 10px; margin-bottom: 20px; }
                             .daily-advice-box h3 { color: #333333 !important; font-size: 1.1rem !important; margin-top: 20px !important; margin-bottom: 10px !important; border-left: 4px solid #b8860b; padding-left: 10px;}
                             .daily-advice-box p, .daily-advice-box li { font-size: 1rem; line-height: 1.7; color: #444444; }
                         </style>
                         """, unsafe_allow_html=True)
-                        
                         st.markdown("<div class='daily-advice-box'>", unsafe_allow_html=True)
                         st.markdown(daily_advice)
                         st.markdown("</div>", unsafe_allow_html=True)
+
+                    st.markdown("---")
                     
+                    # --- ▼追加：今月（1日〜末日）のデータ生成▼ ---
+                    st.markdown(f"### 🌊 {today.month}月の運命の波")
+                    _, last_day = calendar.monthrange(today.year, today.month)
+                    start_date = datetime.date(today.year, today.month, 1)
+                    dates = [start_date + datetime.timedelta(days=i) for i in range(last_day)]
+                    
+                    chart_data = []
+                    for d in dates:
+                        res = calculate_daily_score(user_nikkanshi, d)
+                        chart_data.append({
+                            "日付": d.strftime("%m/%d"), 
+                            "運気スコア": res["score"],
+                            "シンボル": res["symbol"],
+                            "フル日付": d,
+                            "環境理由": res["env_reason"],
+                            "精神理由": res["mind_reason"]
+                        })
+                    
+                    df = pd.DataFrame(chart_data)
+                    
+                    # --- ▼追加：白背景、黒太線、絵文字マーカーの静的グラフ（Altair）▼ ---
+                    base = alt.Chart(df).encode(
+                        x=alt.X('日付:O', axis=alt.Axis(labelAngle=-45, title=None))
+                    )
+                    # 黒くて太い線
+                    line = base.mark_line(color='black', strokeWidth=3).encode(
+                        y=alt.Y('運気スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='運気スコア (1-10)'))
+                    )
+                    # 線の折れ目に絵文字（シンボル）を配置
+                    symbols = base.mark_text(size=18, dy=0).encode(
+                        y=alt.Y('運気スコア:Q'),
+                        text='シンボル:N'
+                    )
+                    
+                    # interactiveを外して動かないようにする
+                    chart = (line + symbols).properties(height=350, background='#FFFFFF')
+                    st.altair_chart(chart, use_container_width=True)
+                    
+                    # --- ▼追加：米印の注釈（少し小さい文字）▼ ---
+                    st.markdown("<p style='font-size: 0.85rem; color: #555555;'>※ 🔴：迷わず動く日 / 🟡：最高にツイてる日 / 🟢：味方が増える日 / 🔵：頭の中を整理する日 / ⚪️：心と体を休ませる日</p>", unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+
+                    # --- ▼追加：1日〜31日の一覧リスト表示▼ ---
+                    st.markdown(f"### 🗓 {today.month}月の日別カレンダー一覧")
+                    weekdays = ["月", "火", "水", "木", "金", "土", "日"]
+                    
+                    for data in chart_data:
+                        d_obj = data["フル日付"]
+                        wd = weekdays[d_obj.weekday()]
+                        day_str = f"{d_obj.month}月{d_obj.day}日（{wd}）"
+                        sym = data["シンボル"]
+                        score = data["運気スコア"]
+                        
+                        # ルールベース関数で評価と一言を即座に取得
+                        one_liner, stars = get_rule_based_stars(score, data["精神理由"])
+                        
+                        st.markdown(f"**{day_str} {sym} (スコア: {score})**")
+                        st.markdown(f"<span style='color: #444;'>{one_liner}</span>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='font-size: 0.9rem; margin-top: -5px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛結婚: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族親子: {stars['家族親子']}</p>", unsafe_allow_html=True)
+                        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+                        
             except Exception as e:
                 st.error(f"エラーが発生しました: {e}")
 
