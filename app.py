@@ -1368,8 +1368,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.warning("⚠️ レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
             except Exception as e:
                 st.error(f"データベース通信エラー: {e}")
-    
-    st.stop()
 
     # ==========================================
     # 【タブ4】対人関係レーダー（SJT12問 ＋ AIプロファイリング）
@@ -1532,6 +1530,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.session_state.radar_result = None
                     st.session_state.radar_answers = {}
                     st.rerun()
+
+    st.stop()
 
 # ==========================================
 # 診断テストの描画
