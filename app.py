@@ -287,7 +287,8 @@ def consume_radar_limit(line_id):
 def calculate_target_sanmeigaku(dob_str):
     """ターゲットの生年月日から、主星(社会)と西方星(恋愛/家庭)、天中殺を算出する"""
     try:
-        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
+        # ▼ ここが修正点です（.date() を追加して型を揃えました）
+        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d").date()
         year = valid_date.year
         month = valid_date.month
         day = valid_date.day
@@ -305,13 +306,11 @@ def calculate_target_sanmeigaku(dob_str):
         diff = (day_branch - day_stem) % 12
         tenchusatsu = tenchusatsu_map.get(diff, "")
         
-        # 月支の計算（簡易節入り：5日基準）
         solar_m = month if day >= 5 else month - 1
         if solar_m == 0: solar_m = 12
         month_branch = (solar_m + 1) % 12
         if month_branch == 0: month_branch = 12
         
-        # 二十八元の本元マップ
         hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
         
         def get_star(target_branch):
@@ -326,8 +325,8 @@ def calculate_target_sanmeigaku(dob_str):
             ]
             return stars_matrix[rel][0 if same_parity else 1]
             
-        main_star = get_star(month_branch)  # 主星（中央：社会の顔）
-        west_star = get_star(day_branch)    # 西方星（右側：恋愛・家庭の顔）
+        main_star = get_star(month_branch)  
+        west_star = get_star(day_branch)    
         
         return {
             "日干支": nikkanshi,
@@ -1374,6 +1373,22 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # ==========================================
     with tab4:
         st.subheader("🎯 対人関係レーダー（他己評価プロファイリング）")
+        
+        # ▼ 入力バーの背景を白(明るいグレー)にするための追加CSS
+        st.markdown("""
+        <style>
+            div[data-baseweb="input"] > div, 
+            div[data-baseweb="textarea"] > div, 
+            div[data-baseweb="select"] > div {
+                background-color: #FAFAFA !important;
+                border: 1px solid #CCCCCC !important;
+            }
+            input, textarea {
+                color: #000000 !important;
+                background-color: transparent !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
         
         # セッションステートの初期化（タブ4専用）
         if "radar_answers" not in st.session_state:
