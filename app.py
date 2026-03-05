@@ -174,6 +174,222 @@ QUESTIONS = [
 ]
 
 # ==========================================
+# 対人関係レーダー用 SJT質問データ (12問)
+# ==========================================
+RADAR_QUESTIONS = [
+    {"id": 1, "category": "社会・情報", "text": "Q1. 相手の話すスピードや声のトーンはどうですか？", 
+     "options": ["早口で声が大きい・身振りが大きい", "普通・その場に合わせる", "ゆっくりで声は小さめ・落ち着いている", "わからない/観察していない"]},
+    {"id": 2, "category": "社会・情報", "text": "Q2. 相手はLINEやメッセージをどう使いますか？", 
+     "options": ["要件のみで短く、絵文字は少ない", "スタンプや絵文字をよく使い、雑談もする", "返信が極端に早い、または極端に遅い", "わからない/観察していない"]},
+    {"id": 3, "category": "社会・情報", "text": "Q3. 相手の服装や持ち物の傾向は？", 
+     "options": ["実用性やコスパを重視している", "ブランドや流行、デザイン性を重視している", "無頓着、またはいつも同じような服装", "わからない/観察していない"]},
+    {"id": 4, "category": "恋愛・愛着", "text": "Q4. 相手は自分の弱みや失敗談、プライベートな悩みを話してきますか？", 
+     "options": ["自分からよく話してくる（自己開示が多い）", "聞かれれば話すが、自分からはあまり話さない", "絶対にはぐらかす・秘密主義", "わからない/観察していない"]},
+    {"id": 5, "category": "恋愛・愛着", "text": "Q5. 相手は「深夜や休日」など、プライベートな時間に仕事や用事以外の連絡をしてきますか？", 
+     "options": ["遠慮なくしてくる（境界線が薄い）", "基本的には常識的な時間のみ", "全くしてこない・連絡が取りづらい", "わからない/観察していない"]},
+    {"id": 6, "category": "恋愛・愛着", "text": "Q6. 相手が他人に感謝や愛情を示す時、どの行動が多いですか？", 
+     "options": ["言葉で「ありがとう」「すごいね」と褒める", "お土産やプレゼントなど「モノ」をくれる", "仕事や作業を「手伝ってくれる（行動）」", "わからない/観察していない"]},
+    {"id": 7, "category": "非常時・闘争", "text": "Q7. 予定外のトラブル（行きたい店が閉まっていた等）が起きた時の反応は？", 
+     "options": ["すぐにスマホで次の解決策を探す（論理的）", "明らかに不機嫌になったり、口数が減る（感情的）", "「どうする？」と他人に判断を委ねる（依存的）", "わからない/観察していない"]},
+    {"id": 8, "category": "非常時・闘争", "text": "Q8. 相手がミスや失敗を指摘された時、最初にとる態度は？", 
+     "options": ["素直に非を認め、すぐに謝罪する", "「でも」「だって」と言い訳や反論から入る", "極度に落ち込んだり、自虐的になる", "わからない/観察していない"]},
+    {"id": 9, "category": "非常時・闘争", "text": "Q9. 意見が対立した時や、怒りを感じた時、相手はどう表現しますか？", 
+     "options": ["正論で理詰めにしたり、声を荒らげる", "無視する、ため息をつく、嫌味を言う", "争いを避けてその場から逃げる・黙る", "わからない/観察していない"]},
+    {"id": 10, "category": "コア・相性", "text": "Q10. あなたと会話している時、どちらがたくさん喋っていますか？", 
+     "options": ["相手の方が圧倒的に多く喋っている", "お互いに同じくらい", "自分（あなた）の方が多く喋っている", "わからない/観察していない"]},
+    {"id": 11, "category": "コア・相性", "text": "Q11. 相手はあなたに対して、アドバイスや指示をしてくる（マウントをとる）傾向がありますか？", 
+     "options": ["よくしてくる（教えたがり・上から目線）", "対等な立場で意見を交換する", "あなたの意見に同調・追従することが多い", "わからない/観察していない"]},
+    {"id": 12, "category": "コア・相性", "text": "Q12. 相手の「店員やタクシー運転手（第三者）」への態度はどうですか？", 
+     "options": ["とても丁寧で腰が低い", "普通・事務的", "横柄、または偉そうな態度をとる事がある", "わからない/観察していない"]}
+]
+
+# ==========================================
+# 対人関係レーダー用：残回数（BU列）管理関数
+# ==========================================
+def check_radar_limit(line_id):
+    """スプレッドシートのBU列（73番目のインデックス）から今月の残回数を取得する"""
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        sheet_url = st.secrets["spreadsheet_url"]
+        sheet = client.open_by_url(sheet_url).sheet1
+        all_data = sheet.get_all_values()
+        
+        # ヘッダーを探してBU列(残回数)の正確なインデックスを取得（無い場合はデフォルト72とする）
+        headers = all_data[0]
+        limit_idx = 72 # デフォルト(0始まりでBU列相当を想定)
+        for i, h in enumerate(headers):
+            if h == '残回数': 
+                limit_idx = i
+                break
+                
+        for row in reversed(all_data[1:]):
+            if len(row) > 0 and row[0] == line_id:
+                if len(row) > limit_idx:
+                    try:
+                        return int(row[limit_idx])
+                    except ValueError:
+                        return 3 # 空欄やエラーの場合は3回とする
+                return 3
+        return 0 # ユーザーがいない場合
+    except Exception as e:
+        print(f"残回数チェックエラー: {e}")
+        return 0
+
+def consume_radar_limit(line_id):
+    """実行時にBU列の残回数を1減らす（上書き保存する）"""
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        sheet_url = st.secrets["spreadsheet_url"]
+        sheet = client.open_by_url(sheet_url).sheet1
+        
+        headers = sheet.row_values(1)
+        limit_col_letter = 'BU' # デフォルト
+        for i, h in enumerate(headers):
+            if h == '残回数':
+                # 列番号(1始まり)から列のアルファベットに変換（簡易版）
+                if i < 26: limit_col_letter = chr(65 + i)
+                else: limit_col_letter = chr(64 + (i // 26)) + chr(65 + (i % 26))
+                break
+                
+        all_data = sheet.get_all_values()
+        target_row_idx = -1
+        current_limit = 3
+        
+        # 下から検索して最新のユーザー行を見つける
+        for i in range(len(all_data)-1, 0, -1):
+            if len(all_data[i]) > 0 and all_data[i][0] == line_id:
+                target_row_idx = i + 1 # スプレッドシートは1行目から始まるため+1
+                col_idx = headers.index('残回数') if '残回数' in headers else 72
+                if len(all_data[i]) > col_idx:
+                    try: current_limit = int(all_data[i][col_idx])
+                    except: current_limit = 3
+                break
+                
+        if target_row_idx != -1 and current_limit > 0:
+            new_limit = current_limit - 1
+            cell_address = f"{limit_col_letter}{target_row_idx}"
+            sheet.update_acell(cell_address, new_limit)
+            return True
+        return False
+    except Exception as e:
+        print(f"残回数消費エラー: {e}")
+        return False
+
+# ==========================================
+# 対人関係レーダー用：ターゲット算命学計算＆プロンプトエンジン
+# ==========================================
+def calculate_target_sanmeigaku(dob_str):
+    """ターゲットの生年月日から、主星(社会)と西方星(恋愛/家庭)、天中殺を算出する"""
+    try:
+        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
+        year = valid_date.year
+        month = valid_date.month
+        day = valid_date.day
+        
+        elapsed = (valid_date - datetime.date(1900, 1, 1)).days
+        day_kanshi_num = (10 + elapsed) % 60 + 1
+        day_stem = (day_kanshi_num - 1) % 10 + 1
+        day_branch = (day_kanshi_num - 1) % 12 + 1
+        
+        stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+        branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+        nikkanshi = stems_str[day_stem] + branches_str[day_branch]
+        
+        tenchusatsu_map = {0: "戌亥", 2: "申酉", 4: "午未", 6: "辰巳", 8: "寅卯", 10: "子丑"}
+        diff = (day_branch - day_stem) % 12
+        tenchusatsu = tenchusatsu_map.get(diff, "")
+        
+        # 月支の計算（簡易節入り：5日基準）
+        solar_m = month if day >= 5 else month - 1
+        if solar_m == 0: solar_m = 12
+        month_branch = (solar_m + 1) % 12
+        if month_branch == 0: month_branch = 12
+        
+        # 二十八元の本元マップ
+        hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
+        
+        def get_star(target_branch):
+            hidden_stem = hon_gen_map[target_branch]
+            me_el = (day_stem - 1) // 2
+            other_el = (hidden_stem - 1) // 2
+            rel = (other_el - me_el) % 5
+            same_parity = (day_stem % 2) == (hidden_stem % 2)
+            stars_matrix = [
+                ["貫索星", "石門星"], ["鳳閣星", "調舒星"], ["禄存星", "司禄星"],
+                ["車騎星", "牽牛星"], ["龍高星", "玉堂星"]
+            ]
+            return stars_matrix[rel][0 if same_parity else 1]
+            
+        main_star = get_star(month_branch)  # 主星（中央：社会の顔）
+        west_star = get_star(day_branch)    # 西方星（右側：恋愛・家庭の顔）
+        
+        return {
+            "日干支": nikkanshi,
+            "天中殺": tenchusatsu,
+            "主星": main_star,
+            "西方星": west_star
+        }
+    except Exception as e:
+        print(f"ターゲット算命学計算エラー: {e}")
+        return None
+
+def generate_radar_prompt(target_name, relation, answers_dict, free_text, target_san, user_main_star):
+    """SJTの回答と算命学を統合し、バイアスを排除した最強のプロファイリングプロンプトを生成"""
+    
+    sjt_text = ""
+    for q in RADAR_QUESTIONS:
+        ans_idx = answers_dict.get(q["id"], 3) # デフォルトは「わからない」
+        ans_str = q["options"][ans_idx]
+        sjt_text += f"- {q['text']}\n  回答: {ans_str}\n"
+        
+    prompt = f"""あなたは元FBIプロファイラーであり、日本一の戦略的ライフ・コンサルタントです。
+ユーザーが入力した「ターゲットの行動データ（SJT）」と「算命学の宿命データ」から、ターゲットの真の姿をプロファイリングしてください。
+
+# ターゲット情報
+・名前: {target_name}
+・あなたとの関係: {relation}
+・【算命学データ】社会の顔(主星): {target_san['主星']} / 恋愛・家庭の顔(西方星): {target_san['西方星']} / 天中殺: {target_san['天中殺']}
+
+# ユーザー情報（参考）
+・ユーザー自身の主星: {user_main_star}
+
+# ユーザーの行動観察データ（SJT）
+{sjt_text}
+
+# ユーザーからの自由記述（エピソード）
+「{free_text if free_text else '特になし'}」
+
+# 【絶対遵守のガードレール（システム制約）】
+1. 確証バイアスの排除: 自由記述にユーザーの感情的な悪口や偏見が含まれていても、絶対にそのまま同調しないでください。行動の裏にある「ポジティブな意図（防衛機制や責任感の裏返し等）」を必ず推測し、リフレーミング（視点の転換）を行ってください。
+2. 算命学の専門用語禁止: 「西方星」「車騎星」などの用語は一切使わず、「恋愛になると〇〇な顔を見せる宿命」など、現代の日常語に翻訳してください。
+3. 思考停止の禁止: 「相性が悪いから諦めろ」という結論は絶対に出さないでください。関係を良くするため（または被害を最小限に抑えるため）の具体的な取扱説明書に徹してください。
+
+# 出力構成（以下のマークダウン形式で必ず出力）
+
+## 🎭 相手の本当の姿（総合プロファイリング）
+[算命学の主星と、SJTの社会的行動を掛け合わせ、相手が普段どういう心理で世界を見ているか（情報処理スタイル）を解説]
+
+## 💘 恋愛・親密な関係での顔（裏のペルソナ）
+[算命学の西方星と、SJTの回答を掛け合わせ、相手の「愛着スタイル（不安型・回避型・安定型）」と「愛情を感じる行動（ラブランゲージ）」をズバリ指摘]
+
+## 💣 非常時の防衛機制（ストレス時のクセ）
+[SJTのトラブル時の反応と自由記述から、相手が余裕を無くした時にどういう攻撃・逃避行動をとるか、その地雷は何かを解説]
+
+## 🤝 あなたとの力関係とコア欲求
+[あなたへの態度（SJT）から、相手があなたに対してどういうスタンスを取ろうとしているか、相手を動かすモチベーター（達成欲・権力欲・親和欲など）は何かを解説]
+
+## 💡 明日からの「最強の攻略法（Next Action）」
+[この相手と関係を良くする、あるいは適度な距離を保つために、明日ユーザーが取るべき具体的な行動やキラーフレーズを1〜2つ提案してください]
+"""
+    return prompt
+
+# ==========================================
 # セッションステートの初期化
 # ==========================================
 if "step" not in st.session_state:
@@ -850,7 +1066,7 @@ elif not st.session_state.line_id:
 if p_mode in ["portal", "report"] and st.session_state.line_id:
     st.markdown("<h2 style='text-align: center; color: #b8860b; margin-bottom: 20px;'>裏ステータス完全攻略ポータル</h2>", unsafe_allow_html=True)
     
-    tab1, tab2, tab3 = st.tabs(["🏠 マイページ", "📅 波乗りカレンダー", "📜 極秘レポート"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🏠 マイページ", "📅 波乗りダッシュボード", "📜 極秘レポート", "🎯 対人レーダー"])
     
     with tab1:
         with st.spinner("ステータスを同期中..."):
@@ -1154,6 +1370,168 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 st.error(f"データベース通信エラー: {e}")
     
     st.stop()
+
+    # ==========================================
+    # 【タブ4】対人関係レーダー（SJT12問 ＋ AIプロファイリング）
+    # ==========================================
+    with tab4:
+        st.subheader("🎯 対人関係レーダー（他己評価プロファイリング）")
+        
+        # セッションステートの初期化（タブ4専用）
+        if "radar_answers" not in st.session_state:
+            st.session_state.radar_answers = {}
+        if "radar_result" not in st.session_state:
+            st.session_state.radar_result = None
+            
+        with st.spinner("システム接続中..."):
+            radar_limit = check_radar_limit(st.session_state.line_id)
+            
+        if radar_limit <= 0:
+            st.error("⚠️ 今月のターゲット検索回数（3回）を使い切りました。来月までお待ちください。")
+        else:
+            st.info(f"💡 今月の検索可能回数：あと {radar_limit} 回")
+            st.markdown("相手の生年月日と、あなたの観察に基づく行動データから、AIが相手の「取扱説明書」を作成します。**※相手には一切通知されません。**")
+            
+            with st.form("radar_form"):
+                st.markdown("#### Step 1: ターゲットの基本情報（絶対軸）")
+                
+                # 生年月日を聞き出すTips（アコーディオン）
+                with st.expander("💡 相手の生年月日を自然に聞き出すには？"):
+                    st.markdown("""
+                    ・「最近、職場で動物占いが流行ってて、〇〇さんは何ですか？」と聞き、一緒に調べる流れで入力してもらう。
+                    ・「運転免許証の写真って盛れないよね？見せて」と言ってさりげなく確認する。
+                    ・「自分と同じ誕生日の芸能人を調べるサイトが面白い」と話題を振る。
+                    """)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    target_name = st.text_input("相手の名前（仮名・ニックネームOK）", placeholder="例：A部長")
+                with col2:
+                    target_dob = st.text_input("相手の生年月日（半角数字8桁・必須）", max_chars=8, placeholder="例：19900101")
+                    
+                target_relation = st.selectbox(
+                    "あなたと相手の現在の関係性は？",
+                    ["初対面・数回しか会っていない", "職場の同僚・上司・部下", "友人・知人", "恋人・配偶者・非常に親しい"]
+                )
+                
+                st.markdown("---")
+                st.markdown("#### Step 2: 相手の行動プロファイリング（SJT 12問）")
+                st.write("相手の普段の行動を思い出して、最も近いものを選択してください。分からない場合は無理せず「わからない」を選んでください。")
+                
+                # 12問のラジオボタンを描画
+                for q in RADAR_QUESTIONS:
+                    st.markdown(f"<p style='font-weight:bold; margin-bottom: 5px; margin-top: 15px;'>{q['text']}</p>", unsafe_allow_html=True)
+                    # セッションステートに保存しながら選択
+                    ans_idx = st.radio(
+                        label="選択", 
+                        options=range(len(q["options"])), 
+                        format_func=lambda i: q["options"][i],
+                        key=f"radar_q_{q['id']}",
+                        label_visibility="collapsed",
+                        index=3 # デフォルトは「わからない」
+                    )
+                    st.session_state.radar_answers[q['id']] = ans_idx
+
+                st.markdown("---")
+                st.markdown("#### Step 3: エピソードの自由記述（任意・AI解析用）")
+                
+                with st.expander("💡 何を書けばいい？（AIがより深く分析するためのヒント）"):
+                    st.markdown("""
+                    ・最近あったイラッとしたこと、または嬉しかったこと
+                    ・相手のLINEのクセ（絵文字がない、返信が遅い等）
+                    ・口癖や、第三者（店員など）への態度
+                    ・「ここを直してほしい」と思っている不満
+                    """)
+                    
+                free_text = st.text_area(
+                    "エピソードや気になっている行動（箇条書きOK）", 
+                    height=150,
+                    placeholder="例：仕事は完璧でミスを許さないタイプ。でも昨日、パソコンがフリーズした時に舌打ちして不機嫌になり周りが気を使いました。LINEは要件だけで絵文字は一切ありません。私には少し偉そうにアドバイスしてきます。"
+                )
+                
+                st.markdown("---")
+                submitted = st.form_submit_button("🚨 検索実行（残回数を1消費します）", type="primary")
+                
+                if submitted:
+                    if not target_name:
+                        st.error("⚠️ 相手の名前を入力してください。")
+                    elif not target_dob or len(target_dob) != 8 or not target_dob.isdigit():
+                        st.error("⚠️ 正しい生年月日（半角数字8桁）を入力してください。")
+                    else:
+                        target_san = calculate_target_sanmeigaku(target_dob)
+                        if not target_san:
+                            st.error("⚠️ 存在しない日付、または生年月日の計算に失敗しました。")
+                        else:
+                            st.session_state.radar_result = "processing"
+
+            # フォームの外でAI実行と結果表示を行う（描画リフレッシュのため）
+            if st.session_state.radar_result == "processing":
+                with st.spinner("AIが相手の深層心理と攻略法を解析中...（約20秒）"):
+                    # 残回数を消費
+                    success = consume_radar_limit(st.session_state.line_id)
+                    if not success:
+                        st.error("⚠️ データベースの更新に失敗しました。")
+                        st.session_state.radar_result = None
+                    else:
+                        try:
+                            # ユーザー自身のデータを取得（スプレッドシートから主星を取得）
+                            creds_dict = st.secrets["gcp_service_account"]
+                            scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                            client = gspread.authorize(creds)
+                            sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+                            all_data = sheet.get_all_values()
+                            
+                            user_main_star = "不明"
+                            for row in reversed(all_data):
+                                if len(row) > 8 and row[0] == st.session_state.line_id:
+                                    user_main_star = row[8] # I列(主星)を想定
+                                    break
+                                    
+                            # プロンプト生成
+                            prompt = generate_radar_prompt(
+                                target_name, target_relation, 
+                                st.session_state.radar_answers, 
+                                free_text, target_san, user_main_star
+                            )
+                            
+                            # OpenAI API呼び出し
+                            openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                            response = openai_client.chat.completions.create(
+                                model="gpt-4o", # 複雑な推論が必要なため 4o を推奨
+                                messages=[
+                                    {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                temperature=0.7
+                            )
+                            st.session_state.radar_result = response.choices[0].message.content
+                            st.rerun() # 画面をリロードして結果を表示
+                            
+                        except Exception as e:
+                            st.error(f"AI解析中にエラーが発生しました: {e}")
+                            st.session_state.radar_result = None
+
+            # 成功時のレポート表示
+            elif st.session_state.radar_result:
+                st.success(f"解析完了！ {target_name}さんの取扱説明書が作成されました。")
+                st.warning("⚠️ このレポートは履歴に保存されません。画面を閉じると消えてしまうため、スクリーンショット等で保存してください。")
+                
+                st.markdown("""
+                <style>
+                    .radar-box { background: linear-gradient(180deg, #FFFFFF 0%, #F0F8FF 100%); border: 2px solid #0056b3; border-radius: 12px; padding: 25px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+                    .radar-box h2 { color: #0056b3 !important; font-size: 1.5rem !important; border-bottom: 2px solid #D0E2F3; padding-bottom: 10px; margin-bottom: 20px; text-align: center;}
+                    .radar-box h3 { color: #111111 !important; font-size: 1.2rem !important; margin-top: 25px !important; margin-bottom: 10px !important; border-left: 5px solid #0056b3; padding-left: 10px;}
+                    .radar-box p, .radar-box li { font-size: 1.05rem; line-height: 1.7; color: #333333; }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(f"<div class='radar-box'><h2>🎯 {target_name}の完全攻略レポート</h2>{st.session_state.radar_result}</div>", unsafe_allow_html=True)
+                
+                if st.button("🔄 別の相手を検索する"):
+                    st.session_state.radar_result = None
+                    st.session_state.radar_answers = {}
+                    st.rerun()
 
 # ==========================================
 # 診断テストの描画
