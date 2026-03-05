@@ -293,7 +293,7 @@ def calculate_target_sanmeigaku(dob_str):
         month = valid_date.month
         day = valid_date.day
         
-        elapsed = (valid_date - datetime.date(1996, 11, 09)).days
+        elapsed = (valid_date - datetime.date(1900, 1, 1)).days
         day_kanshi_num = (10 + elapsed) % 60 + 1
         day_stem = (day_kanshi_num - 1) % 10 + 1
         day_branch = (day_kanshi_num - 1) % 12 + 1
