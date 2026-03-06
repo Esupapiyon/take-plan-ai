@@ -1417,7 +1417,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         # ==========================================
         # 状態1：結果表示画面（上限に関わらず、直前の結果があれば最優先で表示する）
         # ==========================================
-       elif st.session_state.radar_result:
+        elif st.session_state.radar_result:
                 st.success("解析完了。取扱説明書が作成されました。")
                 st.warning("このレポートは履歴に保存されません。画面を閉じると消えるため、スクリーンショット等で保存してください。")
             
@@ -1600,7 +1600,7 @@ elif st.session_state.step == "done":
         st.markdown(st.session_state.secret_report)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.warning("⚠️ レポートの表示に時間がかかっています。データは正常に保存されました。")
+        st.warning("レポートの表示に時間がかかっています。データは正常に保存されました。")
     
     st.markdown("<h4 style='text-align: center; font-weight: bold;'>▼ 日々の最適化アクションを受け取る ▼</h4>", unsafe_allow_html=True)
     st.link_button("LINEに戻る", "https://lin.ee/FrawIyY", type="primary")
