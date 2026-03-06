@@ -1378,7 +1378,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # ==========================================
     # 【タブ4】対人関係レーダー（SJT12問 ＋ AIプロファイリング）
     # ==========================================
-
     with tab4:
         st.subheader("対人関係レーダー")
         
@@ -1417,9 +1416,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         # ==========================================
         # 状態1：結果表示画面（上限に関わらず、直前の結果があれば最優先で表示する）
         # ==========================================
-        elif st.session_state.radar_result:
-                st.success("解析完了。取扱説明書が作成されました。")
-                st.warning("このレポートは履歴に保存されません。画面を閉じると消えるため、スクリーンショット等で保存してください。")
+        if st.session_state.radar_result and st.session_state.radar_result != "processing":
+            st.success("解析完了。取扱説明書が作成されました。")
+            st.warning("このレポートは履歴に保存されません。画面を閉じると消えるため、スクリーンショット等で保存してください。")
             
             st.markdown("""
             <style>
@@ -1432,7 +1431,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             
             st.markdown(f"<div class='radar-box'><h2>{st.session_state.get('target_name', 'ターゲット')} の完全攻略レポート</h2>\n\n{st.session_state.radar_result}</div>", unsafe_allow_html=True)
             
-            if st.button("▶︎ 別の相手を検索する（クリックするとレポーが消えます）"):
+            if st.button("▶︎ 別の相手を検索する（クリックするとレポートが消えます）"):
                 st.session_state.radar_result = None
                 st.session_state.radar_answers = {}
                 st.rerun()
@@ -1545,10 +1544,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 st.session_state.radar_result = "processing"
                                 st.rerun()
 
+    # ポータルモード終了
     st.stop()
 
 # ==========================================
-# 診断テストの描画
+# 診断テストの描画 (初回のテストモード)
 # ==========================================
 if st.session_state.step == "user_info":
     st.markdown("<div style='text-align: center; margin-bottom: 20px;'><h2 style='font-weight: bold;'>プレミアム裏ステータス診断へ</h2></div>", unsafe_allow_html=True)
