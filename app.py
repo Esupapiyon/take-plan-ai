@@ -348,43 +348,50 @@ def generate_radar_prompt(target_name, relation, answers_dict, free_text, target
         sjt_text += f"- {q['text']}\n  回答: {ans_str}\n"
         
     prompt = f"""あなたは元FBIプロファイラーであり、日本一の戦略的ライフ・コンサルタントです。
-ユーザーが入力した「ターゲットの行動データ（SJT）」と「算命学の宿命データ」から、ターゲットの真の姿をプロファイリングしてください。
+ユーザーが入力した「ターゲットの行動データ」と「算命学の宿命データ」から、ターゲットの真の姿をプロファイリングしてください。
 
-# ターゲット情報
-・名前: {target_name}
-・あなたとの関係: {relation}
-・【算命学データ】社会の顔(主星): {target_san['主星']} / 恋愛・家庭の顔(西方星): {target_san['西方星']} / 天中殺: {target_san['天中殺']}
+【ターゲット情報】
+名前: {target_name}
+あなたとの関係: {relation}
+算命学データ: 主星(社会の顔)={target_san['主星']}, 西方星(恋愛・家庭の顔)={target_san['西方星']}, 天中殺={target_san['天中殺']}
 
-# ユーザー情報（参考）
-・ユーザー自身の主星: {user_main_star}
+【ユーザー情報】
+ユーザー自身の主星: {user_main_star}
 
-# ユーザーの行動観察データ（SJT）
+【行動観察データ（SJT）】
 {sjt_text}
 
-# ユーザーからの自由記述（エピソード）
-「{free_text if free_text else '特になし'}」
+【自由記述（エピソード）】
+{free_text if free_text else '特になし'}
 
-# 【絶対遵守のガードレール（システム制約）】
-1. 確証バイアスの排除: 自由記述にユーザーの感情的な悪口や偏見が含まれていても、絶対にそのまま同調しないでください。行動の裏にある「ポジティブな意図（防衛機制や責任感の裏返し等）」を必ず推測し、リフレーミング（視点の転換）を行ってください。
-2. 算命学の専門用語禁止: 「西方星」「車騎星」などの用語は一切使わず、「恋愛になると〇〇な顔を見せる宿命」など、現代の日常語に翻訳してください。
-3. 思考停止の禁止: 「相性が悪いから諦めろ」という結論は絶対に出さないでください。関係を良くするため（または被害を最小限に抑えるため）の具体的な取扱説明書に徹してください。
+【絶対遵守のシステムルール】
+1. 推測語の完全排除: 「〜の傾向があります」「〜かもしれません」「〜のようです」は絶対に使用禁止。すべて「〜です」「〜します」「〜を嫌います」と断言してください。
+2. 抽象的表現の禁止: 「論理的です」「優しいです」などの薄い言葉は禁止。「無駄な世間話を嫌い、結論を急ぎます」など、生々しい具体的な行動描写で出力してください。
+3. 絵文字・Markdown記号の禁止: 絵文字や、#、* などのMarkdown記号は絶対に出力しないでください。見出しは必ず【 】のみを使用してください。
+4. 専門用語の禁止: 算命学の「西方星」「車騎星」などの用語は一切使わず、現代の日常語に翻訳してください。
 
-# 出力構成（以下のマークダウン形式で必ず出力）
+【出力構成】（必ず以下の7つの見出しと順序で出力すること）
 
-## 🎭 相手の本当の姿（総合プロファイリング）
-[算命学の主星と、SJTの社会的行動を掛け合わせ、相手が普段どういう心理で世界を見ているか（情報処理スタイル）を解説]
+【1. 本性】表の顔と、裏に隠された本当の性格
+[算命学の主星とSJTから、基本スペックと無意識の行動原理を断言する]
 
-## 💘 恋愛・親密な関係での顔（裏のペルソナ）
-[算命学の西方星と、SJTの回答を掛け合わせ、相手の「愛着スタイル（不安型・回避型・安定型）」と「愛情を感じる行動（ラブランゲージ）」をズバリ指摘]
+【2. 仕事・適性】職場で見せる顔と、プロフェッショナルとしての行動原理
+[プレッシャーへの耐性や、仕事において何を重視するタイプか、どうすれば評価されるかを解説]
 
-## 💣 非常時の防衛機制（ストレス時のクセ）
-[SJTのトラブル時の反応と自由記述から、相手が余裕を無くした時にどういう攻撃・逃避行動をとるか、その地雷は何かを解説]
+【3. 友人・人脈】交友関係の築き方と、心を許す相手の条件
+[広く浅くか、狭く深くか。プライベートでどういう人間を側に置きたがるかを解説]
 
-## 🤝 あなたとの力関係とコア欲求
-[あなたへの態度（SJT）から、相手があなたに対してどういうスタンスを取ろうとしているか、相手を動かすモチベーター（達成欲・権力欲・親和欲など）は何かを解説]
+【4. 恋愛・執着】親密になった時だけ見せる愛情のサインと危うさ
+[算命学の西方星から、パーソナルスペースに入った瞬間にどう豹変するか、依存・回避のクセを解説]
 
-## 💡 明日からの「最強の攻略法（Next Action）」
-[この相手と関係を良くする、あるいは適度な距離を保つために、明日ユーザーが取るべき具体的な行動やキラーフレーズを1〜2つ提案してください]
+【5. 地雷】絶対に触れてはいけないタブーと、ストレス時の攻撃パターン
+[トラブル時の反応から、何にキレるのか、怒った時に「無視」か「攻撃」か「逃避」のどれを選ぶかを警告]
+
+【6. 力関係】あの人は「あなた」をどう見て、どう扱おうとしているか
+[会話の主導権やマウントの有無から、現在の二人の力関係と相手のスタンスを客観視させる]
+
+【7. 完全攻略】明日から使える、あの人を動かす3つの具体策
+[必ず「①〇〇 ②〇〇 ③〇〇」の箇条書き形式で、明日使えるセリフや行動を3つに固定して出力]
 """
     return prompt
 
@@ -1373,7 +1380,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # ==========================================
 
     with tab4:
-        st.subheader("🎯 対人関係レーダー（他己評価プロファイリング）")
+        st.subheader("対人関係レーダー")
         
         # ▼ ドロップダウンリスト（選択肢）も白く見やすくするための完全版CSS
         st.markdown("""
@@ -1410,9 +1417,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         # ==========================================
         # 状態1：結果表示画面（上限に関わらず、直前の結果があれば最優先で表示する）
         # ==========================================
-        if st.session_state.radar_result and st.session_state.radar_result != "processing":
-            st.success(f"解析完了！ 取扱説明書が作成されました。")
-            st.warning("⚠️ このレポートは履歴に保存されません。画面を閉じると消えてしまうため、スクリーンショット等で保存してください。")
+       elif st.session_state.radar_result:
+                st.success("解析完了。取扱説明書が作成されました。")
+                st.warning("このレポートは履歴に保存されません。画面を閉じると消えるため、スクリーンショット等で保存してください。")
             
             st.markdown("""
             <style>
@@ -1423,9 +1430,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             </style>
             """, unsafe_allow_html=True)
             
-            st.markdown(f"<div class='radar-box'><h2>🎯 {st.session_state.get('target_name', 'ターゲット')}の完全攻略レポート</h2>{st.session_state.radar_result}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='radar-box'><h2>{st.session_state.get('target_name', 'ターゲット')} の完全攻略レポート</h2>\n\n{st.session_state.radar_result}</div>", unsafe_allow_html=True)
             
-            if st.button("🔄 別の相手を検索する"):
+            if st.button("▶︎ 別の相手を検索する（クリックするとレポーが消えます）"):
                 st.session_state.radar_result = None
                 st.session_state.radar_answers = {}
                 st.rerun()
@@ -1438,7 +1445,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 # ここで残回数を消費
                 success = consume_radar_limit(st.session_state.line_id)
                 if not success:
-                    st.error("⚠️ データベースの更新に失敗しました。")
+                    st.error("データベースの更新に失敗しました。")
                     st.session_state.radar_result = None
                     st.rerun()
                 else:
@@ -1488,13 +1495,13 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         # ==========================================
         else:
             if radar_limit <= 0:
-                st.error("⚠️ 今月のターゲット検索回数（3回）を使い切りました。来月までお待ちください。")
+                st.error("今月のターゲット検索回数（3回）を使い切りました。来月までお待ちください。")
             else:
-                st.info(f"💡 今月の検索可能回数：あと {radar_limit} 回")
+                st.info(f"今月の検索可能回数：あと {radar_limit} 回")
                 st.markdown("相手の生年月日と、あなたの観察に基づく行動データから、AIが相手の「取扱説明書」を作成します。**※相手には一切通知されません。**")
                 
                 with st.form("radar_form"):
-                    st.markdown("#### Step 1: ターゲットの基本情報（絶対軸）")
+                    st.markdown("#### Step 1: ターゲットの基本情報")
                     with st.expander("💡 相手の生年月日を自然に聞き出すには？"):
                         st.markdown("・「最近、職場で動物占いが流行ってて、〇〇さんは何ですか？」と聞き、一緒に調べる流れで入力してもらう。\n・「運転免許証の写真って盛れないよね？見せて」と言ってさりげなく確認する。\n・「自分と同じ誕生日の芸能人を調べるサイトが面白い」と話題を振る。")
                     
@@ -1505,7 +1512,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     target_relation = st.selectbox("あなたと相手の現在の関係性は？", ["初対面・数回しか会っていない", "職場の同僚・上司・部下", "友人・知人", "恋人・配偶者・非常に親しい"])
                     
                     st.markdown("---")
-                    st.markdown("#### Step 2: 相手の行動プロファイリング（SJT 12問）")
+                    st.markdown("#### Step 2: 相手の行動プロファイリング（12問）")
                     st.write("相手の普段の行動を思い出して、最も近いものを選択してください。分からない場合は無理せず「わからない」を選んでください。")
                     
                     for q in RADAR_QUESTIONS:
@@ -1521,14 +1528,14 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     free_text = st.text_area("エピソードや気になっている行動（箇条書きOK）", height=150, placeholder="例：仕事は完璧でミスを許さないタイプ。でも昨日、パソコンがフリーズした時に舌打ちして不機嫌になり周りが気を使いました。LINEは要件だけで絵文字は一切ありません。私には少し偉そうにアドバイスしてきます。")
                     
                     st.markdown("---")
-                    submitted = st.form_submit_button("🚨 検索実行（残回数を1消費します）", type="primary")
+                    submitted = st.form_submit_button("検索実行（残回数を1消費します）", type="primary")
                     
                     if submitted:
-                        if not target_name: st.error("⚠️ 相手の名前を入力してください。")
-                        elif not target_dob or len(target_dob) != 8 or not target_dob.isdigit(): st.error("⚠️ 正しい生年月日（半角数字8桁）を入力してください。")
+                        if not target_name: st.error("相手の名前を入力してください。")
+                        elif not target_dob or len(target_dob) != 8 or not target_dob.isdigit(): st.error("正しい生年月日（半角数字8桁）を入力してください。")
                         else:
                             target_san = calculate_target_sanmeigaku(target_dob)
-                            if not target_san: st.error("⚠️ 存在しない日付、または生年月日の計算に失敗しました。")
+                            if not target_san: st.error("存在しない日付、または生年月日の計算に失敗しました。")
                             else:
                                 # 状態2(処理中)に遷移するため、フォームの入力をセッションに保存
                                 st.session_state.target_name = target_name
