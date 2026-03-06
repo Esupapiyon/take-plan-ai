@@ -1443,7 +1443,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             
             st.markdown(f"<div class='radar-box'><h2>{st.session_state.get('target_name', 'ターゲット')} の完全攻略レポート</h2>\n\n{st.session_state.radar_result}</div>", unsafe_allow_html=True)
             
-            if st.button("▶︎ 別の相手を検索する（クリックするとレポートが消えます）"):
+            if st.button("▶︎ 別の相手を検索する（タップするとレポートが消えます）"):
                 st.session_state.radar_result = None
                 st.session_state.radar_answers = {}
                 st.rerun()
