@@ -284,59 +284,97 @@ def consume_radar_limit(line_id):
 # ==========================================
 # 対人関係レーダー用：ターゲット算命学計算＆プロンプトエンジン
 # ==========================================
-def calculate_target_sanmeigaku(dob_str):
-    """ターゲットの生年月日から、主星(社会)と西方星(恋愛/家庭)、天中殺を算出する"""
-    try:
-        # ▼ ここが修正点です（.date() を追加して型を揃えました）
-        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d").date()
-        year = valid_date.year
-        month = valid_date.month
-        day = valid_date.day
+def calculate_sanmeigaku(year, month, day, time_str):
+    """極秘レポート用の算命学ハイブリッドエンジン（西方星の追加・出生時間の透明化）"""
+    target_date = datetime.date(year, month, day)
+    elapsed = (target_date - datetime.date(1900, 1, 1)).days
+    day_kanshi_num = (10 + elapsed) % 60 + 1
+    day_stem = (day_kanshi_num - 1) % 10 + 1
+    day_branch = (day_kanshi_num - 1) % 12 + 1
+    
+    stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+    branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+    nikkanshi = stems_str[day_stem] + branches_str[day_branch]
+    
+    tenchusatsu_map = {0: "戌亥", 2: "申酉", 4: "午未", 6: "辰巳", 8: "寅卯", 10: "子丑"}
+    diff = (day_branch - day_stem) % 12
+    tenchusatsu = tenchusatsu_map.get(diff, "")
+    
+    solar_m = month if day >= 5 else month - 1
+    solar_y = year
+    if solar_m == 0:
+        solar_m = 12
+        solar_y -= 1
+    if solar_m == 1:
+        solar_y -= 1
+    
+    month_branch = (solar_m + 1) % 12
+    if month_branch == 0: month_branch = 12
+    year_branch = (solar_y - 3) % 12
+    if year_branch == 0: year_branch = 12
+    
+    hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
+    month_hidden_stem = hon_gen_map[month_branch]
+    
+    me_el = (day_stem - 1) // 2
+    other_el = (month_hidden_stem - 1) // 2
+    rel = (other_el - me_el) % 5
+    same_parity = (day_stem % 2) == (month_hidden_stem % 2)
+    
+    stars_matrix = [
+        ["貫索星", "石門星"], ["鳳閣星", "調舒星"], ["禄存星", "司禄星"],
+        ["車騎星", "牽牛星"], ["龍高星", "玉堂星"]
+    ]
+    main_star = stars_matrix[rel][0 if same_parity else 1]
+    
+    # ▼ 追加：西方星（恋愛・家庭の顔）の算出
+    day_hidden_stem = hon_gen_map[day_branch]
+    d_other_el = (day_hidden_stem - 1) // 2
+    d_rel = (d_other_el - me_el) % 5
+    d_same_parity = (day_stem % 2) == (day_hidden_stem % 2)
+    west_star = stars_matrix[d_rel][0 if d_same_parity else 1]
+    
+    star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
+    chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
+
+    def get_12star(target_branch):
+        if day_stem % 2 != 0: offset = (target_branch - chosei_map[day_stem]) % 12
+        else: offset = (chosei_map[day_stem] - target_branch) % 12
+        idx = (2 + offset) % 12
+        return star_names[idx]
         
-        elapsed = (valid_date - datetime.date(1900, 1, 1)).days
-        day_kanshi_num = (10 + elapsed) % 60 + 1
-        day_stem = (day_kanshi_num - 1) % 10 + 1
-        day_branch = (day_kanshi_num - 1) % 12 + 1
-        
-        stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
-        branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
-        nikkanshi = stems_str[day_stem] + branches_str[day_branch]
-        
-        tenchusatsu_map = {0: "戌亥", 2: "申酉", 4: "午未", 6: "辰巳", 8: "寅卯", 10: "子丑"}
-        diff = (day_branch - day_stem) % 12
-        tenchusatsu = tenchusatsu_map.get(diff, "")
-        
-        solar_m = month if day >= 5 else month - 1
-        if solar_m == 0: solar_m = 12
-        month_branch = (solar_m + 1) % 12
-        if month_branch == 0: month_branch = 12
-        
-        hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
-        
-        def get_star(target_branch):
-            hidden_stem = hon_gen_map[target_branch]
-            me_el = (day_stem - 1) // 2
-            other_el = (hidden_stem - 1) // 2
-            rel = (other_el - me_el) % 5
-            same_parity = (day_stem % 2) == (hidden_stem % 2)
-            stars_matrix = [
-                ["貫索星", "石門星"], ["鳳閣星", "調舒星"], ["禄存星", "司禄星"],
-                ["車騎星", "牽牛星"], ["龍高星", "玉堂星"]
-            ]
-            return stars_matrix[rel][0 if same_parity else 1]
+    shonen = get_12star(year_branch)
+    chunen = get_12star(month_branch)
+    bannen = get_12star(day_branch)
+
+    # ▼ 修正：出生時間が不明な場合の処理を透明化
+    if not time_str or time_str.strip() == "":
+        jikanshi = "不明"
+        saibannen = "不明"
+    else:
+        try:
+            clean_time = time_str.replace("：", ":").replace(" ", "").strip()
+            if ":" in clean_time: hour = int(clean_time.split(':')[0])
+            elif len(clean_time) == 4 and clean_time.isdigit(): hour = int(clean_time[:2])
+            elif len(clean_time) == 3 and clean_time.isdigit(): hour = int(clean_time[:1])
+            else: hour = 12
             
-        main_star = get_star(month_branch)  
-        west_star = get_star(day_branch)    
+            time_branch = ((hour + 1) // 2) % 12 + 1
+            goso_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
+            base_time_stem = goso_map[day_stem]
+            time_stem = (base_time_stem + time_branch - 2) % 10 + 1
+            jikanshi = stems_str[time_stem] + branches_str[time_branch]
+            saibannen = get_12star(time_branch)
+        except Exception:
+            jikanshi = "不明"
+            saibannen = "不明"
         
-        return {
-            "日干支": nikkanshi,
-            "天中殺": tenchusatsu,
-            "主星": main_star,
-            "西方星": west_star
-        }
-    except Exception as e:
-        print(f"ターゲット算命学計算エラー: {e}")
-        return None
+    return {
+        "日干支": nikkanshi, "天中殺": tenchusatsu, 
+        "主星": main_star, "西方星": west_star,
+        "初年": shonen, "中年": chunen, "晩年": bannen,
+        "時干支": jikanshi, "最晩年": saibannen
+    }
 
 def generate_radar_prompt(target_name, relation, answers_dict, free_text, target_san, user_main_star):
     """SJTの回答と算命学を統合し、バイアスを排除した最強のプロファイリングプロンプトを生成"""
@@ -1076,7 +1114,7 @@ elif not st.session_state.line_id:
 if p_mode in ["portal", "report"] and st.session_state.line_id:
     st.markdown("<h2 style='text-align: center; color: #b8860b; margin-bottom: 20px;'>裏ステータス完全攻略ポータル</h2>", unsafe_allow_html=True)
     
-    tab1, tab2, tab3, tab4 = st.tabs(["🏠 マイページ", "📅 波乗りダッシュボード", "📜 極秘レポート", "🎯 対人レーダー"])
+    tab1, tab2, tab3, tab4 = st.tabs(["マイページ", "波乗りダッシュボード", "極秘レポート", "対人レーダー"])
     
     with tab1:
         with st.spinner("ステータスを同期中..."):
@@ -1553,17 +1591,53 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 # ==========================================
 if st.session_state.step == "user_info":
     st.markdown("<div style='text-align: center; margin-bottom: 20px;'><h2 style='font-weight: bold;'>プレミアム裏ステータス診断へ</h2></div>", unsafe_allow_html=True)
-    st.markdown(f"数億通りのAI×宿命アルゴリズムで、**{st.session_state.line_name}さん**の深層心理と本来のポテンシャルを完全解析します。まずは基本プロフィールをご入力ください。")
+    st.markdown(f"数億通りのAI×宿命アルゴリズムで、**{st.session_state.line_name}さん**の深層心理と本来のポテンシャルを完全解析します。まずはプロファイリングに必要な基本情報をご入力ください。")
     
     with st.form("info_form"):
-        st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁）</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁・必須）</p>", unsafe_allow_html=True)
         dob_input = st.text_input("生年月日", max_chars=8, placeholder="例 19961229", label_visibility="collapsed")
-        btime = st.text_input("出生時間（任意・不明なら空欄のまま）", value="", placeholder="例 23:16")
-        gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True)
-        submitted = st.form_submit_button("適性テストを開始する", type="primary")
+        
+        st.markdown("<p style='font-weight: 900; margin-top: 15px; margin-bottom: 0;'>出生時間（任意・不明なら空欄のまま）</p>", unsafe_allow_html=True)
+        st.caption("※出生時間が不明な場合、最晩年の運勢に関する一部の解析は正確を期すために秘匿されます。")
+        btime = st.text_input("出生時間", value="", placeholder="例 23:16", label_visibility="collapsed")
+        
+        st.markdown("<p style='font-weight: 900; margin-top: 15px;'>性別</p>", unsafe_allow_html=True)
+        gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True, label_visibility="collapsed")
+        
+        st.markdown("---")
+        st.markdown("#### AIプロファイリングのチューニング情報")
+        
+        job_status = st.selectbox(
+            "現在の職業・お立場（必須）",
+            ["会社員（一般）", "会社員（管理職・マネージャー）", "経営者・役員", "フリーランス・個人事業主", "公務員", "学生", "主婦・主夫", "その他"]
+        )
+        
+        pain_points = st.multiselect(
+            "現在、最も解決したい・フォーカスしたいテーマはどれですか？（複数選択可）",
+            ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"]
+        )
+        
+        free_goal = st.text_area(
+            "現状の具体的な悩み、または理想の姿があれば教えてください（任意）",
+            placeholder="例：今の仕事が向いているかわからない。起業したいが踏み出せない。恋人との関係でいつも同じ失敗を繰り返してしまう等。"
+        )
+        
+        submitted = st.form_submit_button("適性テスト（全50問）を開始する", type="primary")
+        
         if submitted:
-            start_test(st.session_state.line_name, st.session_state.line_id, dob_input, btime, gender)
-            if st.session_state.step == "test":
+            if not dob_input.isdigit() or len(dob_input) != 8:
+                st.error("生年月日は8桁の半角数字で入力してください")
+            elif not pain_points:
+                st.error("フォーカスしたいテーマを少なくとも1つ選択してください")
+            else:
+                # ユーザーデータに拡張情報を保存
+                formatted_dob = datetime.datetime.strptime(dob_input, "%Y%m%d").strftime("%Y/%m/%d")
+                st.session_state.user_data = {
+                    "User_ID": st.session_state.line_name, "LINE_ID": st.session_state.line_id,
+                    "DOB": formatted_dob, "Birth_Time": btime.strip() if btime else "", "Gender": gender,
+                    "Job": job_status, "Pains": ", ".join(pain_points), "Free_Text": free_goal
+                }
+                st.session_state.step = "test"
                 st.rerun()
 
 elif st.session_state.step == "test":
