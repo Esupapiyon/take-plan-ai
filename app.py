@@ -367,31 +367,32 @@ def generate_radar_prompt(target_name, relation, answers_dict, free_text, target
 【絶対遵守のシステムルール】
 1. 推測語の完全排除: 「〜の傾向があります」「〜かもしれません」「〜のようです」は絶対に使用禁止。すべて「〜です」「〜します」「〜を嫌います」と断言してください。
 2. 抽象的表現の禁止: 「論理的です」「優しいです」などの薄い言葉は禁止。「無駄な世間話を嫌い、結論を急ぎます」など、生々しい具体的な行動描写で出力してください。
-3. 絵文字・Markdown記号の禁止: 絵文字や、#、* などのMarkdown記号は絶対に出力しないでください。見出しは必ず【 】のみを使用してください。
+3. 絵文字・#記号の禁止: 絵文字や、#、* などのリスト記号は絶対に出力しないでください。
 4. 専門用語の禁止: 算命学の「西方星」「車騎星」などの用語は一切使わず、現代の日常語に翻訳してください。
 
-【出力構成】（必ず以下の7つの見出しと順序で出力すること）
+【出力構成】
+※見出しは必ず以下の7つを使い、文字を ** （アスタリスク2つ）で囲んで「太文字」にしてください。
 
-【1. 本性】表の顔と、裏に隠された本当の性格
+**【1. 本性】表の顔と、裏に隠された本当の性格**
 [算命学の主星とSJTから、基本スペックと無意識の行動原理を断言する]
 
-【2. 仕事・適性】職場で見せる顔と、プロフェッショナルとしての行動原理
+**【2. 仕事・適性】職場で見せる顔と、プロフェッショナルとしての行動原理**
 [プレッシャーへの耐性や、仕事において何を重視するタイプか、どうすれば評価されるかを解説]
 
-【3. 友人・人脈】交友関係の築き方と、心を許す相手の条件
+**【3. 友人・人脈】交友関係の築き方と、心を許す相手の条件**
 [広く浅くか、狭く深くか。プライベートでどういう人間を側に置きたがるかを解説]
 
-【4. 恋愛・執着】親密になった時だけ見せる愛情のサインと危うさ
+**【4. 恋愛・執着】親密になった時だけ見せる愛情のサインと危うさ**
 [算命学の西方星から、パーソナルスペースに入った瞬間にどう豹変するか、依存・回避のクセを解説]
 
-【5. 地雷】絶対に触れてはいけないタブーと、ストレス時の攻撃パターン
+**【5. 地雷】絶対に触れてはいけないタブーと、ストレス時の攻撃パターン**
 [トラブル時の反応から、何にキレるのか、怒った時に「無視」か「攻撃」か「逃避」のどれを選ぶかを警告]
 
-【6. 力関係】あの人は「あなた」をどう見て、どう扱おうとしているか
+**【6. 力関係】あの人は「あなた」をどう見て、どう扱おうとしているか**
 [会話の主導権やマウントの有無から、現在の二人の力関係と相手のスタンスを客観視させる]
 
-【7. 完全攻略】明日から使える、あの人を動かす3つの具体策
-[必ず「①〇〇 ②〇〇 ③〇〇」の箇条書き形式で、明日使えるセリフや行動を3つに固定して出力]
+**【7. 完全攻略】明日から使える、あの人を動かす3つの具体策**
+[必ず「①〇〇 ②〇〇 ③〇〇」の形式で、明日使えるセリフや行動を3つに固定して出力]
 """
     return prompt
 
@@ -1329,7 +1330,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                     )
                                     return response.choices[0].message.content
                                 except:
-                                    return "⚠️ エラーが発生しました。"
+                                    return "エラーが発生しました。"
 
                             yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
                             st.markdown(f"<div class='advice-box'>{yearly_advice}</div>", unsafe_allow_html=True)
@@ -1371,7 +1372,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.markdown(report_text)
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
-                    st.warning("⚠️ レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
+                    st.warning("レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
             except Exception as e:
                 st.error(f"データベース通信エラー: {e}")
 
@@ -1381,7 +1382,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     with tab4:
         st.subheader("対人関係レーダー")
         
-        # ▼ ドロップダウンリスト（選択肢）も白く見やすくするための完全版CSS
+        # ▼ ドロップダウンリストの視認性 ＋ 検索ボタンを白文字＆落ち着いた色にするCSS
         st.markdown("""
         <style>
             div[data-baseweb="select"] > div, 
@@ -1401,10 +1402,21 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 color: #000000 !important;
                 background-color: transparent !important;
             }
+            /* 検索実行ボタン専用のスタイル調整 */
+            div[data-testid="stForm"] button[kind="primary"] {
+                background-color: #4A90E2 !important; /* 色味を抑えたブルー */
+                border: none !important;
+            }
+            div[data-testid="stForm"] button[kind="primary"] p,
+            div[data-testid="stForm"] button[kind="primary"] span {
+                color: #FFFFFF !important; /* 文字を白抜きに強制 */
+                font-weight: 900 !important; /* 太文字 */
+                font-size: 1.1rem !important;
+            }
         </style>
         """, unsafe_allow_html=True)
 
-        # セッションステートの初期化（タブ4専用）
+        # セッションステートの初期化
         if "radar_answers" not in st.session_state:
             st.session_state.radar_answers = {}
         if "radar_result" not in st.session_state:
@@ -1414,9 +1426,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             radar_limit = check_radar_limit(st.session_state.line_id)
 
         # ==========================================
-        # 状態1：結果表示画面（上限に関わらず、直前の結果があれば最優先で表示する）
+        # 状態1：結果表示画面
         # ==========================================
-        if st.session_state.radar_result and st.session_state.radar_result != "processing":
+        if st.session_state.radar_result:
             st.success("解析完了。取扱説明書が作成されました。")
             st.warning("このレポートは履歴に保存されません。画面を閉じると消えるため、スクリーンショット等で保存してください。")
             
@@ -1437,60 +1449,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 st.rerun()
 
         # ==========================================
-        # 状態2：AI解析中画面
-        # ==========================================
-        elif st.session_state.radar_result == "processing":
-            with st.spinner("AIが相手の深層心理と攻略法を解析中...（約20秒）"):
-                # ここで残回数を消費
-                success = consume_radar_limit(st.session_state.line_id)
-                if not success:
-                    st.error("データベースの更新に失敗しました。")
-                    st.session_state.radar_result = None
-                    st.rerun()
-                else:
-                    try:
-                        # ユーザー自身のデータを取得
-                        creds_dict = st.secrets["gcp_service_account"]
-                        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-                        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-                        client = gspread.authorize(creds)
-                        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
-                        all_data = sheet.get_all_values()
-                        
-                        user_main_star = "不明"
-                        for row in reversed(all_data):
-                            if len(row) > 8 and row[0] == st.session_state.line_id:
-                                user_main_star = row[8] # I列(主星)を想定
-                                break
-                                
-                        # プロンプト生成（セッションに保存されたデータを使用）
-                        prompt = generate_radar_prompt(
-                            st.session_state.target_name, 
-                            st.session_state.target_relation, 
-                            st.session_state.radar_answers, 
-                            st.session_state.free_text, 
-                            st.session_state.target_san, 
-                            user_main_star
-                        )
-                        
-                        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-                        response = openai_client.chat.completions.create(
-                            model="gpt-4o", 
-                            messages=[
-                                {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.7
-                        )
-                        st.session_state.radar_result = response.choices[0].message.content
-                        st.rerun() # 画面をリロードして状態1へ遷移
-                    except Exception as e:
-                        st.error(f"AI解析中にエラーが発生しました: {e}")
-                        st.session_state.radar_result = None
-                        st.rerun()
-
-        # ==========================================
-        # 状態3：入力フォーム画面
+        # 状態2：入力フォーム ＆ 処理実行画面
         # ==========================================
         else:
             if radar_limit <= 0:
@@ -1528,23 +1487,62 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     
                     st.markdown("---")
                     submitted = st.form_submit_button("検索実行（残回数を1消費します）", type="primary")
-                    
-                    if submitted:
-                        if not target_name: st.error("相手の名前を入力してください。")
-                        elif not target_dob or len(target_dob) != 8 or not target_dob.isdigit(): st.error("正しい生年月日（半角数字8桁）を入力してください。")
-                        else:
-                            target_san = calculate_target_sanmeigaku(target_dob)
-                            if not target_san: st.error("存在しない日付、または生年月日の計算に失敗しました。")
-                            else:
-                                # 状態2(処理中)に遷移するため、フォームの入力をセッションに保存
-                                st.session_state.target_name = target_name
-                                st.session_state.target_relation = target_relation
-                                st.session_state.free_text = free_text
-                                st.session_state.target_san = target_san
-                                st.session_state.radar_result = "processing"
-                                st.rerun()
 
-    # ポータルモード終了
+                # ==========================================
+                # 送信ボタンが押された直後の処理（ボタンのすぐ下にスピナーを出す）
+                # ==========================================
+                if submitted:
+                    if not target_name: 
+                        st.error("相手の名前を入力してください。")
+                    elif not target_dob or len(target_dob) != 8 or not target_dob.isdigit(): 
+                        st.error("正しい生年月日（半角数字8桁）を入力してください。")
+                    else:
+                        target_san = calculate_target_sanmeigaku(target_dob)
+                        if not target_san: 
+                            st.error("存在しない日付、または生年月日の計算に失敗しました。")
+                        else:
+                            # 検索実行ボタンのすぐ下でスピナーが回る
+                            with st.spinner("AIが相手の深層心理と攻略法を解析中...（約20秒）"):
+                                success = consume_radar_limit(st.session_state.line_id)
+                                if not success:
+                                    st.error("データベースの更新に失敗しました。")
+                                else:
+                                    try:
+                                        creds_dict = st.secrets["gcp_service_account"]
+                                        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                                        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                                        client = gspread.authorize(creds)
+                                        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+                                        all_data = sheet.get_all_values()
+                                        
+                                        user_main_star = "不明"
+                                        for row in reversed(all_data):
+                                            if len(row) > 8 and row[0] == st.session_state.line_id:
+                                                user_main_star = row[8]
+                                                break
+                                                
+                                        prompt = generate_radar_prompt(
+                                            target_name, target_relation, 
+                                            st.session_state.radar_answers, 
+                                            free_text, target_san, user_main_star
+                                        )
+                                        
+                                        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                                        response = openai_client.chat.completions.create(
+                                            model="gpt-4o", 
+                                            messages=[
+                                                {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
+                                                {"role": "user", "content": prompt}
+                                            ],
+                                            temperature=0.7
+                                        )
+                                        st.session_state.target_name = target_name # 名前を保持
+                                        st.session_state.radar_result = response.choices[0].message.content
+                                        st.rerun() # 完了後、画面上部の「結果表示画面」へ自動スクロール
+                                        
+                                    except Exception as e:
+                                        st.error(f"AI解析中にエラーが発生しました: {e}")
+
     st.stop()
 
 # ==========================================
