@@ -1055,10 +1055,10 @@ def save_to_spreadsheet():
         
         generated_report = ""
     try:
-            openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-            response = openai_client.chat.completions.create(
-                model="gpt-4o-mini", # コスト最適化のためminiに戻す
-                messages=[
+        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini", # コスト最適化のためminiに戻す
+            messages=[
                     {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。"},
                     {"role": "user", "content": llm_prompt}
                 ],
