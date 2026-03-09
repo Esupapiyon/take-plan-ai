@@ -494,7 +494,7 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 ・ユーザーが最も知りたい部分なので、決して要約せず、ユーザーの「悩み」や「職業」の文脈を反映した具体例や例え話を交えて【詳細に、たっぷりと】語ってください。
 ・欠点は「伸びしろ」や「愛嬌」としてマイルドかつ面白く伝えること。
 ・出生時間が不明な場合、最晩年（人生の最終目標）の解説において「出生時間が不明なため、一部推測を含みますが〜」と正直に一言添えてください。
-・【重要】出力は、前半の「公開レポート」と、後半の「3つの極秘ライブラリ」に分けて出力します。以下の構成と指定のHTMLコメントタグ(など)を必ず守ってください。
+・【重要】出力は、前半の「公開レポート」と、後半の「3つの極秘ライブラリ」に分けて出力します。以下の構成と指定のテキストタグ(【SECRETS_START】など)を必ず守ってください。
 
 # 出力構成（以下のマークダウンと指定の順番通りに必ず出力してください）
 
@@ -538,6 +538,8 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 　[解説文]
 
 ---
+【SECRETS_START】
+【SECRET_1_START】
 ## 🔒 極秘ライブラリ 第1章：仕事・勉強とお金の深淵
 【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
 ・どんな特性の持ち主か
@@ -546,6 +548,9 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 ・[お金・仕事に関するアドバイス1]
 ・[お金・仕事に関するアドバイス2]
 ・[お金・仕事に関するアドバイス3]
+【SECRET_1_END】
+
+【SECRET_2_START】
 ## 🔒 極秘ライブラリ 第2章：恋愛・結婚と人間関係の裏の顔
 【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
 ・恋愛や結婚においてどんな特性の持ち主か（親密になった時どう豹変するか）
@@ -554,11 +559,16 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 ・[恋愛・対人関係のアドバイス1]
 ・[恋愛・対人関係のアドバイス2]
 ・[恋愛・対人関係のアドバイス3]
+【SECRET_2_END】
+
+【SECRET_3_START】
 ## 🔒 極秘ライブラリ 第3章：人生の最終目標と最大のカルマ
 [算命学の晩年・最晩年の星と天中殺から、ユーザーが最終的にどこへ向かうべきか、人生で背負っているテーマを解説。]
 
 ### 結びの言葉
 明日から踏み出す「科学的な小さな一歩」を提案し、背中を押す言葉で締めくくってください。
+【SECRET_3_END】
+【SECRETS_END】
 """
     return prompt
 
@@ -1129,6 +1139,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             try:
                 creds_dict = st.secrets["gcp_service_account"]
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                from oauth2client.service_account import ServiceAccountCredentials
+                import gspread
+                import re
+                
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
                 sheet_url = st.secrets["spreadsheet_url"]
@@ -1174,7 +1188,14 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     
                     public_text = report_text
                     secrets_block = ""
-                    if "" in report_text:
+                    
+                    # 新しい【】タグで分割を試みる
+                    if "【SECRETS_START】" in report_text:
+                        parts = report_text.split("【SECRETS_START】")
+                        public_text = parts[0]
+                        secrets_block = parts[1].split("【SECRETS_END】")[0] if "【SECRETS_END】" in parts[1] else parts[1]
+                    # 万が一、古いHTMLタグが残っていた場合への安全装置
+                    elif "" in report_text:
                         parts = report_text.split("")
                         public_text = parts[0]
                         secrets_block = parts[1].split("")[0] if "" in parts[1] else parts[1]
@@ -1185,7 +1206,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.markdown("<hr style='border: 1px dashed #D32F2F; margin: 40px 0;'>", unsafe_allow_html=True)
                         st.markdown("<h2 style='text-align:center; color:#D32F2F;'>🔒 ここから先は極秘ライブラリです</h2>", unsafe_allow_html=True)
                         
-                        sec1_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                        # 第1章の抽出と描画
+                        sec1_match = re.search(r'【SECRET_1_START】(.*?)【SECRET_1_END】', secrets_block, re.DOTALL)
+                        if not sec1_match: sec1_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                            
                         if sec1_match:
                             sec1_text = sec1_match.group(1).strip()
                             if unlock_sec1:
@@ -1206,7 +1230,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 </div>
                                 """, unsafe_allow_html=True)
 
-                        sec2_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                        # 第2章の抽出と描画
+                        sec2_match = re.search(r'【SECRET_2_START】(.*?)【SECRET_2_END】', secrets_block, re.DOTALL)
+                        if not sec2_match: sec2_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                            
                         if sec2_match:
                             sec2_text = sec2_match.group(1).strip()
                             if unlock_sec2:
@@ -1227,7 +1254,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 </div>
                                 """, unsafe_allow_html=True)
                                 
-                        sec3_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                        # 第3章の抽出と描画
+                        sec3_match = re.search(r'【SECRET_3_START】(.*?)【SECRET_3_END】', secrets_block, re.DOTALL)
+                        if not sec3_match: sec3_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                            
                         if sec3_match:
                             sec3_text = sec3_match.group(1).strip()
                             if unlock_sec3:
