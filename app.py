@@ -1033,7 +1033,6 @@ def save_to_spreadsheet():
         ud = st.session_state.user_data
         y, m, d = map(int, ud["DOB"].split('/'))
         
-        # ハイブリッド算命学エンジンの呼び出し
         sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
         stripe_id = st.session_state.get("stripe_id", "")
         
@@ -1046,19 +1045,16 @@ def save_to_spreadsheet():
         for i in range(1, 51): row_data.append(st.session_state.answers.get(i, ""))
         row_data.extend([scores["O"], scores["C"], scores["E"], scores["A"], scores["N"]])
         today_str = datetime.date.today().strftime("%Y/%m/%d")
-        
-        # 既存のスプレッドシート列仕様に合わせてデフォルト値を入れる
         row_data.extend([today_str, "FALSE", "FALSE", 3])
         
-        # ▼ ここが修正点：新しい generate_report_prompt に user_data を渡す
         llm_prompt = generate_report_prompt(sanmeigaku, scores, ud)
-        
         generated_report = ""
-    try:
-        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        response = openai_client.chat.completions.create(
-            model="gpt-4o-mini", # コスト最適化のためminiに戻す
-            messages=[
+        
+        try:
+            openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
                     {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。"},
                     {"role": "user", "content": llm_prompt}
                 ],
@@ -1068,18 +1064,17 @@ def save_to_spreadsheet():
             st.session_state.secret_report = generated_report
         except Exception as e:
             st.error(f"【開発者向けエラー(OpenAI)】: {e}")
-        
+            generated_report = "エラーが発生しました。"
+            
         row_data.append(generated_report)
         sheet.append_row(row_data)
         
-        # LINEへの通知
         send_line_result(ud["LINE_ID"], sanmeigaku, scores)
         return True
         
     except Exception as e:
         st.error(f"【開発者向けエラー(System)】: {e}")
         return False
-
 def get_user_status(line_id):
     try:
         creds_dict = st.secrets["gcp_service_account"]
