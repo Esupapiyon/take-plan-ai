@@ -1431,7 +1431,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 # ==========================================
 if st.session_state.step == "user_info":
     st.markdown("<div style='text-align: center; margin-bottom: 20px;'><h2 style='font-weight: bold;'>プレミアム裏ステータス診断へ</h2></div>", unsafe_allow_html=True)
-    # ▼ 修正：冒頭の文言を「東洋の人間科学と最新のAIアルゴリズム」に変更
     st.markdown(f"東洋の人間科学と最新のAIアルゴリズムを掛け合わせ、**{st.session_state.line_name}さん**の深層心理と本来のポテンシャルを完全解析します。まずはプロファイリングに必要な基本情報をご入力ください。")
     
     with st.form("info_form"):
@@ -1447,13 +1446,13 @@ if st.session_state.step == "user_info":
         """, unsafe_allow_html=True)
 
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁・必須）</p>", unsafe_allow_html=True)
-        # ▼ 修正：数字だけのプレースホルダーに変更
+        # ▼ 修正：プレースホルダーを数字のみに指定
         dob_input = st.text_input("生年月日", max_chars=8, placeholder="19961229", label_visibility="collapsed")
         
         st.markdown("<p style='font-weight: 900; margin-top: 15px; margin-bottom: 0;'>出生時間（任意・不明なら空欄のまま）</p>", unsafe_allow_html=True)
         st.caption("※出生時間が不明な場合、最晩年の運勢に関する一部の解析は正確を期すために秘匿されます。")
-        # ▼ 修正：数字だけのプレースホルダーに変更
-        btime = st.text_input("出生時間", value="", placeholder="1700", label_visibility="collapsed")
+        # ▼ 修正：プレースホルダーを数字のみに指定（value=""を削除して確実に出す）
+        btime = st.text_input("出生時間", placeholder="1700", label_visibility="collapsed")
         
         st.markdown("<p style='font-weight: 900; margin-top: 15px;'>性別</p>", unsafe_allow_html=True)
         gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True, label_visibility="collapsed")
@@ -1465,18 +1464,17 @@ if st.session_state.step == "user_info":
             "現在の職業・お立場（必須）",
             ["会社員（一般）", "会社員（管理職・マネージャー）", "経営者・役員", "フリーランス・個人事業主", "公務員", "学生", "主婦・主夫", "その他"]
         )
-        
-        # ▼ 修正：マルチセレクトのデフォルト文字を日本語化
+
         pain_points = st.multiselect(
             "現在、最も解決したい・フォーカスしたいテーマはどれですか？（複数選択可）",
             ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"],
-            placeholder="選択してください（複数可）"
+            placeholder="ここをタップして選択（複数可）"
         )
-        
-        # ▼ 修正：自由記述欄のプレースホルダーを具体化
-        free_placeholder = """【箇条書き・文章どちらでも可】
+    
+        free_placeholder = """【箇条書き・文章のどちらでも可】
 （悩みの例）今の仕事が向いているかわからない。恋人といつも同じ理由で喧嘩してしまう。
 （理想の例）独立して自分のビジネスを持ちたい。心から安心できるパートナーに出会いたい。"""
+        
         free_goal = st.text_area(
             "現状の具体的な悩み、または理想の姿があれば教えてください（任意）",
             placeholder=free_placeholder,
