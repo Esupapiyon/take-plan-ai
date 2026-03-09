@@ -11,6 +11,7 @@ import openai
 import calendar
 from datetime import timedelta
 import altair as alt
+import re
 
 # ==========================================
 # 1. ページ設定とUI改善CSS
@@ -24,96 +25,21 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    div[data-testid="stButton"] button {
-        padding: 0.2rem 0.5rem;
-        min-height: 2.5rem;
-    }
-    div.stButton {
-        margin-bottom: -15px; 
-    }
-    .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 1rem !important;
-    }
-    .stApp, .stApp > header, .stApp .main {
-        background-color: #FFFFFF !important;
-    }
-    h1, h2, h3, h4, h5, h6, p, span, div, label, li {
-        color: #000000 !important;
-    }
-    button[kind="secondary"] {
-        width: 100% !important;
-        height: 65px !important;
-        font-size: 18px !important;
-        font-weight: 900 !important;
-        color: #000000 !important;
-        background-color: #FFFFFF !important;
-        border: 3px solid #444444 !important;
-        border-radius: 12px !important;
-        margin-bottom: 12px !important;
-        transition: all 0.2s ease-in-out !important;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important;
-    }
-    button[kind="secondary"]:hover {
-        background-color: #F5F5F5 !important;
-        border-color: #111111 !important;
-    }
-    button[kind="secondary"]:active {
-        background-color: #E0E0E0 !important;
-        transform: translateY(2px) !important;
-        box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
-    }
-    button[kind="primary"] {
-        width: 100% !important;
-        height: 60px !important;
-        font-size: 18px !important;
-        font-weight: 900 !important;
-        border: none !important;
-        border-radius: 12px !important;
-        transition: all 0.2s ease-in-out !important;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important;
-    }
-    button[kind="primary"]:active {
-        transform: translateY(2px) !important;
-        box-shadow: 0px 0px 0px rgba(0,0,0,0) !important;
-    }
-    div[data-testid="stLinkButton"] > a {
-        background-color: #06C755 !important;
-        color: white !important;
-        border: none !important;
-        font-weight: bold !important;
-        width: 100% !important;
-        height: 60px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border-radius: 12px !important;
-        font-size: 18px !important;
-        text-decoration: none !important;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    div[data-testid="stLinkButton"] > a:hover {
-        background-color: #05b34c !important;
-    }
-    .question-title {
-        font-size: 1.4rem;
-        font-weight: 900;
-        text-align: center;
-        margin-top: 1rem !important;
-        margin-bottom: 1rem !important;
-        line-height: 1.6;
-        color: #000000 !important;
-    }
-    .stSelectbox label, .stTextInput label, .stRadio label {
-        font-weight: 900 !important;
-        font-size: 1.1rem !important;
-        color: #000000 !important;
-    }
-    .stRadio div[role="radiogroup"] label span {
-        color: #000000 !important;
-        font-weight: bold !important;
-    }
+    div[data-testid="stButton"] button { padding: 0.2rem 0.5rem; min-height: 2.5rem; }
+    div.stButton { margin-bottom: -15px; }
+    .block-container { padding-top: 1.5rem !important; padding-bottom: 1rem !important; }
+    .stApp, .stApp > header, .stApp .main { background-color: #FFFFFF !important; }
+    h1, h2, h3, h4, h5, h6, p, span, div, label, li { color: #000000 !important; }
+    button[kind="secondary"] { width: 100% !important; height: 65px !important; font-size: 18px !important; font-weight: 900 !important; color: #000000 !important; background-color: #FFFFFF !important; border: 3px solid #444444 !important; border-radius: 12px !important; margin-bottom: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important; }
+    button[kind="secondary"]:hover { background-color: #F5F5F5 !important; border-color: #111111 !important; }
+    button[kind="secondary"]:active { background-color: #E0E0E0 !important; transform: translateY(2px) !important; box-shadow: 0px 0px 0px rgba(0,0,0,0) !important; }
+    button[kind="primary"] { width: 100% !important; height: 60px !important; font-size: 18px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important; }
+    button[kind="primary"]:active { transform: translateY(2px) !important; box-shadow: 0px 0px 0px rgba(0,0,0,0) !important; }
+    div[data-testid="stLinkButton"] > a { background-color: #06C755 !important; color: white !important; border: none !important; font-weight: bold !important; width: 100% !important; height: 60px !important; display: flex !important; align-items: center !important; justify-content: center !important; border-radius: 12px !important; font-size: 18px !important; text-decoration: none !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important; transition: all 0.2s ease-in-out !important; }
+    div[data-testid="stLinkButton"] > a:hover { background-color: #05b34c !important; }
+    .question-title { font-size: 1.4rem; font-weight: 900; text-align: center; margin-top: 1rem !important; margin-bottom: 1rem !important; line-height: 1.6; color: #000000 !important; }
+    .stSelectbox label, .stTextInput label, .stRadio label { font-weight: 900 !important; font-size: 1.1rem !important; color: #000000 !important; }
+    .stRadio div[role="radiogroup"] label span { color: #000000 !important; font-weight: bold !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -177,37 +103,24 @@ QUESTIONS = [
 # 対人関係レーダー用 SJT質問データ (12問)
 # ==========================================
 RADAR_QUESTIONS = [
-    {"id": 1, "category": "社会・情報", "text": "Q1. 相手の話すスピードや声のトーンはどうですか？", 
-     "options": ["早口で声が大きい・身振りが大きい", "普通・その場に合わせる", "ゆっくりで声は小さめ・落ち着いている", "わからない/観察していない"]},
-    {"id": 2, "category": "社会・情報", "text": "Q2. 相手はLINEやメッセージをどう使いますか？", 
-     "options": ["要件のみで短く、絵文字は少ない", "スタンプや絵文字をよく使い、雑談もする", "返信が極端に早い、または極端に遅い", "わからない/観察していない"]},
-    {"id": 3, "category": "社会・情報", "text": "Q3. 相手の服装や持ち物の傾向は？", 
-     "options": ["実用性やコスパを重視している", "ブランドや流行、デザイン性を重視している", "無頓着、またはいつも同じような服装", "わからない/観察していない"]},
-    {"id": 4, "category": "恋愛・愛着", "text": "Q4. 相手は自分の弱みや失敗談、プライベートな悩みを話してきますか？", 
-     "options": ["自分からよく話してくる（自己開示が多い）", "聞かれれば話すが、自分からはあまり話さない", "絶対にはぐらかす・秘密主義", "わからない/観察していない"]},
-    {"id": 5, "category": "恋愛・愛着", "text": "Q5. 相手は「深夜や休日」など、プライベートな時間に仕事や用事以外の連絡をしてきますか？", 
-     "options": ["遠慮なくしてくる（境界線が薄い）", "基本的には常識的な時間のみ", "全くしてこない・連絡が取りづらい", "わからない/観察していない"]},
-    {"id": 6, "category": "恋愛・愛着", "text": "Q6. 相手が他人に感謝や愛情を示す時、どの行動が多いですか？", 
-     "options": ["言葉で「ありがとう」「すごいね」と褒める", "お土産やプレゼントなど「モノ」をくれる", "仕事や作業を「手伝ってくれる（行動）」", "わからない/観察していない"]},
-    {"id": 7, "category": "非常時・闘争", "text": "Q7. 予定外のトラブル（行きたい店が閉まっていた等）が起きた時の反応は？", 
-     "options": ["すぐにスマホで次の解決策を探す（論理的）", "明らかに不機嫌になったり、口数が減る（感情的）", "「どうする？」と他人に判断を委ねる（依存的）", "わからない/観察していない"]},
-    {"id": 8, "category": "非常時・闘争", "text": "Q8. 相手がミスや失敗を指摘された時、最初にとる態度は？", 
-     "options": ["素直に非を認め、すぐに謝罪する", "「でも」「だって」と言い訳や反論から入る", "極度に落ち込んだり、自虐的になる", "わからない/観察していない"]},
-    {"id": 9, "category": "非常時・闘争", "text": "Q9. 意見が対立した時や、怒りを感じた時、相手はどう表現しますか？", 
-     "options": ["正論で理詰めにしたり、声を荒らげる", "無視する、ため息をつく、嫌味を言う", "争いを避けてその場から逃げる・黙る", "わからない/観察していない"]},
-    {"id": 10, "category": "コア・相性", "text": "Q10. あなたと会話している時、どちらがたくさん喋っていますか？", 
-     "options": ["相手の方が圧倒的に多く喋っている", "お互いに同じくらい", "自分（あなた）の方が多く喋っている", "わからない/観察していない"]},
-    {"id": 11, "category": "コア・相性", "text": "Q11. 相手はあなたに対して、アドバイスや指示をしてくる（マウントをとる）傾向がありますか？", 
-     "options": ["よくしてくる（教えたがり・上から目線）", "対等な立場で意見を交換する", "あなたの意見に同調・追従することが多い", "わからない/観察していない"]},
-    {"id": 12, "category": "コア・相性", "text": "Q12. 相手の「店員やタクシー運転手（第三者）」への態度はどうですか？", 
-     "options": ["とても丁寧で腰が低い", "普通・事務的", "横柄、または偉そうな態度をとる事がある", "わからない/観察していない"]}
+    {"id": 1, "category": "社会・情報", "text": "Q1. 相手の話すスピードや声のトーンはどうですか？", "options": ["早口で声が大きい・身振りが大きい", "普通・その場に合わせる", "ゆっくりで声は小さめ・落ち着いている", "わからない/観察していない"]},
+    {"id": 2, "category": "社会・情報", "text": "Q2. 相手はLINEやメッセージをどう使いますか？", "options": ["要件のみで短く、絵文字は少ない", "スタンプや絵文字をよく使い、雑談もする", "返信が極端に早い、または極端に遅い", "わからない/観察していない"]},
+    {"id": 3, "category": "社会・情報", "text": "Q3. 相手の服装や持ち物の傾向は？", "options": ["実用性やコスパを重視している", "ブランドや流行、デザイン性を重視している", "無頓着、またはいつも同じような服装", "わからない/観察していない"]},
+    {"id": 4, "category": "恋愛・愛着", "text": "Q4. 相手は自分の弱みや失敗談、プライベートな悩みを話してきますか？", "options": ["自分からよく話してくる（自己開示が多い）", "聞かれれば話すが、自分からはあまり話さない", "絶対にはぐらかす・秘密主義", "わからない/観察していない"]},
+    {"id": 5, "category": "恋愛・愛着", "text": "Q5. 相手は「深夜や休日」など、プライベートな時間に仕事や用事以外の連絡をしてきますか？", "options": ["遠慮なくしてくる（境界線が薄い）", "基本的には常識的な時間のみ", "全くしてこない・連絡が取りづらい", "わからない/観察していない"]},
+    {"id": 6, "category": "恋愛・愛着", "text": "Q6. 相手が他人に感謝や愛情を示す時、どの行動が多いですか？", "options": ["言葉で「ありがとう」「すごいね」と褒める", "お土産やプレゼントなど「モノ」をくれる", "仕事や作業を「手伝ってくれる（行動）」", "わからない/観察していない"]},
+    {"id": 7, "category": "非常時・闘争", "text": "Q7. 予定外のトラブル（行きたい店が閉まっていた等）が起きた時の反応は？", "options": ["すぐにスマホで次の解決策を探す（論理的）", "明らかに不機嫌になったり、口数が減る（感情的）", "「どうする？」と他人に判断を委ねる（依存的）", "わからない/観察していない"]},
+    {"id": 8, "category": "非常時・闘争", "text": "Q8. 相手がミスや失敗を指摘された時、最初にとる態度は？", "options": ["素直に非を認め、すぐに謝罪する", "「でも」「だって」と言い訳や反論から入る", "極度に落ち込んだり、自虐的になる", "わからない/観察していない"]},
+    {"id": 9, "category": "非常時・闘争", "text": "Q9. 意見が対立した時や、怒りを感じた時、相手はどう表現しますか？", "options": ["正論で理詰めにしたり、声を荒らげる", "無視する、ため息をつく、嫌味を言う", "争いを避けてその場から逃げる・黙る", "わからない/観察していない"]},
+    {"id": 10, "category": "コア・相性", "text": "Q10. あなたと会話している時、どちらがたくさん喋っていますか？", "options": ["相手の方が圧倒的に多く喋っている", "お互いに同じくらい", "自分（あなた）の方が多く喋っている", "わからない/観察していない"]},
+    {"id": 11, "category": "コア・相性", "text": "Q11. 相手はあなたに対して、アドバイスや指示をしてくる（マウントをとる）傾向がありますか？", "options": ["よくしてくる（教えたがり・上から目線）", "対等な立場で意見を交換する", "あなたの意見に同調・追従することが多い", "わからない/観察していない"]},
+    {"id": 12, "category": "コア・相性", "text": "Q12. 相手の「店員やタクシー運転手（第三者）」への態度はどうですか？", "options": ["とても丁寧で腰が低い", "普通・事務的", "横柄、または偉そうな態度をとる事がある", "わからない/観察していない"]}
 ]
 
 # ==========================================
 # 対人関係レーダー用：残回数（BU列）管理関数
 # ==========================================
 def check_radar_limit(line_id):
-    """スプレッドシートのBU列（73番目のインデックス）から今月の残回数を取得する"""
     try:
         creds_dict = st.secrets["gcp_service_account"]
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -217,9 +130,8 @@ def check_radar_limit(line_id):
         sheet = client.open_by_url(sheet_url).sheet1
         all_data = sheet.get_all_values()
         
-        # ヘッダーを探してBU列(残回数)の正確なインデックスを取得（無い場合はデフォルト72とする）
         headers = all_data[0]
-        limit_idx = 72 # デフォルト(0始まりでBU列相当を想定)
+        limit_idx = 72
         for i, h in enumerate(headers):
             if h == '残回数': 
                 limit_idx = i
@@ -228,18 +140,15 @@ def check_radar_limit(line_id):
         for row in reversed(all_data[1:]):
             if len(row) > 0 and row[0] == line_id:
                 if len(row) > limit_idx:
-                    try:
-                        return int(row[limit_idx])
-                    except ValueError:
-                        return 3 # 空欄やエラーの場合は3回とする
+                    try: return int(row[limit_idx])
+                    except ValueError: return 3
                 return 3
-        return 0 # ユーザーがいない場合
+        return 0
     except Exception as e:
         print(f"残回数チェックエラー: {e}")
         return 0
 
 def consume_radar_limit(line_id):
-    """実行時にBU列の残回数を1減らす（上書き保存する）"""
     try:
         creds_dict = st.secrets["gcp_service_account"]
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -249,10 +158,9 @@ def consume_radar_limit(line_id):
         sheet = client.open_by_url(sheet_url).sheet1
         
         headers = sheet.row_values(1)
-        limit_col_letter = 'BU' # デフォルト
+        limit_col_letter = 'BU'
         for i, h in enumerate(headers):
             if h == '残回数':
-                # 列番号(1始まり)から列のアルファベットに変換（簡易版）
                 if i < 26: limit_col_letter = chr(65 + i)
                 else: limit_col_letter = chr(64 + (i // 26)) + chr(65 + (i % 26))
                 break
@@ -261,10 +169,9 @@ def consume_radar_limit(line_id):
         target_row_idx = -1
         current_limit = 3
         
-        # 下から検索して最新のユーザー行を見つける
         for i in range(len(all_data)-1, 0, -1):
             if len(all_data[i]) > 0 and all_data[i][0] == line_id:
-                target_row_idx = i + 1 # スプレッドシートは1行目から始まるため+1
+                target_row_idx = i + 1
                 col_idx = headers.index('残回数') if '残回数' in headers else 72
                 if len(all_data[i]) > col_idx:
                     try: current_limit = int(all_data[i][col_idx])
@@ -282,236 +189,117 @@ def consume_radar_limit(line_id):
         return False
 
 # ==========================================
-# 対人関係レーダー用：ターゲット算命学計算＆プロンプトエンジン
+# 算命学計算＆プロンプトエンジン
 # ==========================================
 def calculate_sanmeigaku(year, month, day, time_str):
-    """極秘レポート用の算命学ハイブリッドエンジン（西方星の追加・出生時間の透明化）"""
-    target_date = datetime.date(year, month, day)
-    elapsed = (target_date - datetime.date(1900, 1, 1)).days
-    day_kanshi_num = (10 + elapsed) % 60 + 1
-    day_stem = (day_kanshi_num - 1) % 10 + 1
-    day_branch = (day_kanshi_num - 1) % 12 + 1
-    
-    stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
-    branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
-    nikkanshi = stems_str[day_stem] + branches_str[day_branch]
-    
-    tenchusatsu_map = {0: "戌亥", 2: "申酉", 4: "午未", 6: "辰巳", 8: "寅卯", 10: "子丑"}
-    diff = (day_branch - day_stem) % 12
-    tenchusatsu = tenchusatsu_map.get(diff, "")
-    
-    solar_m = month if day >= 5 else month - 1
-    solar_y = year
-    if solar_m == 0:
-        solar_m = 12
-        solar_y -= 1
-    if solar_m == 1:
-        solar_y -= 1
-    
-    month_branch = (solar_m + 1) % 12
-    if month_branch == 0: month_branch = 12
-    year_branch = (solar_y - 3) % 12
-    if year_branch == 0: year_branch = 12
-    
-    hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
-    month_hidden_stem = hon_gen_map[month_branch]
-    
-    me_el = (day_stem - 1) // 2
-    other_el = (month_hidden_stem - 1) // 2
-    rel = (other_el - me_el) % 5
-    same_parity = (day_stem % 2) == (month_hidden_stem % 2)
-    
-    stars_matrix = [
-        ["貫索星", "石門星"], ["鳳閣星", "調舒星"], ["禄存星", "司禄星"],
-        ["車騎星", "牽牛星"], ["龍高星", "玉堂星"]
-    ]
-    main_star = stars_matrix[rel][0 if same_parity else 1]
-    
-    # ▼ 追加：西方星（恋愛・家庭の顔）の算出
-    day_hidden_stem = hon_gen_map[day_branch]
-    d_other_el = (day_hidden_stem - 1) // 2
-    d_rel = (d_other_el - me_el) % 5
-    d_same_parity = (day_stem % 2) == (day_hidden_stem % 2)
-    west_star = stars_matrix[d_rel][0 if d_same_parity else 1]
-    
-    star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
-    chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
-
-    def get_12star(target_branch):
-        if day_stem % 2 != 0: offset = (target_branch - chosei_map[day_stem]) % 12
-        else: offset = (chosei_map[day_stem] - target_branch) % 12
-        idx = (2 + offset) % 12
-        return star_names[idx]
+    try:
+        target_date = datetime.date(year, month, day)
+        elapsed = (target_date - datetime.date(1900, 1, 1)).days
+        day_kanshi_num = (10 + elapsed) % 60 + 1
+        day_stem = (day_kanshi_num - 1) % 10 + 1
+        day_branch = (day_kanshi_num - 1) % 12 + 1
         
-    shonen = get_12star(year_branch)
-    chunen = get_12star(month_branch)
-    bannen = get_12star(day_branch)
+        stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+        branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+        nikkanshi = stems_str[day_stem] + branches_str[day_branch]
+        
+        tenchusatsu_map = {0: "戌亥", 2: "申酉", 4: "午未", 6: "辰巳", 8: "寅卯", 10: "子丑"}
+        diff = (day_branch - day_stem) % 12
+        tenchusatsu = tenchusatsu_map.get(diff, "")
+        
+        solar_m = month if day >= 5 else month - 1
+        solar_y = year
+        if solar_m == 0:
+            solar_m = 12
+            solar_y -= 1
+        if solar_m == 1:
+            solar_y -= 1
+        
+        month_branch = (solar_m + 1) % 12
+        if month_branch == 0: month_branch = 12
+        year_branch = (solar_y - 3) % 12
+        if year_branch == 0: year_branch = 12
+        
+        hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
+        month_hidden_stem = hon_gen_map[month_branch]
+        
+        me_el = (day_stem - 1) // 2
+        other_el = (month_hidden_stem - 1) // 2
+        rel = (other_el - me_el) % 5
+        same_parity = (day_stem % 2) == (month_hidden_stem % 2)
+        
+        stars_matrix = [
+            ["貫索星", "石門星"], ["鳳閣星", "調舒星"], ["禄存星", "司禄星"],
+            ["車騎星", "牽牛星"], ["龍高星", "玉堂星"]
+        ]
+        main_star = stars_matrix[rel][0 if same_parity else 1]
+        
+        # 西方星の追加
+        day_hidden_stem = hon_gen_map[day_branch]
+        d_other_el = (day_hidden_stem - 1) // 2
+        d_rel = (d_other_el - me_el) % 5
+        d_same_parity = (day_stem % 2) == (day_hidden_stem % 2)
+        west_star = stars_matrix[d_rel][0 if d_same_parity else 1]
+        
+        star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
+        chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
 
-    # ▼ 修正：出生時間が不明な場合の処理を透明化
-    if not time_str or time_str.strip() == "":
-        jikanshi = "不明"
-        saibannen = "不明"
-    else:
-        try:
-            clean_time = time_str.replace("：", ":").replace(" ", "").strip()
-            if ":" in clean_time: hour = int(clean_time.split(':')[0])
-            elif len(clean_time) == 4 and clean_time.isdigit(): hour = int(clean_time[:2])
-            elif len(clean_time) == 3 and clean_time.isdigit(): hour = int(clean_time[:1])
-            else: hour = 12
+        def get_12star(target_branch):
+            if day_stem % 2 != 0: offset = (target_branch - chosei_map[day_stem]) % 12
+            else: offset = (chosei_map[day_stem] - target_branch) % 12
+            return star_names[(2 + offset) % 12]
             
-            time_branch = ((hour + 1) // 2) % 12 + 1
-            goso_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
-            base_time_stem = goso_map[day_stem]
-            time_stem = (base_time_stem + time_branch - 2) % 10 + 1
-            jikanshi = stems_str[time_stem] + branches_str[time_branch]
-            saibannen = get_12star(time_branch)
-        except Exception:
+        shonen = get_12star(year_branch)
+        chunen = get_12star(month_branch)
+        bannen = get_12star(day_branch)
+
+        # 出生時間の透明化
+        if not time_str or time_str.strip() == "":
             jikanshi = "不明"
             saibannen = "不明"
-        
-    return {
-        "日干支": nikkanshi, "天中殺": tenchusatsu, 
-        "主星": main_star, "西方星": west_star,
-        "初年": shonen, "中年": chunen, "晩年": bannen,
-        "時干支": jikanshi, "最晩年": saibannen
-    }
+        else:
+            try:
+                clean_time = time_str.replace("：", ":").replace(" ", "").strip()
+                if ":" in clean_time: hour = int(clean_time.split(':')[0])
+                elif len(clean_time) == 4 and clean_time.isdigit(): hour = int(clean_time[:2])
+                elif len(clean_time) == 3 and clean_time.isdigit(): hour = int(clean_time[:1])
+                else: hour = 12
+                
+                time_branch = ((hour + 1) // 2) % 12 + 1
+                goso_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
+                base_time_stem = goso_map[day_stem]
+                time_stem = (base_time_stem + time_branch - 2) % 10 + 1
+                jikanshi = stems_str[time_stem] + branches_str[time_branch]
+                saibannen = get_12star(time_branch)
+            except Exception:
+                jikanshi = "不明"
+                saibannen = "不明"
+            
+        return {
+            "日干支": nikkanshi, "天中殺": tenchusatsu, 
+            "主星": main_star, "西方星": west_star,
+            "初年": shonen, "中年": chunen, "晩年": bannen,
+            "時干支": jikanshi, "最晩年": saibannen
+        }
+    except Exception as e:
+        print(f"算命学エンジンエラー: {e}")
+        return {
+            "日干支": "不明", "天中殺": "不明", "主星": "不明", "西方星": "不明",
+            "初年": "不明", "中年": "不明", "晩年": "不明", "時干支": "不明", "最晩年": "不明"
+        }
 
-def generate_radar_prompt(target_name, relation, answers_dict, free_text, target_san, user_main_star):
-    """SJTの回答と算命学を統合し、バイアスを排除した最強のプロファイリングプロンプトを生成"""
-    
-    sjt_text = ""
-    for q in RADAR_QUESTIONS:
-        ans_idx = answers_dict.get(q["id"], 3) # デフォルトは「わからない」
-        ans_str = q["options"][ans_idx]
-        sjt_text += f"- {q['text']}\n  回答: {ans_str}\n"
-        
-    prompt = f"""あなたは元FBIプロファイラーであり、日本一の戦略的ライフ・コンサルタントです。
-ユーザーが入力した「行動データ」と「算命学の宿命データ」から、相手の真の姿をプロファイリングしてください。
+def calculate_target_sanmeigaku(dob_str):
+    try:
+        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d").date()
+        year = valid_date.year
+        month = valid_date.month
+        day = valid_date.day
+        return calculate_sanmeigaku(year, month, day, "")
+    except Exception as e:
+        print(f"ターゲット算命学計算エラー: {e}")
+        return None
 
-【ターゲット情報】
-名前: {target_name}
-あなたとの関係: {relation}
-算命学データ: 主星(社会の顔)={target_san['主星']}, 西方星(恋愛・家庭の顔)={target_san['西方星']}, 天中殺={target_san['天中殺']}
-
-【ユーザー情報】
-ユーザー自身の主星: {user_main_star}
-
-【行動観察データ（SJT）】
-{sjt_text}
-
-【自由記述（エピソード）】
-{free_text if free_text else '特になし'}
-
-【絶対遵守のシステムルール】
-1. 呼称のルール: 文章内で「ターゲット」や「彼/彼女」という言葉は絶対に使用せず、必ず「{target_name}さん」と呼んでください。
-2. 推測語の完全排除: 「〜の傾向があります」「〜かもしれません」「〜のようです」は絶対に使用禁止。すべて「〜です」「〜します」「〜を嫌います」と断言してください。
-3. 抽象的表現の禁止: 「論理的です」などの薄い言葉は禁止。「無駄な世間話を嫌い、結論を急ぎます」など、生々しい具体的な行動描写で出力してください。
-4. 絵文字・#記号の禁止: 絵文字や、#、* などのリスト記号は絶対に出力しないでください。
-5. 専門用語の禁止: 算命学の「西方星」「車騎星」などの用語は一切使わず、現代の日常語に翻訳してください。
-
-【出力構成】
-※見出しは必ず以下の7つを使い、文字を ** （アスタリスク2つ）で囲んで「太文字」にしてください。
-
-**【1. 本性】表の顔と、裏に隠された本当の性格**
-[算命学の主星とSJTから、基本スペックと無意識の行動原理を断言する]
-
-**【2. 仕事・適性】職場で見せる顔と、プロフェッショナルとしての行動原理**
-[プレッシャーへの耐性や、仕事において何を重視するタイプか、どうすれば評価されるかを解説]
-
-**【3. 友人・人脈】交友関係の築き方と、心を許す相手の条件**
-[広く浅くか、狭く深くか。プライベートでどういう人間を側に置きたがるかを解説]
-
-**【4. 恋愛・執着】親密になった時だけ見せる愛情のサインと危うさ**
-[算命学の西方星から、パーソナルスペースに入った瞬間にどう豹変するか、依存・回避のクセを解説]
-
-**【5. 地雷】絶対に触れてはいけないタブーと、ストレス時の攻撃パターン**
-[トラブル時の反応から、何にキレるのか、怒った時に「無視」か「攻撃」か「逃避」のどれを選ぶかを警告]
-
-**【6. 力関係】あの人は「あなた」をどう見て、どう扱おうとしているか**
-[会話の主導権やマウントの有無から、現在の二人の力関係と相手のスタンスを客観視させる]
-
-**【7. 完全攻略】明日から使える、あの人を動かす3つの具体策**
-[必ず「①」「②」「③」と番号を振り、3つ出力してください。]
-[【重要ルール】「具体的なアクション：」「なぜ有効か：」「どうなるか：」といった見出しや箇条書きは絶対に書かないでください。代わりに、セリフ（または行動）、その理由、そしてどういう結果になるのか（ベネフィット）を、ひと繋がりの自然で滑らかな「1つの段落（文章）」として記述してください。]
-[出力例: ① 「これ、結論から言うとね」と前置きしてから話しかけてみてください。なぜなら、{target_name}さんは合理性を重んじて時間を奪われることを極端に嫌うからです。これをすることで「この人は話が早くて有能だ」と無意識に格付けされ、あなたの提案がスムーズに通るようになります。]
-"""
-    return prompt
-
-# ==========================================
-# セッションステートの初期化
-# ==========================================
-if "step" not in st.session_state:
-    st.session_state.step = "user_info"
-if "current_q" not in st.session_state:
-    st.session_state.current_q = 1
-if "answers" not in st.session_state:
-    st.session_state.answers = {}
-if "max_q" not in st.session_state:
-    st.session_state.max_q = 30
-if "user_data" not in st.session_state:
-    st.session_state.user_data = {}
-if "line_id" not in st.session_state:
-    st.session_state.line_id = None
-if "line_name" not in st.session_state:
-    st.session_state.line_name = None
-if "stripe_id" not in st.session_state:
-    st.session_state.stripe_id = ""
-if "secret_report" not in st.session_state:
-    st.session_state.secret_report = ""
-
-# ==========================================
-# ロジック・コールバック関数群
-# ==========================================
-def calculate_sanmeigaku(year, month, day, time_str):
-    if not time_str: time_str = "12:00"
-    target_date = datetime.date(year, month, day)
-    elapsed = (target_date - datetime.date(1900, 1, 1)).days
-    day_kanshi_num = (10 + elapsed) % 60 + 1
-    day_stem = (day_kanshi_num - 1) % 10 + 1
-    day_branch = (day_kanshi_num - 1) % 12 + 1
-    
-    stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
-    branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
-    nikkanshi = stems_str[day_stem] + branches_str[day_branch]
-    
-    tenchusatsu_map = {0: "戌亥", 2: "申酉", 4: "午未", 6: "辰巳", 8: "寅卯", 10: "子丑"}
-    diff = (day_branch - day_stem) % 12
-    tenchusatsu = tenchusatsu_map.get(diff, "")
-    
-    solar_m = month if day >= 5 else month - 1
-    solar_y = year
-    if solar_m == 0:
-        solar_m = 12
-        solar_y -= 1
-    if solar_m == 1:
-        solar_y -= 1
-    
-    month_branch = (solar_m + 1) % 12
-    if month_branch == 0: month_branch = 12
-    year_branch = (solar_y - 3) % 12
-    if year_branch == 0: year_branch = 12
-    
-    hon_gen_map = {1:10, 2:6, 3:1, 4:2, 5:5, 6:3, 7:4, 8:6, 9:7, 10:8, 11:5, 12:9}
-    month_hidden_stem = hon_gen_map[month_branch]
-    
-    me_el = (day_stem - 1) // 2
-    other_el = (month_hidden_stem - 1) // 2
-    rel = (other_el - me_el) % 5
-    same_parity = (day_stem % 2) == (month_hidden_stem % 2)
-    
-    stars_matrix = [
-        ["貫索星", "石門星"], ["鳳閣星", "調舒星"], ["禄存星", "司禄星"],
-        ["車騎星", "牽牛星"], ["龍高星", "玉堂星"]
-    ]
-    main_star = stars_matrix[rel][0 if same_parity else 1]
-    
-    star_names = ["天報星", "天印星", "天貴星", "天恍星", "天南星", "天禄星", "天将星", "天堂星", "天胡星", "天極星", "天庫星", "天馳星"]
-    chosei_map = {1:12, 2:7, 3:3, 4:10, 5:3, 6:10, 7:6, 8:1, 9:9, 10:4}
-
-    #（カレンダー用・干支計算エンジン）
 def get_date_kanshi(target_date):
-    """指定した日付の『日・月・年』の干支を自動計算する関数"""
-    # 日干支の計算
     elapsed = (target_date - datetime.date(1900, 1, 1)).days
     day_kanshi_num = (10 + elapsed) % 60 + 1
     day_stem = (day_kanshi_num - 1) % 10 + 1
@@ -520,7 +308,6 @@ def get_date_kanshi(target_date):
     stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
     branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
     
-    # 月干支・年干支の計算（簡易節入り：毎月5日基準）
     solar_m = target_date.month if target_date.day >= 5 else target_date.month - 1
     solar_y = target_date.year
     if solar_m == 0:
@@ -534,7 +321,6 @@ def get_date_kanshi(target_date):
     year_branch = (solar_y - 3) % 12
     if year_branch == 0: year_branch = 12
     
-    # 年と月の十干
     month_stem = ((solar_y % 10) * 2 + solar_m) % 10
     if month_stem == 0: month_stem = 10
     year_stem = (solar_y - 3) % 10
@@ -544,19 +330,13 @@ def get_date_kanshi(target_date):
         "day": stems_str[day_stem] + branches_str[day_branch],
         "month": stems_str[month_stem] + branches_str[month_branch],
         "year": stems_str[year_stem] + branches_str[year_branch],
-        "day_stem_idx": day_stem,
-        "day_branch_idx": day_branch,
-        # ▼ この2行を追加 ▼
-        "month_stem_idx": month_stem,
-        "month_branch_idx": month_branch,
-        "year_stem_idx": year_stem,
-        "year_branch_idx": year_branch
+        "day_stem_idx": day_stem, "day_branch_idx": day_branch,
+        "month_stem_idx": month_stem, "month_branch_idx": month_branch,
+        "year_stem_idx": year_stem, "year_branch_idx": year_branch
     }
 
 def calculate_period_score(user_nikkanshi, target_date, period_type="day"):
-    """ユーザーの日干支と対象の干支（日・月・年）を比較し、1〜10点のスコアを算出する"""
     target = get_date_kanshi(target_date)
-    
     stems_str = ["", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
     branches_str = ["", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
     
@@ -565,7 +345,6 @@ def calculate_period_score(user_nikkanshi, target_date, period_type="day"):
     user_stem = stems_str.index(user_stem_str)
     user_branch = branches_str.index(user_branch_str)
     
-    # 期間に応じて比較対象を切り替え
     if period_type == "day":
         target_stem = target["day_stem_idx"]
         target_branch = target["day_branch_idx"]
@@ -619,7 +398,6 @@ def calculate_period_score(user_nikkanshi, target_date, period_type="day"):
         ["車騎星(攻撃/前進)", "牽牛星(責任/名誉)"],
         ["龍高星(変化/忍耐)", "玉堂星(伝統/静寂)"]
     ]
-    
     star_name = stars_matrix[rel][0 if same_parity else 1]
     
     if "車騎星" in star_name or "禄存星" in star_name: mind_score = 5; mind_reason = star_name
@@ -632,16 +410,16 @@ def calculate_period_score(user_nikkanshi, target_date, period_type="day"):
     safe_score = max(1, min(10, total_score))
     
     action_dict = {
-        10: {"sym": "🌈", "title": "超幸運の波", "desc": "限界を超えて物事が予想以上の規模で大きく広がる奇跡的なタイミングです。普段なら届かない目標にも手が届く、異次元の追い風が吹いています。", "points": ["限界を決めずにスケールの大きな目標を立てる", "直感を信じて、普段なら躊躇する大勝負に出る", "周囲を巻き込みながら、リーダーシップを発揮する"]},
-        9: {"sym": "⭐️", "title": "最高にツイてる波", "desc": "パズルのピースがピタッとハマるように物事が計画通りに進み、周囲から高く評価されるでしょう。大事な契約や決断に最適なタイミングです。", "points": ["夢の実現に向けて思い切って行動する", "自分の意見や感覚を大事にする", "ここで決めた目標や内容は、簡単には諦めない"]},
-        8: {"sym": "🔴", "title": "迷わず動く波", "desc": "心の奥底から情熱が湧き上がり、スピーディーに物事を前進させられる時です。行動量がそのまま結果に直結するため、立ち止まらないことが鍵です。", "points": ["頭で考える前に、まずは第一歩を踏み出す", "自分の思いやアイデアを積極的に発信する", "多少の失敗は気にせず、スピードを最優先する"]},
-        7: {"sym": "⚪️", "title": "思い切って決断する波", "desc": "これまでの曖昧な状態に白黒をつけ、新しいステージへ進むためのエネルギーに満ちています。重要な取捨選択を行い、覚悟を決めるのに最適な時です。", "points": ["先延ばしにしていた問題に明確な決断を下す", "不要な人間関係や悪習慣を思い切って断ち切る", "自分の信念を曲げず、毅然とした態度を貫く"]},
-        6: {"sym": "🟡", "title": "基礎を固める波", "desc": "派手な動きよりも、足元を固めて実力を蓄えることで運気が安定します。あなたの誠実さやサービス精神が周囲の信頼を集め、豊かさを引き寄せるでしょう。", "points": ["新しいことよりも、今あるタスクを丁寧に仕上げる", "周囲への感謝や手助けを惜しまない", "資産運用や貯蓄など、現実的な管理を見直す"]},
-        5: {"sym": "🟢", "title": "味方が増える波", "desc": "あなたの魅力が自然と伝わり、周囲との調和が生まれやすい時です。新しい人脈作りや、チームでの協力作業において、素晴らしい相乗効果を発揮できるでしょう。", "points": ["積極的に人と会い、コミュニケーションを楽しむ", "困っている人がいれば、損得抜きで手を差し伸べる", "新しいコミュニティや学びの場に参加してみる"]},
-        4: {"sym": "🔵", "title": "頭の中を整理する波", "desc": "外に向かって動くよりも、内省し、知識を吸収することで運気が研ぎ澄まされます。柔軟な思考が生まれやすいため、計画の練り直しや軌道修正にぴったりです。", "points": ["一人の時間を確保し、静かに自分と向き合う", "読書や勉強などで、新しい知識をインプットする", "現状のやり方に固執せず、柔軟な視点を取り入れる"]},
-        3: {"sym": "🟪", "title": "無理をしない波", "desc": "思い通りに進まないことや、人間関係での小さな摩擦が起きやすい調整期です。力技で解決しようとせず、相手に譲る余裕を持つことでトラブルを回避できます。", "points": ["スケジュールに余白を持たせ、時間に余裕を行動する", "意見が対立した時は、一歩引いて相手を立てる", "ストレスを感じたら、無理せず早めに休息をとる"]},
-        2: {"sym": "⬜️", "title": "不要なものを手放す波", "desc": "物事がぶつかり合い、変化を余儀なくされる時です。これはネガティブなことではなく、新しい運気を迎え入れるために不要なものを強制的に手放す重要な儀式です。", "points": ["執着している過去の栄光やネガティブな感情を捨てる", "部屋の掃除やデジタルデータの断捨離を徹底する", "予定が急に変わっても、焦らず流れに身を任せる"]},
-        1: {"sym": "⚫️", "title": "心と体を休ませる波", "desc": "現実の枠組みが外れ、コントロールが効かない「完全な休息とリセット」の期間です。ここで無理をして動くと空回りするため、エネルギーの充電に専念してください。", "points": ["新しい挑戦、大きな決断、高価な買い物は避ける", "損得勘定を捨て、ボランティアや人のために尽くす", "スマホやPCから離れ、たっぷりと睡眠をとる"]}
+        10: {"sym": "🌈", "title": "超幸運の波", "desc": "限界を超えて物事が予想以上の規模で大きく広がる奇跡的なタイミングです。", "points": ["限界を決めずにスケールの大きな目標を立てる", "直感を信じて、普段なら躊躇する大勝負に出る", "周囲を巻き込みながら、リーダーシップを発揮する"]},
+        9: {"sym": "⭐️", "title": "最高にツイてる波", "desc": "パズルのピースがピタッとハマるように物事が計画通りに進みます。", "points": ["夢の実現に向けて思い切って行動する", "自分の意見や感覚を大事にする", "ここで決めた目標や内容は、簡単には諦めない"]},
+        8: {"sym": "🔴", "title": "迷わず動く波", "desc": "心の奥底から情熱が湧き上がり、スピーディーに物事を前進させられる時です。", "points": ["頭で考える前に、まずは第一歩を踏み出す", "自分の思いやアイデアを積極的に発信する", "多少の失敗は気にせず、スピードを最優先する"]},
+        7: {"sym": "⚪️", "title": "思い切って決断する波", "desc": "これまでの曖昧な状態に白黒をつけ、新しいステージへ進むためのエネルギーに満ちています。", "points": ["先延ばしにしていた問題に明確な決断を下す", "不要な人間関係や悪習慣を思い切って断ち切る", "自分の信念を曲げず、毅然とした態度を貫く"]},
+        6: {"sym": "🟡", "title": "基礎を固める波", "desc": "派手な動きよりも、足元を固めて実力を蓄えることで運気が安定します。", "points": ["新しいことよりも、今あるタスクを丁寧に仕上げる", "周囲への感謝や手助けを惜しまない", "資産運用や貯蓄など、現実的な管理を見直す"]},
+        5: {"sym": "🟢", "title": "味方が増える波", "desc": "あなたの魅力が自然と伝わり、周囲との調和が生まれやすい時です。", "points": ["積極的に人と会い、コミュニケーションを楽しむ", "困っている人がいれば、損得抜きで手を差し伸べる", "新しいコミュニティや学びの場に参加してみる"]},
+        4: {"sym": "🔵", "title": "頭の中を整理する波", "desc": "外に向かって動くよりも、内省し、知識を吸収することで運気が研ぎ澄まされます。", "points": ["一人の時間を確保し、静かに自分と向き合う", "読書や勉強などで、新しい知識をインプットする", "現状のやり方に固執せず、柔軟な視点を取り入れる"]},
+        3: {"sym": "🟪", "title": "無理をしない波", "desc": "思い通りに進まないことや、人間関係での小さな摩擦が起きやすい調整期です。", "points": ["スケジュールに余白を持たせ、時間に余裕を行動する", "意見が対立した時は、一歩引いて相手を立てる", "ストレスを感じたら、無理せず早めに休息をとる"]},
+        2: {"sym": "⬜️", "title": "不要なものを手放す波", "desc": "物事がぶつかり合い、変化を余儀なくされる時です。不要なものを捨てる儀式です。", "points": ["執着している過去の栄光やネガティブな感情を捨てる", "部屋の掃除やデジタルデータの断捨離を徹底する", "予定が急に変わっても、焦らず流れに身を任せる"]},
+        1: {"sym": "⚫️", "title": "心と体を休ませる波", "desc": "現実の枠組みが外れ、コントロールが効かない「完全な休息とリセット」の期間です。", "points": ["新しい挑戦、大きな決断、高価な買い物は避ける", "損得勘定を捨て、ボランティアや人のために尽くす", "スマホやPCから離れ、たっぷりと睡眠をとる"]}
     }
     action_data = action_dict[safe_score]
         
@@ -652,12 +430,10 @@ def calculate_period_score(user_nikkanshi, target_date, period_type="day"):
     }
 
 def get_rule_based_stars(score, mind_reason):
-    """AIを使わず、スコアと星の属性から瞬時に31日分の評価を自動生成する関数"""
     if score >= 9: base_star = "★★★"
     elif score >= 5: base_star = "★★☆"
     else: base_star = "★☆☆"
         
-    # 特性に応じた星評価の自動調整
     stars = {
         "総合運": "★★★" if score >= 8 else ("★★☆" if score >= 4 else "★☆☆"),
         "人間関係": "★★★" if "石門" in mind_reason or "禄存" in mind_reason else base_star,
@@ -667,10 +443,7 @@ def get_rule_based_stars(score, mind_reason):
         "健康運": "★★★" if score >= 5 else "★☆☆",
         "家族親子": "★★★" if "玉堂" in mind_reason or "司禄" in mind_reason else base_star
     }
-    # スコアが極端に低い場合はすべて★1に制限
-    if score <= 2:
-        stars = {k: "★☆☆" for k in stars}
-        
+    if score <= 2: stars = {k: "★☆☆" for k in stars}
     return stars
 
 def calculate_scores():
@@ -687,169 +460,7 @@ def calculate_scores():
         scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
     return scores
 
-def generate_daily_advice(today_res):
-    """
-    算命学の計算結果（today_res）をAIに渡し、
-    専門用語を一切使わない現代の言葉で、7項目のアドバイスを生成する
-    """
-    prompt = f"""
-    あなたは、日本で最も予約が取れない戦略的ライフ・コンサルタントです。
-    以下のデータをもとに、今日のユーザーへのアドバイスを作成してください。
-    [スコア: {today_res['score']}点, シンボル: {today_res['symbol']}, 環境: {today_res['env_reason']}, 精神: {today_res['mind_reason']}]
-
-    # 【絶対遵守の出力ルール】
-    1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
-    2. モチベーションを上げる力強いトーンで書くこと。
-    3. 7つの項目（総合、人間関係、仕事、恋愛結婚、金運、健康、家族）について、必ず【3段階評価（★☆☆、★★☆、★★★ のいずれか）】を付けてください。※絶対に5段階評価（★★★★★等）や4段階評価は使用しないでください。
-    4. 【重要】ユーザーが行動をイメージしやすいように「例えば、車などの大きな契約は避けてください」といった『具体的なアクション例』を必ず各項目に入れてください。
-
-    出力はマークダウン形式で「## 今日の運命の波（総合解説）」と「## 7つの指針と詳細解説」の構成にしてください。
-
-    ## 今日の運命の波（総合解説）
-    今日のスコアとシンボルの意味を現代の言葉でキャッチーに解説し、今日1日をどう過ごすべきか総括してください。
-
-    ## 7つの指針と詳細解説
-    ### 1. 総合運 [評価]
-    [解説]
-    ### 2. 人間関係運 [評価]
-    [解説]
-    ### 3. 仕事運 [評価]
-    [解説]
-    ### 4. 恋愛＆結婚運 [評価]
-    [解説]
-    ### 5. 金運（契約・買い物） [評価]
-    [解説]
-    ### 6. 健康運 [評価]
-    [解説]
-    ### 7. 家族・親子運 [評価]
-    [解説]
-    """
-
-    try:
-        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        print(f"OpenAI API Error (Daily Advice): {e}")
-        return "⚠️ 現在、AIアドバイザーが混み合っております。少し時間をおいて再度お試しください。"
-    
-    def get_12star(target_branch):
-        if day_stem % 2 != 0:
-            offset = (target_branch - chosei_map[day_stem]) % 12
-        else:
-            offset = (chosei_map[day_stem] - target_branch) % 12
-        idx = (2 + offset) % 12
-        return star_names[idx]
-        
-    shonen = get_12star(year_branch)
-    chunen = get_12star(month_branch)
-    bannen = get_12star(day_branch)
-
-    try:
-        clean_time = time_str.replace("：", ":").replace(" ", "").strip()
-        if ":" in clean_time: hour = int(clean_time.split(':')[0])
-        elif len(clean_time) == 4 and clean_time.isdigit(): hour = int(clean_time[:2])
-        elif len(clean_time) == 3 and clean_time.isdigit(): hour = int(clean_time[:1])
-        else: hour = 12
-    except Exception:
-        hour = 12
-        
-    time_branch = ((hour + 1) // 2) % 12 + 1
-    goso_map = {1: 1, 6: 1, 2: 3, 7: 3, 3: 5, 8: 5, 4: 7, 9: 7, 5: 9, 10: 9}
-    base_time_stem = goso_map[day_stem]
-    time_stem = (base_time_stem + time_branch - 2) % 10 + 1
-    jikanshi = stems_str[time_stem] + branches_str[time_branch]
-    saibannen = get_12star(time_branch)
-    
-    return {
-        "日干支": nikkanshi, "天中殺": tenchusatsu, "主星": main_star,
-        "初年": shonen, "中年": chunen, "晩年": bannen,
-        "時干支": jikanshi, "最晩年": saibannen
-    }
-
-def start_test(line_name, line_id, dob_str, btime, gender):
-    if not dob_str.isdigit() or len(dob_str) != 8:
-        st.error("⚠️ 生年月日は8桁の半角数字で入力してください")
-        return
-    try:
-        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
-        current_year = datetime.date.today().year
-        if not (1900 <= valid_date.year <= current_year):
-            st.error(f"⚠️ 正しい年代の生年月日を入力してください")
-            return
-        formatted_dob = valid_date.strftime("%Y/%m/%d")
-    except ValueError:
-        st.error("⚠️ 存在しない日付です。")
-        return
-
-    st.session_state.user_data = {
-        "User_ID": line_name, "LINE_ID": line_id,
-        "DOB": formatted_dob, "Birth_Time": btime.strip() if btime else "", "Gender": gender
-    }
-    st.session_state.step = "test"
-
-def handle_answer(q_id, answer_value):
-    if st.session_state.current_q != q_id: return
-    st.session_state.answers[q_id] = answer_value
-    if st.session_state.current_q == 30:
-        ans_values = list(st.session_state.answers.values())
-        variance = statistics.variance(ans_values) if len(ans_values) > 1 else 0
-        if variance < 0.8: st.session_state.max_q = 50
-        else:
-            finish_test()
-            return
-    if st.session_state.current_q >= st.session_state.max_q: finish_test()
-    else: st.session_state.current_q += 1
-
-def go_back():
-    if st.session_state.current_q > 1: st.session_state.current_q -= 1
-
-def finish_test():
-    st.session_state.step = "processing"
-    
-def calculate_scores():
-    scores = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
-    counts = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
-    for q_id, val in st.session_state.answers.items():
-        question = QUESTIONS[q_id - 1]
-        trait = question["trait"]
-        is_reverse = question["is_reverse"]
-        actual_val = 6 - val if is_reverse else val
-        scores[trait] += actual_val
-        counts[trait] += 1
-    for t in scores:
-        scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
-    return scores
-    
-def calculate_scores():
-    scores = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
-    counts = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
-    for q_id, val in st.session_state.answers.items():
-        question = QUESTIONS[q_id - 1]
-        trait = question["trait"]
-        is_reverse = question["is_reverse"]
-        actual_val = 6 - val if is_reverse else val
-        scores[trait] += actual_val
-        counts[trait] += 1
-    for t in scores:
-        scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
-    return scores
-    
 def generate_report_prompt(sanmeigaku, scores, user_data):
-    """
-    極秘レポート生成エンジン
-    元の構成（健康・5大欲求など）を完全維持しつつ、ユーザー属性をサイレントに反映。
-    公開部分と3つの極秘ライブラリ（Lv.2, 5, 10で解禁）を生成する。
-    """
-    
-    # 性別によるサイレント・チューニングの指示
     gender = user_data.get("Gender", "回答しない")
     gender_instruction = ""
     if gender in ["男性", "女性"]:
@@ -883,7 +494,7 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 ・ユーザーが最も知りたい部分なので、決して要約せず、ユーザーの「悩み」や「職業」の文脈を反映した具体例や例え話を交えて【詳細に、たっぷりと】語ってください。
 ・欠点は「伸びしろ」や「愛嬌」としてマイルドかつ面白く伝えること。
 ・出生時間が不明な場合、最晩年（人生の最終目標）の解説において「出生時間が不明なため、一部推測を含みますが〜」と正直に一言添えてください。
-・【重要】出力は、前半の「公開レポート」と、後半の「3つの極秘ライブラリ」に分けて出力します。以下の構成と指定のHTMLコメントタグ(``など)を必ず守ってください。
+・【重要】出力は、前半の「公開レポート」と、後半の「3つの極秘ライブラリ」に分けて出力します。以下の構成と指定のHTMLコメントタグ(など)を必ず守ってください。
 
 # 出力構成（以下のマークダウンと指定の順番通りに必ず出力してください）
 
@@ -951,12 +562,7 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 """
     return prompt
 
-#（AIによる専門用語排除・運勢解説生成エンジン）
 def generate_daily_advice(today_res):
-    """
-    算命学の計算結果（today_res）をAIに渡し、
-    専門用語を一切使わない現代の言葉で、7項目のアドバイスを生成する
-    """
     prompt = f"""
     あなたは、日本で最も予約が取れない戦略的ライフ・コンサルタントです。
     以下のデータをもとに、今日のユーザーへのアドバイスを作成してください。
@@ -965,7 +571,7 @@ def generate_daily_advice(today_res):
     # 【絶対遵守の出力ルール】
     1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
     2. モチベーションを上げる力強いトーンで書くこと。
-    3. 7つの項目（総合、人間関係、仕事、恋愛結婚、金運、健康、家族）について、必ず【3段階評価（★☆☆、★★☆、★★★ のいずれか）】を付けてください。※絶対に5段階評価（★★★★★等）や4段階評価は使用しないでください。
+    3. 7つの項目（総合、人間関係、仕事、恋愛結婚、金運、健康、家族）について、必ず【3段階評価（★☆☆、★★☆、★★★ のいずれか）】を付けてください。
     4. 【重要】ユーザーが行動をイメージしやすいように「例えば、車などの大きな契約は避けてください」といった『具体的なアクション例』を必ず各項目に入れてください。
 
     出力はマークダウン形式で「## 今日の運命の波（総合解説）」と「## 7つの指針と詳細解説」の構成にしてください。
@@ -989,7 +595,6 @@ def generate_daily_advice(today_res):
     ### 7. 家族・親子運 [評価]
     [解説]
     """
-
     try:
         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         response = openai_client.chat.completions.create(
@@ -1004,6 +609,65 @@ def generate_daily_advice(today_res):
     except Exception as e:
         print(f"OpenAI API Error (Daily Advice): {e}")
         return "⚠️ 現在、AIアドバイザーが混み合っております。少し時間をおいて再度お試しください。"
+
+def generate_radar_prompt(target_name, relation, answers_dict, free_text, target_san, user_main_star):
+    sjt_text = ""
+    for q in RADAR_QUESTIONS:
+        ans_idx = answers_dict.get(q["id"], 3)
+        ans_str = q["options"][ans_idx]
+        sjt_text += f"- {q['text']}\n  回答: {ans_str}\n"
+        
+    prompt = f"""あなたは元FBIプロファイラーであり、日本一の戦略的ライフ・コンサルタントです。
+ユーザーが入力した「行動データ」と「算命学の宿命データ」から、相手の真の姿をプロファイリングしてください。
+
+【ターゲット情報】
+名前: {target_name}
+あなたとの関係: {relation}
+算命学データ: 主星(社会の顔)={target_san['主星']}, 西方星(恋愛・家庭の顔)={target_san['西方星']}, 天中殺={target_san['天中殺']}
+
+【ユーザー情報】
+ユーザー自身の主星: {user_main_star}
+
+【行動観察データ（SJT）】
+{sjt_text}
+
+【自由記述（エピソード）】
+{free_text if free_text else '特になし'}
+
+【絶対遵守のシステムルール】
+1. 呼称のルール: 文章内で「ターゲット」や「彼/彼女」という言葉は絶対に使用せず、必ず「{target_name}さん」と呼んでください。
+2. 推測語の完全排除: 「〜の傾向があります」「〜かもしれません」「〜のようです」は絶対に使用禁止。すべて「〜です」「〜します」「〜を嫌います」と断言してください。
+3. 抽象的表現の禁止: 「論理的です」などの薄い言葉は禁止。「無駄な世間話を嫌い、結論を急ぎます」など、生々しい具体的な行動描写で出力してください。
+4. 絵文字・#記号の禁止: 絵文字や、#、* などのリスト記号は絶対に出力しないでください。
+5. 専門用語の禁止: 算命学の「西方星」「車騎星」などの用語は一切使わず、現代の日常語に翻訳してください。
+
+【出力構成】
+※見出しは必ず以下の7つを使い、文字を ** （アスタリスク2つ）で囲んで「太文字」にしてください。
+
+**【1. 本性】表の顔と、裏に隠された本当の性格**
+[算命学の主星とSJTから、基本スペックと無意識の行動原理を断言する]
+
+**【2. 仕事・適性】職場で見せる顔と、プロフェッショナルとしての行動原理**
+[プレッシャーへの耐性や、仕事において何を重視するタイプか、どうすれば評価されるかを解説]
+
+**【3. 友人・人脈】交友関係の築き方と、心を許す相手の条件**
+[広く浅くか、狭く深くか。プライベートでどういう人間を側に置きたがるかを解説]
+
+**【4. 恋愛・執着】親密になった時だけ見せる愛情のサインと危うさ**
+[算命学の西方星から、パーソナルスペースに入った瞬間にどう豹変するか、依存・回避のクセを解説]
+
+**【5. 地雷】絶対に触れてはいけないタブーと、ストレス時の攻撃パターン**
+[トラブル時の反応から、何にキレるのか、怒った時に「無視」か「攻撃」か「逃避」のどれを選ぶかを警告]
+
+**【6. 力関係】あの人は「あなた」をどう見て、どう扱おうとしているか**
+[会話の主導権やマウントの有無から、現在の二人の力関係と相手のスタンスを客観視させる]
+
+**【7. 完全攻略】明日から使える、あの人を動かす3つの具体策**
+[必ず「①」「②」「③」と番号を振り、3つ出力してください。]
+[【重要ルール】「具体的なアクション：」「なぜ有効か：」「どうなるか：」といった見出しや箇条書きは絶対に書かないでください。代わりに、セリフ（または行動）、その理由、そしてどういう結果になるのか（ベネフィット）を、ひと繋がりの自然で滑らかな「1つの段落（文章）」として記述してください。]
+[出力例: ① 「これ、結論から言うとね」と前置きしてから話しかけてみてください。なぜなら、{target_name}さんは合理性を重んじて時間を奪われることを極端に嫌うからです。これをすることで「この人は話が早くて有能だ」と無意識に格付けされ、あなたの提案がスムーズに通るようになります。]
+"""
+    return prompt
 
 def send_line_result(line_id, sanmeigaku, scores):
     if not line_id: return
@@ -1031,13 +695,18 @@ def save_to_spreadsheet():
         
         scores = calculate_scores()
         ud = st.session_state.user_data
-        y, m, d = map(int, ud["DOB"].split('/'))
         
-        sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
+        # 安全装置
+        if not ud or "DOB" not in ud:
+            st.error("セッションが切れました。最初からやり直してください。")
+            return False
+            
+        y, m, d = map(int, ud["DOB"].split('/'))
+        sanmeigaku = calculate_sanmeigaku(y, m, d, ud.get("Birth_Time", ""))
         stripe_id = st.session_state.get("stripe_id", "")
         
         row_data = [
-            ud["LINE_ID"], stripe_id, ud["User_ID"], ud["DOB"], ud["Birth_Time"], ud["Gender"],
+            ud["LINE_ID"], stripe_id, ud["User_ID"], ud["DOB"], ud.get("Birth_Time", ""), ud.get("Gender", ""),
             sanmeigaku["日干支"], sanmeigaku["天中殺"], sanmeigaku["主星"], sanmeigaku["初年"],
             sanmeigaku["中年"], sanmeigaku["晩年"], sanmeigaku["時干支"], sanmeigaku["最晩年"]
         ]
@@ -1053,7 +722,7 @@ def save_to_spreadsheet():
         try:
             openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o-mini", # コスト最適化版
                 messages=[
                     {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。"},
                     {"role": "user", "content": llm_prompt}
@@ -1064,7 +733,7 @@ def save_to_spreadsheet():
             st.session_state.secret_report = generated_report
         except Exception as e:
             st.error(f"【開発者向けエラー(OpenAI)】: {e}")
-            generated_report = "エラーが発生しました。"
+            generated_report = "AIの生成に失敗しました。"
             
         row_data.append(generated_report)
         sheet.append_row(row_data)
@@ -1075,13 +744,13 @@ def save_to_spreadsheet():
     except Exception as e:
         st.error(f"【開発者向けエラー(System)】: {e}")
         return False
+
 def get_user_status(line_id):
     try:
         creds_dict = st.secrets["gcp_service_account"]
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        
         sheet_url = st.secrets["spreadsheet_url"]
         premium_sheet = client.open_by_url(sheet_url).worksheet("シート1")
         all_data = premium_sheet.get_all_values()
@@ -1103,6 +772,73 @@ def get_user_status(line_id):
     except Exception as e:
         print(f"データベース接続エラー: {e}")
         return 0, "エラー"
+
+def start_test(line_name, line_id, dob_str, btime, gender, job_status, pain_points, free_goal):
+    if not dob_str.isdigit() or len(dob_str) != 8:
+        st.error("⚠️ 生年月日は8桁の半角数字で入力してください")
+        return
+    if not pain_points:
+        st.error("⚠️ フォーカスしたいテーマを少なくとも1つ選択してください")
+        return
+        
+    try:
+        valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
+        current_year = datetime.date.today().year
+        if not (1900 <= valid_date.year <= current_year):
+            st.error(f"⚠️ 正しい年代の生年月日を入力してください")
+            return
+        formatted_dob = valid_date.strftime("%Y/%m/%d")
+    except ValueError:
+        st.error("⚠️ 存在しない日付です。")
+        return
+
+    st.session_state.user_data = {
+        "User_ID": line_name, "LINE_ID": line_id,
+        "DOB": formatted_dob, "Birth_Time": btime.strip() if btime else "", "Gender": gender,
+        "Job": job_status, "Pains": ", ".join(pain_points), "Free_Text": free_goal
+    }
+    st.session_state.step = "test"
+
+def handle_answer(q_id, answer_value):
+    if st.session_state.current_q != q_id: return
+    st.session_state.answers[q_id] = answer_value
+    if st.session_state.current_q == 30:
+        ans_values = list(st.session_state.answers.values())
+        variance = statistics.variance(ans_values) if len(ans_values) > 1 else 0
+        if variance < 0.8: st.session_state.max_q = 50
+        else:
+            finish_test()
+            return
+    if st.session_state.current_q >= st.session_state.max_q: finish_test()
+    else: st.session_state.current_q += 1
+
+def go_back():
+    if st.session_state.current_q > 1: st.session_state.current_q -= 1
+
+def finish_test():
+    st.session_state.step = "processing"
+
+# ==========================================
+# セッションステートの初期化
+# ==========================================
+if "step" not in st.session_state:
+    st.session_state.step = "user_info"
+if "current_q" not in st.session_state:
+    st.session_state.current_q = 1
+if "answers" not in st.session_state:
+    st.session_state.answers = {}
+if "max_q" not in st.session_state:
+    st.session_state.max_q = 30
+if "user_data" not in st.session_state:
+    st.session_state.user_data = {}
+if "line_id" not in st.session_state:
+    st.session_state.line_id = None
+if "line_name" not in st.session_state:
+    st.session_state.line_name = None
+if "stripe_id" not in st.session_state:
+    st.session_state.stripe_id = ""
+if "secret_report" not in st.session_state:
+    st.session_state.secret_report = ""
 
 # ==========================================
 # グローバルパラメータ処理
@@ -1169,8 +905,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             try:
                 creds_dict = st.secrets["gcp_service_account"]
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-                from oauth2client.service_account import ServiceAccountCredentials
-                import gspread
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
                 sheet_url = st.secrets["spreadsheet_url"]
@@ -1186,20 +920,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 if not user_nikkanshi:
                     st.warning("⚠️ 運勢を計算するためのデータが見つかりません。先に診断を完了してください。")
                 else:
-                    import datetime
-                    import pandas as pd
-                    import altair as alt
-                    import calendar
-                    
                     today = datetime.date.today()
                     current_year = today.year
                     
-                    # 画面をスッキリさせるための3つのサブタブ
                     t_day, t_month, t_year = st.tabs(["🌊 今日の波と今月", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
                     
-                    # ==========================================
-                    # 【サブタブ1】今日の波と今月のカレンダー
-                    # ==========================================
                     with t_day:
                         st.markdown("### 🗓 今日の運勢")
                         today_res = calculate_period_score(user_nikkanshi, today, period_type="day")
@@ -1267,20 +992,15 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.markdown(f"**{d_obj.month}月{d_obj.day}日（{weekdays[d_obj.weekday()]}） {data['シンボル']} (スコア: {data['運気スコア']})**")
                             st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
-                    # ==========================================
-                    # 【サブタブ2】月間グラフ（前年10月〜今年12月の15ヶ月）
-                    # ==========================================
                     with t_month:
                         st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
                         st.info("前年終盤からの流れと、今年の着地点を確認して長期計画に活用してください。")
                         
                         months_data = []
-                        # 前年の10月〜12月（3ヶ月）
                         for m in range(10, 13):
                             m_date = datetime.date(current_year - 1, m, 15)
                             res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
                             months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
-                        # 今年の1月〜12月（12ヶ月）
                         for m in range(1, 13):
                             m_date = datetime.date(current_year, m, 15)
                             res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
@@ -1294,9 +1014,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         
                         st.markdown("### 📝 各月の総合解説と7つの指針")
                         
-                        # AIに15ヶ月分の固有解説を「一括で」書かせる（APIコストと速度の最適化）
                         with st.spinner("AIが各月の固有テーマを分析中..."):
-                            @st.cache_data(ttl=86400) # 年が切り替わるまでキャッシュ
+                            @st.cache_data(ttl=86400)
                             def get_cached_monthly_advices(year_str, _months_data):
                                 prompt = "あなたは日本一の戦略的ライフ・コンサルタントです。\n"
                                 prompt += "以下の15ヶ月分のデータをもとに、各月の「総合解説（2〜3文）」を作成してください。\n"
@@ -1336,13 +1055,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{ai_desc}</p>", unsafe_allow_html=True)
                             st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
 
-                    # ==========================================
-                    # 【サブタブ3】年間グラフ（過去2年+今年+未来5年 = 8年間）と今年の詳細
-                    # ==========================================
                     with t_year:
                         st.markdown("### 🗻 年間・運命の波（8年推移）")
                         years_data = []
-                        # 過去2年〜未来5年（計8年）
                         for i in range(-2, 6):
                             y_date = datetime.date(current_year + i, 6, 1)
                             res = calculate_period_score(user_nikkanshi, y_date, period_type="year")
@@ -1357,7 +1072,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         
                         st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
                         with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
-                            @st.cache_data(ttl=86400) # 年間は1日キャッシュ（年が変われば自動更新）
+                            @st.cache_data(ttl=86400)
                             def get_cached_yearly_advice(year_str, _res):
                                 prompt = f"""
                                 あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間アドバイス】を作成してください。
@@ -1409,13 +1124,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # 【タブ3】極秘レポート完全版（モザイク＆アンロック機能付き）
     # ==========================================
     with tab3:
-        st.subheader("極秘レポート完全版")
+        st.subheader("📜 極秘レポート完全版")
         with st.spinner("データベースからレポートを検索しています..."):
             try:
                 creds_dict = st.secrets["gcp_service_account"]
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-                from oauth2client.service_account import ServiceAccountCredentials
-                import gspread
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
                 sheet_url = st.secrets["spreadsheet_url"]
@@ -1424,22 +1137,19 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
                 report_text = None
                 user_stripe_id = ""
-                # 下から検索して最新のデータを取得
                 for row in reversed(all_data):
                     if len(row) > 0 and row[0] == st.session_state.line_id:
                         if len(row) > 73 and row[73].strip() != "":
                             report_text = row[73]
                         if len(row) > 1:
-                            user_stripe_id = row[1] # B列(stripe_id)
+                            user_stripe_id = row[1]
                         break
                 
                 if report_text:
-                    # ユーザーのステータス（レベル）を取得
                     exp, _ = get_user_status(st.session_state.line_id)
                     user_level = math.floor(exp / 50) + 1
-                    is_premium = bool(user_stripe_id.strip()) # stripe_idがあればプレミアム
+                    is_premium = bool(user_stripe_id.strip())
                     
-                    # アンロック条件の定義
                     unlock_sec1 = is_premium or user_level >= 2
                     unlock_sec2 = is_premium or user_level >= 5
                     unlock_sec3 = is_premium or user_level >= 10
@@ -1451,53 +1161,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         .secret-report-box h3 { color: #111111 !important; font-size: 1.3rem !important; border-left: 5px solid #D32F2F; padding-left: 10px; margin-top: 35px !important; margin-bottom: 15px !important; }
                         .secret-report-box p, .secret-report-box li { font-size: 1.05rem; line-height: 1.8; color: #333333; }
                         
-                        /* モザイク（スリガラス）用のCSSクラス */
-                        .blur-container {
-                            position: relative;
-                            margin-top: 20px;
-                        }
-                        .blur-text {
-                            filter: blur(5px);
-                            user-select: none;
-                            pointer-events: none;
-                            opacity: 0.6;
-                        }
-                        .lock-overlay {
-                            position: absolute;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            width: 90%;
-                            text-align: center;
-                            background: rgba(255, 255, 255, 0.9);
-                            padding: 20px;
-                            border-radius: 10px;
-                            border: 2px solid #D32F2F;
-                            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                            z-index: 10;
-                        }
+                        .blur-container { position: relative; margin-top: 20px; }
+                        .blur-text { filter: blur(5px); user-select: none; pointer-events: none; opacity: 0.6; }
+                        .lock-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; text-align: center; background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 10px; border: 2px solid #D32F2F; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; }
                         .lock-overlay h4 { color: #C62828 !important; margin-bottom: 10px; font-weight: 900;}
                         .lock-overlay p { font-size: 0.95rem; margin-bottom: 15px; }
-                        .premium-btn {
-                            display: inline-block;
-                            background: linear-gradient(90deg, #D32F2F 0%, #C62828 100%);
-                            color: white !important;
-                            padding: 12px 24px;
-                            border-radius: 8px;
-                            text-decoration: none;
-                            font-weight: bold;
-                            font-size: 1.1rem;
-                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                        }
+                        .premium-btn { display: inline-block; background: linear-gradient(90deg, #D32F2F 0%, #C62828 100%); color: white !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
                     </style>
                     """, unsafe_allow_html=True)
                     
                     st.markdown("<div class='secret-report-box'>", unsafe_allow_html=True)
                     
-                    # HTMLコメントタグを使ってレポートをセクションごとに分割
-                    import re
-                    
-                    # 公開部分の抽出（より前の部分）
                     public_text = report_text
                     secrets_block = ""
                     if "" in report_text:
@@ -1505,22 +1179,18 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         public_text = parts[0]
                         secrets_block = parts[1].split("")[0] if "" in parts[1] else parts[1]
                     
-                    # 公開部分を描画
                     st.markdown(public_text)
                     
-                    # 秘密部分の描画ロジック
                     if secrets_block:
                         st.markdown("<hr style='border: 1px dashed #D32F2F; margin: 40px 0;'>", unsafe_allow_html=True)
                         st.markdown("<h2 style='text-align:center; color:#D32F2F;'>🔒 ここから先は極秘ライブラリです</h2>", unsafe_allow_html=True)
                         
-                        # 第1章の抽出と描画
                         sec1_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
                         if sec1_match:
                             sec1_text = sec1_match.group(1).strip()
                             if unlock_sec1:
                                 st.markdown(sec1_text)
                             else:
-                                # 見出しだけ表示して残りをモザイク
                                 lines = sec1_text.split('\n')
                                 title = lines[0] if lines else "## 🔒 極秘ライブラリ 第1章"
                                 dummy_text = "あなたが最も評価される環境は〇〇です。しかし、〇〇なやり方をすると一気に評価が下がります。\n適職は〇〇や〇〇など、あなたの〇〇の星が活かせる場所です..."
@@ -1536,7 +1206,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 </div>
                                 """, unsafe_allow_html=True)
 
-                        # 第2章の抽出と描画
                         sec2_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
                         if sec2_match:
                             sec2_text = sec2_match.group(1).strip()
@@ -1558,7 +1227,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 </div>
                                 """, unsafe_allow_html=True)
                                 
-                        # 第3章の抽出と描画
                         sec3_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
                         if sec3_match:
                             sec3_text = sec3_match.group(1).strip()
@@ -1593,52 +1261,25 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     with tab4:
         st.subheader("対人関係レーダー")
         
-        # ▼ ドロップダウンリストの視認性 ＋ 検索ボタンを白文字＆落ち着いた色にするCSS
         st.markdown("""
         <style>
             div[data-baseweb="select"] > div, 
             div[data-baseweb="input"] > div, 
-            div[data-baseweb="textarea"] > div {
-                background-color: #FAFAFA !important;
-                border: 1px solid #CCCCCC !important;
-            }
-            div[data-baseweb="select"] span {
-                color: #000000 !important;
-            }
-            ul[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {
-                background-color: #FAFAFA !important;
-                color: #000000 !important;
-            }
-            input, textarea {
-                color: #000000 !important;
-                background-color: transparent !important;
-            }
-            /* 検索実行ボタン専用のスタイル調整 */
-            div[data-testid="stForm"] button[kind="primary"] {
-                background-color: #4A90E2 !important; /* 色味を抑えたブルー */
-                border: none !important;
-            }
-            div[data-testid="stForm"] button[kind="primary"] p,
-            div[data-testid="stForm"] button[kind="primary"] span {
-                color: #FFFFFF !important; /* 文字を白抜きに強制 */
-                font-weight: 900 !important; /* 太文字 */
-                font-size: 1.1rem !important;
-            }
+            div[data-baseweb="textarea"] > div { background-color: #FAFAFA !important; border: 1px solid #CCCCCC !important; }
+            div[data-baseweb="select"] span { color: #000000 !important; }
+            ul[role="listbox"], ul[data-baseweb="menu"], li[role="option"] { background-color: #FAFAFA !important; color: #000000 !important; }
+            input, textarea { color: #000000 !important; background-color: transparent !important; }
+            div[data-testid="stForm"] button[kind="primary"] { background-color: #4A90E2 !important; border: none !important; }
+            div[data-testid="stForm"] button[kind="primary"] p, div[data-testid="stForm"] button[kind="primary"] span { color: #FFFFFF !important; font-weight: 900 !important; font-size: 1.1rem !important; }
         </style>
         """, unsafe_allow_html=True)
 
-        # セッションステートの初期化
-        if "radar_answers" not in st.session_state:
-            st.session_state.radar_answers = {}
-        if "radar_result" not in st.session_state:
-            st.session_state.radar_result = None
+        if "radar_answers" not in st.session_state: st.session_state.radar_answers = {}
+        if "radar_result" not in st.session_state: st.session_state.radar_result = None
             
         with st.spinner("システム接続中..."):
             radar_limit = check_radar_limit(st.session_state.line_id)
 
-        # ==========================================
-        # 状態1：結果表示画面
-        # ==========================================
         if st.session_state.radar_result:
             st.success("解析完了。取扱説明書が作成されました。")
             st.warning("このレポートは履歴に保存されません。画面を閉じると消えるため、スクリーンショット等で保存してください。")
@@ -1659,9 +1300,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 st.session_state.radar_answers = {}
                 st.rerun()
 
-        # ==========================================
-        # 状態2：入力フォーム ＆ 処理実行画面
-        # ==========================================
         else:
             if radar_limit <= 0:
                 st.error("今月のターゲット検索回数（3回）を使い切りました。来月までお待ちください。")
@@ -1699,20 +1337,13 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.markdown("---")
                     submitted = st.form_submit_button("検索実行（残回数を1消費します）", type="primary")
 
-                # ==========================================
-                # 送信ボタンが押された直後の処理（ボタンのすぐ下にスピナーを出す）
-                # ==========================================
                 if submitted:
-                    if not target_name: 
-                        st.error("相手の名前を入力してください。")
-                    elif not target_dob or len(target_dob) != 8 or not target_dob.isdigit(): 
-                        st.error("正しい生年月日（半角数字8桁）を入力してください。")
+                    if not target_name: st.error("相手の名前を入力してください。")
+                    elif not target_dob or len(target_dob) != 8 or not target_dob.isdigit(): st.error("正しい生年月日（半角数字8桁）を入力してください。")
                     else:
                         target_san = calculate_target_sanmeigaku(target_dob)
-                        if not target_san: 
-                            st.error("存在しない日付、または生年月日の計算に失敗しました。")
+                        if not target_san: st.error("存在しない日付、または生年月日の計算に失敗しました。")
                         else:
-                            # 検索実行ボタンのすぐ下でスピナーが回る
                             with st.spinner("AIが相手の深層心理と攻略法を解析中...（約20秒）"):
                                 success = consume_radar_limit(st.session_state.line_id)
                                 if not success:
@@ -1740,16 +1371,16 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                         
                                         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                                         response = openai_client.chat.completions.create(
-                                            model="gpt-4o", 
+                                            model="gpt-4o-mini", 
                                             messages=[
                                                 {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"},
                                                 {"role": "user", "content": prompt}
                                             ],
                                             temperature=0.7
                                         )
-                                        st.session_state.target_name = target_name # 名前を保持
+                                        st.session_state.target_name = target_name
                                         st.session_state.radar_result = response.choices[0].message.content
-                                        st.rerun() # 完了後、画面上部の「結果表示画面」へ自動スクロール
+                                        st.rerun() 
                                         
                                     except Exception as e:
                                         st.error(f"AI解析中にエラーが発生しました: {e}")
@@ -1768,21 +1399,10 @@ if st.session_state.step == "user_info":
         <style>
             div[data-baseweb="input"] > div, 
             div[data-baseweb="textarea"] > div, 
-            div[data-baseweb="select"] > div {
-                background-color: #FAFAFA !important;
-                border: 1px solid #CCCCCC !important;
-            }
-            input, textarea {
-                color: #000000 !important;
-                background-color: transparent !important;
-            }
-            div[data-baseweb="select"] span {
-                color: #000000 !important;
-            }
-            ul[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {
-                background-color: #FAFAFA !important;
-                color: #000000 !important;
-            }
+            div[data-baseweb="select"] > div { background-color: #FAFAFA !important; border: 1px solid #CCCCCC !important; }
+            input, textarea { color: #000000 !important; background-color: transparent !important; }
+            div[data-baseweb="select"] span { color: #000000 !important; }
+            ul[role="listbox"], ul[data-baseweb="menu"], li[role="option"] { background-color: #FAFAFA !important; color: #000000 !important; }
         </style>
         """, unsafe_allow_html=True)
 
@@ -1797,7 +1417,7 @@ if st.session_state.step == "user_info":
         gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True, label_visibility="collapsed")
         
         st.markdown("---")
-        st.markdown("#### AIプロファイリングのチューニング情報")
+        st.markdown("#### 🎯 AIプロファイリングのチューニング情報")
         
         job_status = st.selectbox(
             "現在の職業・お立場（必須）",
@@ -1817,19 +1437,8 @@ if st.session_state.step == "user_info":
         submitted = st.form_submit_button("適性テスト（全50問）を開始する", type="primary")
         
         if submitted:
-            if not dob_input.isdigit() or len(dob_input) != 8:
-                st.error("生年月日は8桁の半角数字で入力してください")
-            elif not pain_points:
-                st.error("フォーカスしたいテーマを少なくとも1つ選択してください")
-            else:
-                # ユーザーデータに拡張情報を保存
-                formatted_dob = datetime.datetime.strptime(dob_input, "%Y%m%d").strftime("%Y/%m/%d")
-                st.session_state.user_data = {
-                    "User_ID": st.session_state.line_name, "LINE_ID": st.session_state.line_id,
-                    "DOB": formatted_dob, "Birth_Time": btime.strip() if btime else "", "Gender": gender,
-                    "Job": job_status, "Pains": ", ".join(pain_points), "Free_Text": free_goal
-                }
-                st.session_state.step = "test"
+            start_test(st.session_state.line_name, st.session_state.line_id, dob_input, btime, gender, job_status, pain_points, free_goal)
+            if st.session_state.step == "test":
                 st.rerun()
 
 elif st.session_state.step == "test":
@@ -1864,11 +1473,11 @@ elif st.session_state.step == "done":
     st.success("解析と極秘レポートの作成が完了しました！")
     if "secret_report" in st.session_state and st.session_state.secret_report:
         st.markdown('<div style="padding: 1.5rem; background-color: #FFFCF9; border: 2px solid #FCEADE; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0px 4px 10px rgba(0,0,0,0.05);">', unsafe_allow_html=True)
-        st.markdown(st.session_state.secret_report)
+        st.markdown("データベースに保存されました。上の『LINEに戻る』ボタンを押してポータルから確認してください。")
         st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.warning("レポートの表示に時間がかかっています。データは正常に保存されました。")
     
     st.markdown("<h4 style='text-align: center; font-weight: bold;'>▼ 日々の最適化アクションを受け取る ▼</h4>", unsafe_allow_html=True)
     st.link_button("LINEに戻る", "https://lin.ee/FrawIyY", type="primary")
-    st.info("このウィンドウは閉じて構いません。レポートはスクリーンショット等で保存することをお勧めします。")
+    st.info("このウィンドウは閉じて構いません。")
