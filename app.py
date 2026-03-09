@@ -842,21 +842,48 @@ def calculate_scores():
         scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
     return scores
     
-def generate_report_prompt(sanmeigaku, scores):
+def generate_report_prompt(sanmeigaku, scores, user_data):
+    """
+    極秘レポート生成エンジン
+    元の構成（健康・5大欲求など）を完全維持しつつ、ユーザー属性をサイレントに反映。
+    公開部分と3つの極秘ライブラリ（Lv.2, 5, 10で解禁）を生成する。
+    """
+    
+    # 性別によるサイレント・チューニングの指示
+    gender = user_data.get("Gender", "回答しない")
+    gender_instruction = ""
+    if gender in ["男性", "女性"]:
+        gender_instruction = f"""
+【サイレント・チューニング指示】
+対象者の生物学的・進化心理学的な行動傾向（{gender}特有のストレス反応や社会的プレッシャー）を分析の裏付けとして組み込んでください。
+ただし、文章内で「あなたは{gender}だから」「{gender}特有の」といった性別を主語にしたラベリングや断言は【絶対に使用禁止】です。あくまで個人の「脳の配線・パーソナリティ」として自然に解説してください。
+"""
+
     prompt = f"""あなたは、専門用語を一切使わず、日常的でユーモアのある表現（例え話など）を使ってユーザーの心を鷲掴みにする、大人気の天才占い師兼ライフ・コンサルタントです。
-以下の【ユーザーの分析データ】をインプットとしますが、出力する文章には「癸酉」「石門星」「天将星」「Big5」「開放性」といった【専門用語は絶対にそのまま出力しないでください】。すべて日常的な言葉に翻訳してください。
+以下の【ユーザーの分析データ】をインプットとしますが、出力する文章には「癸酉」「石門星」「天将星」「Big5」「開放性」「西方星」といった【専門用語は絶対にそのまま出力しないでください】。すべて日常的な言葉に翻訳してください。
 
 # ユーザーの分析データ
+・年齢/生年月日: {user_data.get("DOB")}
+・職業/立場: {user_data.get("Job", "不明")}
+・現在フォーカスしたい悩み: {user_data.get("Pains", "特になし")}
+・具体的な理想/悩み(自由記述): {user_data.get("Free_Text", "特になし")}
+・出生時間の有無: {"不明(最晩年の算出不可)" if sanmeigaku['時干支'] == "不明" else "あり"}
+
 [算命学]
-日干支: {sanmeigaku['日干支']}, 主星: {sanmeigaku['主星']}
+日干支: {sanmeigaku['日干支']}, 天中殺: {sanmeigaku['天中殺']}
+主星(社会の顔): {sanmeigaku['主星']}, 西方星(恋愛・家庭の顔): {sanmeigaku.get('西方星', '不明')}
 12星: 初年[{sanmeigaku['初年']}], 中年[{sanmeigaku['中年']}], 晩年[{sanmeigaku['晩年']}], 最晩年[{sanmeigaku['最晩年']}]
 [Big5スコア（1〜5）]
 O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(協調): {scores['A']}, N(神経症): {scores['N']}
 
+{gender_instruction}
+
 # 出力ルール
-・「第○章」という見出しは使用禁止。
-・ユーザーが最も知りたい部分なので、決して要約せず、具体例や例え話を交えて【詳細に、たっぷりと】語ってください。
+・「第○章」という見出しは使用禁止（極秘ライブラリの指定見出しは除く）。
+・ユーザーが最も知りたい部分なので、決して要約せず、ユーザーの「悩み」や「職業」の文脈を反映した具体例や例え話を交えて【詳細に、たっぷりと】語ってください。
 ・欠点は「伸びしろ」や「愛嬌」としてマイルドかつ面白く伝えること。
+・出生時間が不明な場合、最晩年（人生の最終目標）の解説において「出生時間が不明なため、一部推測を含みますが〜」と正直に一言添えてください。
+・【重要】出力は、前半の「公開レポート」と、後半の「3つの極秘ライブラリ」に分けて出力します。以下の構成と指定のHTMLコメントタグ(``など)を必ず守ってください。
 
 # 出力構成（以下のマークダウンと指定の順番通りに必ず出力してください）
 
@@ -876,34 +903,10 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 ### ■ 本来の宿命（あなたが積んでいるエンジン）
 本来どんな素晴らしい才能や気質を持って生まれてきたのかを、日常的な例え話を交えて深く解説してください。
 ### ■ 現在の性格（今のあなたの運転スタイル）
-現在、社会でどんな風に振る舞っているのかを深く解説してください。
+現在、社会でどんな風に振る舞っているのか、現在の悩みとどうリンクしているかを深く解説してください。
 
 ## 生きづらい正体とうまくいく考え方
-本来の宿命と現在の性格の間にどんな「ズレ」が生じているかをズバリ指摘し、どう考え方を変えればスッと楽になるのかをアドバイスしてください。
-
-## 仕事・勉強
-【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
-・どんな特性の持ち主か
-・強みと弱み（伸びしろ）
-・具体的な向き不向き（適職や学習環境）
-・[アドバイス1]
-・[アドバイス2]
-・[アドバイス3]
-
-## 恋愛・結婚
-【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
-・恋愛や結婚においてどんな特性の持ち主か
-・強みと弱み（愛嬌）
-・具体的な向き不向き
-・[アドバイス1]
-・[アドバイス2]
-・[アドバイス3]
-
-## お金
-【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
-・[アドバイス1]
-・[アドバイス2]
-・[アドバイス3]
+本来の宿命と現在の性格の間にどんな「ズレ」が生じているか（悩みの根本原因）をズバリ指摘し、どう考え方を変えればスッと楽になるのかをアドバイスしてください。
 
 ## 健康
 【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
@@ -923,7 +926,27 @@ O(開放): {scores['O']}, C(勤勉): {scores['C']}, E(外向): {scores['E']}, A(
 5. 探求・知恵欲（知識を得て自由に考えたい欲）：[判定結果]
 　[解説文]
 
-## 結びの言葉
+---
+## 🔒 極秘ライブラリ 第1章：仕事・勉強とお金の深淵
+【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
+・どんな特性の持ち主か
+・強みと弱み（伸びしろ）
+・具体的な向き不向き（適職や学習環境、絶対にやってはいけないスタイル）
+・[お金・仕事に関するアドバイス1]
+・[お金・仕事に関するアドバイス2]
+・[お金・仕事に関するアドバイス3]
+## 🔒 極秘ライブラリ 第2章：恋愛・結婚と人間関係の裏の顔
+【〇〇〇〇〇〇〇〇〇〇〇〇〇〇】
+・恋愛や結婚においてどんな特性の持ち主か（親密になった時どう豹変するか）
+・強みと弱み（愛嬌と依存・回避のクセ）
+・具体的な向き不向き
+・[恋愛・対人関係のアドバイス1]
+・[恋愛・対人関係のアドバイス2]
+・[恋愛・対人関係のアドバイス3]
+## 🔒 極秘ライブラリ 第3章：人生の最終目標と最大のカルマ
+[算命学の晩年・最晩年の星と天中殺から、ユーザーが最終的にどこへ向かうべきか、人生で背負っているテーマを解説。]
+
+### 結びの言葉
 明日から踏み出す「科学的な小さな一歩」を提案し、背中を押す言葉で締めくくってください。
 """
     return prompt
@@ -1009,6 +1032,8 @@ def save_to_spreadsheet():
         scores = calculate_scores()
         ud = st.session_state.user_data
         y, m, d = map(int, ud["DOB"].split('/'))
+        
+        # ハイブリッド算命学エンジンの呼び出し
         sanmeigaku = calculate_sanmeigaku(y, m, d, ud["Birth_Time"])
         stripe_id = st.session_state.get("stripe_id", "")
         
@@ -1021,14 +1046,18 @@ def save_to_spreadsheet():
         for i in range(1, 51): row_data.append(st.session_state.answers.get(i, ""))
         row_data.extend([scores["O"], scores["C"], scores["E"], scores["A"], scores["N"]])
         today_str = datetime.date.today().strftime("%Y/%m/%d")
+        
+        # 既存のスプレッドシート列仕様に合わせてデフォルト値を入れる
         row_data.extend([today_str, "FALSE", "FALSE", 3])
         
-        llm_prompt = generate_report_prompt(sanmeigaku, scores)
+        # ▼ ここが修正点：新しい generate_report_prompt に user_data を渡す
+        llm_prompt = generate_report_prompt(sanmeigaku, scores, ud)
+        
         generated_report = ""
         try:
             openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o", # 複雑な推論とフォーマット指示があるため 4o にアップグレード
                 messages=[
                     {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。"},
                     {"role": "user", "content": llm_prompt}
@@ -1042,6 +1071,8 @@ def save_to_spreadsheet():
         
         row_data.append(generated_report)
         sheet.append_row(row_data)
+        
+        # LINEへの通知
         send_line_result(ud["LINE_ID"], sanmeigaku, scores)
         return True
         
@@ -1379,8 +1410,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             except Exception as e:
                 st.error(f"エラーが発生しました: {e}")
 
+    # ==========================================
+    # 【タブ3】極秘レポート完全版（モザイク＆アンロック機能付き）
+    # ==========================================
     with tab3:
-        st.subheader("📜 極秘レポート完全版")
+        st.subheader("極秘レポート完全版")
         with st.spinner("データベースからレポートを検索しています..."):
             try:
                 creds_dict = st.secrets["gcp_service_account"]
@@ -1394,24 +1428,165 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 all_data = sheet.get_all_values()
                 
                 report_text = None
+                user_stripe_id = ""
+                # 下から検索して最新のデータを取得
                 for row in reversed(all_data):
                     if len(row) > 0 and row[0] == st.session_state.line_id:
                         if len(row) > 73 and row[73].strip() != "":
                             report_text = row[73]
+                        if len(row) > 1:
+                            user_stripe_id = row[1] # B列(stripe_id)
                         break
                 
                 if report_text:
+                    # ユーザーのステータス（レベル）を取得
+                    exp, _ = get_user_status(st.session_state.line_id)
+                    user_level = math.floor(exp / 50) + 1
+                    is_premium = bool(user_stripe_id.strip()) # stripe_idがあればプレミアム
+                    
+                    # アンロック条件の定義
+                    unlock_sec1 = is_premium or user_level >= 2
+                    unlock_sec2 = is_premium or user_level >= 5
+                    unlock_sec3 = is_premium or user_level >= 10
+
                     st.markdown("""
                     <style>
                         .secret-report-box { background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%); border: 2px solid #D32F2F; border-radius: 15px; padding: 30px 20px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
                         .secret-report-box h2 { color: #C62828 !important; font-size: 1.6rem !important; text-align: center; border-bottom: 2px solid #FFEBEE; padding-bottom: 15px; margin-bottom: 25px; }
                         .secret-report-box h3 { color: #111111 !important; font-size: 1.3rem !important; border-left: 5px solid #D32F2F; padding-left: 10px; margin-top: 35px !important; margin-bottom: 15px !important; }
                         .secret-report-box p, .secret-report-box li { font-size: 1.05rem; line-height: 1.8; color: #333333; }
+                        
+                        /* モザイク（スリガラス）用のCSSクラス */
+                        .blur-container {
+                            position: relative;
+                            margin-top: 20px;
+                        }
+                        .blur-text {
+                            filter: blur(5px);
+                            user-select: none;
+                            pointer-events: none;
+                            opacity: 0.6;
+                        }
+                        .lock-overlay {
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            width: 90%;
+                            text-align: center;
+                            background: rgba(255, 255, 255, 0.9);
+                            padding: 20px;
+                            border-radius: 10px;
+                            border: 2px solid #D32F2F;
+                            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                            z-index: 10;
+                        }
+                        .lock-overlay h4 { color: #C62828 !important; margin-bottom: 10px; font-weight: 900;}
+                        .lock-overlay p { font-size: 0.95rem; margin-bottom: 15px; }
+                        .premium-btn {
+                            display: inline-block;
+                            background: linear-gradient(90deg, #D32F2F 0%, #C62828 100%);
+                            color: white !important;
+                            padding: 12px 24px;
+                            border-radius: 8px;
+                            text-decoration: none;
+                            font-weight: bold;
+                            font-size: 1.1rem;
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        }
                     </style>
                     """, unsafe_allow_html=True)
+                    
                     st.markdown("<div class='secret-report-box'>", unsafe_allow_html=True)
-                    st.markdown(report_text)
+                    
+                    # HTMLコメントタグを使ってレポートをセクションごとに分割
+                    import re
+                    
+                    # 公開部分の抽出（より前の部分）
+                    public_text = report_text
+                    secrets_block = ""
+                    if "" in report_text:
+                        parts = report_text.split("")
+                        public_text = parts[0]
+                        secrets_block = parts[1].split("")[0] if "" in parts[1] else parts[1]
+                    
+                    # 公開部分を描画
+                    st.markdown(public_text)
+                    
+                    # 秘密部分の描画ロジック
+                    if secrets_block:
+                        st.markdown("<hr style='border: 1px dashed #D32F2F; margin: 40px 0;'>", unsafe_allow_html=True)
+                        st.markdown("<h2 style='text-align:center; color:#D32F2F;'>🔒 ここから先は極秘ライブラリです</h2>", unsafe_allow_html=True)
+                        
+                        # 第1章の抽出と描画
+                        sec1_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                        if sec1_match:
+                            sec1_text = sec1_match.group(1).strip()
+                            if unlock_sec1:
+                                st.markdown(sec1_text)
+                            else:
+                                # 見出しだけ表示して残りをモザイク
+                                lines = sec1_text.split('\n')
+                                title = lines[0] if lines else "## 🔒 極秘ライブラリ 第1章"
+                                dummy_text = "あなたが最も評価される環境は〇〇です。しかし、〇〇なやり方をすると一気に評価が下がります。\n適職は〇〇や〇〇など、あなたの〇〇の星が活かせる場所です..."
+                                st.markdown(f"""
+                                {title}
+                                <div class="blur-container">
+                                    <div class="blur-text">{dummy_text}<br><br>{dummy_text}</div>
+                                    <div class="lock-overlay">
+                                        <h4>🔒 封印されています</h4>
+                                        <p>第1章を読むには、<b>ユーザーLv.2（現在Lv.{user_level}）</b>に到達するか、<br>プレミアムプランへの加入が必要です。</p>
+                                        <a href="#" class="premium-btn">✨ プレミアムで全解放する</a>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        # 第2章の抽出と描画
+                        sec2_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                        if sec2_match:
+                            sec2_text = sec2_match.group(1).strip()
+                            if unlock_sec2:
+                                st.markdown(sec2_text)
+                            else:
+                                lines = sec2_text.split('\n')
+                                title = lines[0] if lines else "## 🔒 極秘ライブラリ 第2章"
+                                dummy_text = "親密な関係になると、あなたは普段見せない〇〇な顔を見せます。特に〇〇なタイプの人に惹かれやすいですが、その関係は〇〇になりがちです..."
+                                st.markdown(f"""
+                                {title}
+                                <div class="blur-container">
+                                    <div class="blur-text">{dummy_text}<br><br>{dummy_text}</div>
+                                    <div class="lock-overlay">
+                                        <h4>🔒 封印されています</h4>
+                                        <p>第2章を読むには、<b>ユーザーLv.5（現在Lv.{user_level}）</b>に到達するか、<br>プレミアムプランへの加入が必要です。</p>
+                                        <a href="#" class="premium-btn">✨ プレミアムで全解放する</a>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                        # 第3章の抽出と描画
+                        sec3_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
+                        if sec3_match:
+                            sec3_text = sec3_match.group(1).strip()
+                            if unlock_sec3:
+                                st.markdown(sec3_text)
+                            else:
+                                lines = sec3_text.split('\n')
+                                title = lines[0] if lines else "## 🔒 極秘ライブラリ 第3章"
+                                dummy_text = "あなたの人生の最終的なゴールは〇〇にあります。しかし、その前に必ず乗り越えなければならない最大のカルマ（業）が存在し、それは〇〇という形で現れます..."
+                                st.markdown(f"""
+                                {title}
+                                <div class="blur-container">
+                                    <div class="blur-text">{dummy_text}<br><br>{dummy_text}</div>
+                                    <div class="lock-overlay">
+                                        <h4>🔒 封印されています</h4>
+                                        <p>第3章（最終章）を読むには、<b>ユーザーLv.10（現在Lv.{user_level}）</b>に到達するか、<br>プレミアムプランへの加入が必要です。</p>
+                                        <a href="#" class="premium-btn">✨ プレミアムで全解放する</a>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
                     st.markdown("</div>", unsafe_allow_html=True)
+                    
                 else:
                     st.warning("レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
             except Exception as e:
