@@ -1054,10 +1054,10 @@ def save_to_spreadsheet():
         llm_prompt = generate_report_prompt(sanmeigaku, scores, ud)
         
         generated_report = ""
-        try:
+    try:
             openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             response = openai_client.chat.completions.create(
-                model="gpt-4o", # 複雑な推論とフォーマット指示があるため 4o にアップグレード
+                model="gpt-4o-mini", # コスト最適化のためminiに戻す
                 messages=[
                     {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。"},
                     {"role": "user", "content": llm_prompt}
@@ -1769,6 +1769,28 @@ if st.session_state.step == "user_info":
     st.markdown(f"数億通りのAI×宿命アルゴリズムで、**{st.session_state.line_name}さん**の深層心理と本来のポテンシャルを完全解析します。まずはプロファイリングに必要な基本情報をご入力ください。")
     
     with st.form("info_form"):
+        st.markdown("""
+        <style>
+            div[data-baseweb="input"] > div, 
+            div[data-baseweb="textarea"] > div, 
+            div[data-baseweb="select"] > div {
+                background-color: #FAFAFA !important;
+                border: 1px solid #CCCCCC !important;
+            }
+            input, textarea {
+                color: #000000 !important;
+                background-color: transparent !important;
+            }
+            div[data-baseweb="select"] span {
+                color: #000000 !important;
+            }
+            ul[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {
+                background-color: #FAFAFA !important;
+                color: #000000 !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
         st.markdown("<p style='font-weight: 900; margin-bottom: 0;'>生年月日（半角数字8桁・必須）</p>", unsafe_allow_html=True)
         dob_input = st.text_input("生年月日", max_chars=8, placeholder="例 19961229", label_visibility="collapsed")
         
