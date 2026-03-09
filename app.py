@@ -1431,7 +1431,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 # ==========================================
 if st.session_state.step == "user_info":
     st.markdown("<div style='text-align: center; margin-bottom: 20px;'><h2 style='font-weight: bold;'>プレミアム裏ステータス診断へ</h2></div>", unsafe_allow_html=True)
-    st.markdown(f"東洋の人間科学と最新のAIアルゴリズムを掛け合わせ、**{st.session_state.line_name}さん**の深層心理と本来のポテンシャルを完全解析します。まずはプロファイリングに必要な基本情報をご入力ください。")
+    st.markdown(f"独自の宿命解析アルゴリズムと最新のAIを掛け合わせ、**{st.session_state.line_name}さん**の深層心理と本来のポテンシャルを完全解析します。まずはプロファイリングに必要な基本情報をご入力ください。")
     
     with st.form("info_form"):
         st.markdown("""
@@ -1460,7 +1460,7 @@ if st.session_state.step == "user_info":
         gender = st.radio("性別", ["男性", "女性", "その他", "回答しない"], horizontal=True, label_visibility="collapsed")
         
         st.markdown("---")
-        st.markdown("#### 🎯 AIプロファイリングのチューニング情報")
+        st.markdown("#### 現在の状況と、解決したい課題について")
         
         job_status = st.selectbox(
             "現在の職業・お立場（必須）",
