@@ -5,3 +5,4 @@ pandas
 requests
 openai
 google-auth==2.23.0
+anthropic
