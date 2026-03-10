@@ -8,6 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import urllib.parse
 import requests
 import openai
+import anthropic
 import calendar
 from datetime import timedelta
 import altair as alt
@@ -730,25 +731,29 @@ def save_to_spreadsheet():
         generated_report = ""
         
         try:
-            openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-            response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+            # ▼ 変更点：Anthropic (Claude 3.5 Sonnet) への呼び出しに完全移行
+            client_anthropic = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+            response = client_anthropic.messages.create(
+                model="claude-3-5-sonnet-20241022", # 最新のSonnetモデルを指定
+                max_tokens=4000, # 出力トークンの上限を大きく設定
+                temperature=0.7,
+                system="あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。ユーザーの心に深く刺さる、エモーショナルで説得力のある文章を作成してください。",
                 messages=[
-                    {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。"},
                     {"role": "user", "content": llm_prompt}
-                ],
-                temperature=0.7
+                ]
             )
-            generated_report = response.choices[0].message.content
+            # ClaudeのAPI仕様に合わせたテキストの取り出し方
+            generated_report = response.content[0].text
             st.session_state.secret_report = generated_report
+            
         except Exception as e:
-            st.error(f"【開発者向けエラー(OpenAI)】: {e}")
+            st.error(f"【開発者向けエラー(Claude AI)】: {e}")
             generated_report = "AIの生成に失敗しました。"
             
-        # 1. まず既存のフォーマット通りにレポートを追加（これでBU列等に収まる）
+        # 1. 既存のフォーマット通りにレポートを追加
         row_data.append(generated_report)
         
-        # 2. ▼追加：既存のシステムを壊さないよう、右端の新しい列に「職業・悩み・自由記述」を追記
+        # 2. 既存のシステムを壊さないよう、右端の新しい列に情報を追記
         row_data.extend([
             ud.get("Job", "不明"),
             ud.get("Pains", "未選択"),
@@ -763,7 +768,7 @@ def save_to_spreadsheet():
     except Exception as e:
         st.error(f"【開発者向けエラー(System)】: {e}")
         return False
-
+        
 def get_user_status(line_id):
     try:
         creds_dict = st.secrets["gcp_service_account"]
