@@ -745,15 +745,10 @@ def save_to_spreadsheet():
             st.session_state.secret_report = generated_report
             
         except Exception as e:
-            error_msg = f"【開発者向けエラー(Claude AI)】: {e}"
-            st.error(error_msg)
-            generated_report = error_msg
-            # ▼ 修正：エラー内容を画面に表示するために、session_stateにも保存する
+            error_msg = f"【Claude通信エラー】: {e}"
+            print(error_msg) # ログにも残す
+            generated_report = f"AIの生成に失敗しました。\n\n詳細なエラー理由:\n{e}"
             st.session_state.secret_report = generated_report
-            
-        except Exception as e:
-            st.error(f"【開発者向けエラー(Claude AI)】: {e}")
-            generated_report = "AIの生成に失敗しました。"
             
         # 1. 既存のフォーマット通りにレポートを追加
         row_data.append(generated_report)
