@@ -731,22 +731,24 @@ def save_to_spreadsheet():
         generated_report = ""
         
         try:
-            client_anthropic = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
-            response = client_anthropic.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=4000,
-                temperature=0.7,
-                system="あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。ユーザーの心に深く刺さる、エモーショナルで説得力のある文章を作成してください。",
+            # ▼ 確実に動く OpenAI の最高峰モデル「GPT-4o」に変更
+            openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            response = openai_client.chat.completions.create(
+                model="gpt-4o", # ← miniではなく、一番賢い gpt-4o を指定
                 messages=[
+                    {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。ユーザーの心に深く刺さる、エモーショナルで説得力のある文章を作成してください。"},
                     {"role": "user", "content": llm_prompt}
-                ]
+                ],
+                temperature=0.7,
+                max_tokens=4000 # 長文を出力させるために上限を開放
             )
-            generated_report = response.content[0].text
+            generated_report = response.choices[0].message.content
             st.session_state.secret_report = generated_report
             
         except Exception as e:
-            error_msg = f"【Claude通信エラー】: {e}"
-            print(error_msg) # ログにも残す
+            error_msg = f"【OpenAI通信エラー】: {e}"
+            print(error_msg)
+            st.error(error_msg)
             generated_report = f"AIの生成に失敗しました。\n\n詳細なエラー理由:\n{e}"
             st.session_state.secret_report = generated_report
             
