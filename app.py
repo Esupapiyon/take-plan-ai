@@ -733,7 +733,7 @@ def save_to_spreadsheet():
         try:
             client_anthropic = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
             response = client_anthropic.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=4000,
                 temperature=0.7,
                 system="あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。ユーザーの心に深く刺さる、エモーショナルで説得力のある文章を作成してください。",
