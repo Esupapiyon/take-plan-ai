@@ -731,19 +731,24 @@ def save_to_spreadsheet():
         generated_report = ""
         
         try:
-            # ▼ 変更点：Anthropic (Claude 3.5 Sonnet) への呼び出しに完全移行
             client_anthropic = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
             response = client_anthropic.messages.create(
-                model="claude-3-5-sonnet-20241022", # 最新のSonnetモデルを指定
-                max_tokens=4000, # 出力トークンの上限を大きく設定
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=4000,
                 temperature=0.7,
                 system="あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。ユーザーの心に深く刺さる、エモーショナルで説得力のある文章を作成してください。",
                 messages=[
                     {"role": "user", "content": llm_prompt}
                 ]
             )
-            # ClaudeのAPI仕様に合わせたテキストの取り出し方
             generated_report = response.content[0].text
+            st.session_state.secret_report = generated_report
+            
+        except Exception as e:
+            error_msg = f"【開発者向けエラー(Claude AI)】: {e}"
+            st.error(error_msg)
+            generated_report = error_msg
+            # ▼ 修正：エラー内容を画面に表示するために、session_stateにも保存する
             st.session_state.secret_report = generated_report
             
         except Exception as e:
