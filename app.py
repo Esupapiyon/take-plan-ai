@@ -1203,16 +1203,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     public_text = report_text
                     secrets_block = ""
                     
-                    # 新しい【】タグで分割を試みる
+                    # 新しい【】タグのみで分割する（透明になるバグの原因を完全削除）
                     if "【SECRETS_START】" in report_text:
                         parts = report_text.split("【SECRETS_START】")
                         public_text = parts[0]
                         secrets_block = parts[1].split("【SECRETS_END】")[0] if "【SECRETS_END】" in parts[1] else parts[1]
-                    # 万が一、古いHTMLタグが残っていた場合への安全装置
-                    elif "" in report_text:
-                        parts = report_text.split("")
-                        public_text = parts[0]
-                        secrets_block = parts[1].split("")[0] if "" in parts[1] else parts[1]
                     
                     st.markdown(public_text)
                     
@@ -1220,10 +1215,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.markdown("<hr style='border: 1px dashed #D32F2F; margin: 40px 0;'>", unsafe_allow_html=True)
                         st.markdown("<h2 style='text-align:center; color:#D32F2F;'>🔒 ここから先は極秘ライブラリです</h2>", unsafe_allow_html=True)
                         
-                        # 第1章の抽出と描画
+                        # 第1章の抽出と描画（透明タグの判定を完全削除）
                         sec1_match = re.search(r'【SECRET_1_START】(.*?)【SECRET_1_END】', secrets_block, re.DOTALL)
-                        if not sec1_match: sec1_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
-                            
                         if sec1_match:
                             sec1_text = sec1_match.group(1).strip()
                             if unlock_sec1:
@@ -1246,8 +1239,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
                         # 第2章の抽出と描画
                         sec2_match = re.search(r'【SECRET_2_START】(.*?)【SECRET_2_END】', secrets_block, re.DOTALL)
-                        if not sec2_match: sec2_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
-                            
                         if sec2_match:
                             sec2_text = sec2_match.group(1).strip()
                             if unlock_sec2:
@@ -1270,8 +1261,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 
                         # 第3章の抽出と描画
                         sec3_match = re.search(r'【SECRET_3_START】(.*?)【SECRET_3_END】', secrets_block, re.DOTALL)
-                        if not sec3_match: sec3_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
-                            
                         if sec3_match:
                             sec3_text = sec3_match.group(1).strip()
                             if unlock_sec3:
@@ -1560,14 +1549,11 @@ elif st.session_state.step == "done":
         public_text = report_text
         secrets_block = ""
         
+        # 新しい【】タグのみで分割する
         if "【SECRETS_START】" in report_text:
             parts = report_text.split("【SECRETS_START】")
             public_text = parts[0]
             secrets_block = parts[1].split("【SECRETS_END】")[0] if "【SECRETS_END】" in parts[1] else parts[1]
-        elif "" in report_text:
-            parts = report_text.split("")
-            public_text = parts[0]
-            secrets_block = parts[1].split("")[0] if "" in parts[1] else parts[1]
         
         st.markdown(public_text)
         
@@ -1576,8 +1562,6 @@ elif st.session_state.step == "done":
             st.markdown("<h2 style='text-align:center; color:#D32F2F;'>🔒 ここから先は極秘ライブラリです</h2>", unsafe_allow_html=True)
             
             sec1_match = re.search(r'【SECRET_1_START】(.*?)【SECRET_1_END】', secrets_block, re.DOTALL)
-            if not sec1_match: sec1_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
-                
             if sec1_match:
                 sec1_text = sec1_match.group(1).strip()
                 if unlock_sec1:
@@ -1599,8 +1583,6 @@ elif st.session_state.step == "done":
                     """, unsafe_allow_html=True)
 
             sec2_match = re.search(r'【SECRET_2_START】(.*?)【SECRET_2_END】', secrets_block, re.DOTALL)
-            if not sec2_match: sec2_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
-                
             if sec2_match:
                 sec2_text = sec2_match.group(1).strip()
                 if unlock_sec2:
@@ -1622,8 +1604,6 @@ elif st.session_state.step == "done":
                     """, unsafe_allow_html=True)
                     
             sec3_match = re.search(r'【SECRET_3_START】(.*?)【SECRET_3_END】', secrets_block, re.DOTALL)
-            if not sec3_match: sec3_match = re.search(r'(.*?)', secrets_block, re.DOTALL)
-                
             if sec3_match:
                 sec3_text = sec3_match.group(1).strip()
                 if unlock_sec3:
