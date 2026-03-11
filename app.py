@@ -1458,72 +1458,71 @@ elif st.session_state.step == "done":
     
     if "secret_report" in st.session_state and st.session_state.secret_report:
         report_text = st.session_state.secret_report
+        import re
+
+        # ====================================================
+        # 🚀 Pythonの力で「超UDデザイン」に強制変換（タブ3と共通化）
+        # ====================================================
         
-        # UDデザインと黒波線のCSSを注入
+        # 15の星の「タグデザイン化」ハック修正
+        star_match = re.search(r'(あなたの中に眠る15の星.*?\n)(.*?)(?=##\s*生まれ持った宿命)', report_text, re.DOTALL)
+        if star_match:
+            content_part = star_match.group(2)
+            clean_text = re.sub(r'[・\-\n]', ' ', content_part)
+            stars = [s.strip() + "星" for s in clean_text.split("星") if s.strip()]
+            
+            tags_html = "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 40px 0;'>"
+            for star in stars:
+                if len(star) > 1 and len(star) < 40 and "##" not in star:
+                    tags_html += f"<span style='background-color: #FFFFFF; color: #333333; padding: 8px 18px; border-radius: 25px; font-size: 0.95rem; font-weight: 800; border: 2px solid #E0E0E0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>{star}</span>"
+            tags_html += "</div>"
+            report_text = report_text[:star_match.start(2)] + tags_html + report_text[star_match.end(2):]
+
+        # 宿命と現実の「確実な改行」
+        report_text = report_text.replace("宿命：", "<span style='font-weight:900; color:#111; font-size:1.1rem;'>宿命：</span>")
+        report_text = report_text.replace("現実：", "<br><br><span style='font-weight:900; color:#111; font-size:1.1rem;'>現実：</span>")
+        
+        # ★最終修正：大見出し（##）の装飾（空白の有無を問わず、確実にシャープを消して見出し化）
+        headings = [
+            "宿命と現実", "あなたの中に眠る15の星", "生まれ持った宿命と現在の性格のギャップ", 
+            "カテゴリ別・究極の自己分析", "あなたの5大欲求パラメーター", "結びの言葉"
+        ]
+        for h in headings:
+            report_text = re.sub(rf"##\s*{h}", f"<h2 style='color:#111; font-size:1.5rem; border-bottom:3px solid #E0E0E0; padding-bottom:10px; margin-top:50px; margin-bottom:20px; font-weight:900;'>{h}</h2>", report_text)
+        
+        # 小見出しの装飾
+        report_text = re.sub(r"###\s*■\s*本来の宿命（あなたが持って生まれた基礎設計）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 本来の宿命（あなたが持って生まれた基礎設計）</h3>", report_text)
+        report_text = re.sub(r"###\s*■\s*現在の性格（今のあなたが作っている外観）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 現在の性格（今のあなたが作っている外観）</h3>", report_text)
+        
+        # カテゴリ別の「カラーブロック化」
+        categories = {
+            "仕事と才能": ("#FFF3E0", "#FF9800", "#E65100"),
+            "恋愛と人間関係": ("#FCE4EC", "#E91E63", "#C2185B"),
+            "お金と豊かさ": ("#E8F5E9", "#4CAF50", "#2E7D32"),
+            "健康とメンタル": ("#E3F2FD", "#2196F3", "#1565C0")
+        }
+        for cat, colors in categories.items():
+            html_block = f"<div style='background-color:{colors[0]}; padding:12px 15px; border-left:6px solid {colors[1]}; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:{colors[2]}; margin:0; font-size:1.25rem; font-weight:800;'>{cat}</h3></div>"
+            report_text = re.sub(rf"###\s*■\s*{cat}", html_block, report_text)
+
+        # テキストの改行(\n)をHTMLの改行(<br>)に変換
+        report_text = report_text.replace("\n", "<br>")
+
+        # UDデザインのCSSを注入
         st.markdown("""
         <style>
             .ud-report-box { 
-                background-color: #FAFAFA; /* 目に優しいオフホワイト */
+                background-color: #FAFAFA;
                 border: 1px solid #E0E0E0; 
                 border-radius: 8px; 
-                padding: 40px 30px; 
+                padding: 30px 25px; 
                 margin-top: 20px; 
                 margin-bottom: 40px; 
                 box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-                color: #222222; /* コントラストの高い黒 */
+                color: #222222;
                 font-size: 1.05rem;
                 line-height: 1.9;
                 letter-spacing: 0.05em;
-            }
-            .ud-report-box h2 { 
-                color: #111111 !important; 
-                font-size: 1.5rem !important; 
-                text-align: center; 
-                border-bottom: 2px solid #DDDDDD; 
-                padding-bottom: 12px; 
-                margin-top: 40px !important; 
-                margin-bottom: 25px !important; 
-                font-weight: 900;
-            }
-            .ud-report-box h2:first-child {
-                margin-top: 0 !important;
-            }
-            .ud-report-box h3 { 
-                color: #333333 !important; 
-                font-size: 1.25rem !important; 
-                border-left: 6px solid #555555; 
-                padding-left: 15px; 
-                margin-top: 40px !important; 
-                margin-bottom: 20px !important; 
-                font-weight: 800;
-                background-color: #F0F0F0;
-                padding-top: 5px;
-                padding-bottom: 5px;
-            }
-            .ud-report-box p, .ud-report-box li { 
-                color: #333333; 
-            }
-            /* Markdownの太字(**)を「黒文字＋波線」に変換する魔法のCSS */
-            .ud-report-box strong {
-                font-weight: 900;
-                color: #000000;
-                text-decoration: underline wavy #555555; /* ダークグレーの波線 */
-                text-decoration-thickness: 2px;
-                text-underline-offset: 5px;
-                background-color: rgba(0,0,0,0.03); /* ほんのり背景色で視認性アップ */
-                padding: 0 4px;
-            }
-            .ud-report-box table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 25px;
-            }
-            .ud-report-box th, .ud-report-box td {
-                border: 1px solid #CCCCCC;
-                padding: 12px;
-                text-align: center;
-                color: #222222;
-                background-color: #FFFFFF;
             }
         </style>
         """, unsafe_allow_html=True)
