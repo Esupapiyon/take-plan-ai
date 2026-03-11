@@ -446,6 +446,20 @@ def get_rule_based_stars(score, mind_reason):
     }
     if score <= 2: stars = {k: "★☆☆" for k in stars}
     return stars
+    
+def calculate_scores():
+    scores = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
+    counts = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
+    for q_id, val in st.session_state.answers.items():
+        question = QUESTIONS[q_id - 1]
+        trait = question["trait"]
+        is_reverse = question["is_reverse"]
+        actual_val = 6 - val if is_reverse else val
+        scores[trait] += actual_val
+        counts[trait] += 1
+    for t in scores:
+        scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
+    return scores
 
 def generate_report_prompt(sanmeigaku, scores, user_data):
     gender = user_data.get("Gender", "回答しない")
