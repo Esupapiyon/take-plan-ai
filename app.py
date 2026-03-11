@@ -1536,4 +1536,4 @@ elif st.session_state.step == "done":
     st.markdown("<br><hr>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center; font-weight: bold;'>レポートはポータルからいつでも確認できます</h4>", unsafe_allow_html=True)
     st.link_button("◀ LINEへ戻る", "https://lin.ee/FrawIyY", type="primary")
-    st.info("このウィンドウは閉じて構いません。スクリーンショット等での保存をお勧めします。")
+    st.info("このウィンドウは閉じて構いません。")
