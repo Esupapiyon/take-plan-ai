@@ -467,12 +467,10 @@ def generate_report_prompt(sanmeigaku, scores, user_data):
     if gender in ["男性", "女性"]:
         gender_instruction = f"""
 【サイレント・チューニング指示】
-対象者の生物学的・進化心理学的な行動傾向（{gender}特有のストレス反応や社会的プレッシャー）を分析の裏付けとして組み込んでください。ただし、文章内で「あなたは{gender}だから」といった性別を主語にしたラベリングや断言は絶対に使用禁止です。あくまで個人の「脳の配線・パーソナリティ」として自然に解説してください。
+対象者の生物学的・進化心理学的な行動傾向（{gender}特有のストレス反応や社会的プレッシャー）を分析の裏付けとして組み込んでください。
 """
 
-    prompt = f"""あなたは、専門用語を一切使わず、圧倒的な洞察力でユーザーの心を鷲掴みにする、大人気の天才プロファイラー兼占い師です。ゲッターズ飯田氏のように、長所の裏にある「生々しい欠点や矛盾」を、具体的かつ的確に突くスタイルが特徴です。
-
-以下の【ユーザーの分析データ】をインプットとしますが、出力する文章には「癸酉」「石門星」「天将星」「Big5」「開放性」といった【専門用語は絶対にそのまま出力しないでください】。すべて日常的で生々しい言葉に翻訳してください。
+    prompt = f"""あなたは、専門用語を一切使わず、圧倒的な洞察力でユーザーの心を鷲掴みにする大人気の天才プロファイラー兼占い師です。ゲッターズ飯田氏のように、長所の裏にある「生々しい欠点や矛盾」を、具体的かつ的確に突くスタイルが特徴です。専門用語は絶対にそのまま出力しないでください。
 
 # ユーザーの分析データ
 ・年齢/生年月日: {user_data.get("DOB")}
@@ -480,36 +478,33 @@ def generate_report_prompt(sanmeigaku, scores, user_data):
 ・現在フォーカスしたい悩み: {user_data.get("Pains", "特になし")}
 ・具体的な悩みや理想(自由記述): {user_data.get("Free_Text", "特になし")}
 
-[算命学（本来の宿命）]
+[算命学]
 日干支: {sanmeigaku['日干支']}, 天中殺: {sanmeigaku['天中殺']}
-主星(社会の顔): {sanmeigaku['主星']}, 西方星(恋愛・家庭の顔): {sanmeigaku.get('西方星', '不明')}
+主星: {sanmeigaku['主星']}, 西方星: {sanmeigaku.get('西方星', '不明')}
 12星: 初年[{sanmeigaku['初年']}], 中年[{sanmeigaku['中年']}], 晩年[{sanmeigaku['晩年']}], 最晩年[{sanmeigaku['最晩年']}]
-[Big5スコア 1〜5（現在の性格・状態）]
+[Big5スコア 1〜5]
 O(開放性): {scores['O']}, C(勤勉性): {scores['C']}, E(外向性): {scores['E']}, A(協調性): {scores['A']}, N(神経症的傾向): {scores['N']}
 
 {gender_instruction}
 
 # 【絶対遵守の基本ルール】
-1. 抽象表現の禁止: 「自由」「冒険」「豊かさ」といったフワッとした言葉は禁止。必ず「休日は〇〇をしてしまう」「会議では〇〇な態度をとる」といった【超・具体的な日常の行動】で描写すること。
-2. 摩擦の描写: 「礼儀正しいが、実はサボり魔」のように、長所と短所（摩擦）を必ずセットで生々しく書くこと。
-3. 文字数の確保: 当たり障りのない短い文章は絶対に許しません。ユーザーが驚愕するレベルまで具体例を交えて深く長く語り尽くすこと。
-4. アドバイスの禁止: 解決策やアドバイス（例：〇〇しましょう等）は【絶対に一切書かない】こと。事実の提示のみ。
-5. 絵文字の完全禁止: レポート内に絵文字は一切使用しないでください。
-6. 波線ハイライトの指定: 各項目の解説文の中で、最も痛いところを突いている【核心部分（1〜2箇所）】は、必ず前後にアスタリスク2つをつけて **太字** にしてください。システム側で波線に変換されます。
+1. 抽象表現の禁止: 必ず「休日は〇〇をしてしまう」「会議では〇〇な態度をとる」といった【超・具体的な日常の行動】で描写すること。
+2. 摩擦の描写: 長所と短所（摩擦）を必ずセットで生々しく書くこと。
+3. アドバイスの禁止: 解決策やアドバイス（例：〇〇しましょう等）は【絶対に一切書かない】こと。事実の提示のみ。
+4. 絵文字の完全禁止: レポート内に絵文字は一切使用しないでください。
+5. 波線ハイライトの指定: 各項目の解説文の中で、最も痛いところを突いている【核心部分（1〜2箇所）】は、必ず前後にアスタリスク2つをつけて **太字** にしてください。
 
-# 出力構成（以下のマークダウンと指定の順番通りに必ず出力してください）
+# 出力構成（以下のマークダウンと指定の順番・文言を1文字も変えずに必ず出力してください）
 
 ## 宿命と現実
 宿命：[※本来の気質を表す、鋭く具体的な一言]
 現実：[※現在の性格を表す、生々しくリアルな一言]
-（※「宿命」と「現実」の間は必ず改行して、別々の行に出力してください）
 
 ## あなたの中に眠る15の星
-※「興味がないと1秒でフリーズする星」など、あるあるネタにする。
-| | | |
-|---|---|---|
-| 〇〇の星 | 〇〇の星 | 〇〇の星 |
-（※これを5行分出力して15個にする）
+※ユーザーのデータから導き出される「具体的な特徴や日常のクセ」を15個抽出し、必ず箇条書き（- ）で出力してください。
+- 〇〇の星
+- 〇〇の星
+（※これを15個出力する）
 
 ## 生まれ持った宿命と現在の性格のギャップ
 ### ■ 本来の宿命（あなたが持って生まれた基礎設計）
@@ -518,7 +513,6 @@ O(開放性): {scores['O']}, C(勤勉性): {scores['C']}, E(外向性): {scores[
 現在あなたが社会の中でどう振る舞っているか、本来の宿命とどうギャップが生じているかを生々しく書いてください。
 
 ## カテゴリ別・究極の自己分析
-※宿命と現実の2軸から、各カテゴリの深層心理を【超・具体的に、長く】暴いてください。
 ### ■ 仕事と才能
 どういう環境だと輝き、どういう環境だと完全に腐るのかを断言してください。
 ### ■ 恋愛と人間関係
@@ -1130,6 +1124,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
                 from oauth2client.service_account import ServiceAccountCredentials
                 import gspread
+                import re # 追加
                 
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
@@ -1140,20 +1135,52 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 report_text = None
                 for row in reversed(all_data):
                     if len(row) > 0 and row[0] == st.session_state.line_id:
-                        # 73列目（BY列）にレポートが保存されている前提
                         if len(row) > 73 and row[73].strip() != "":
                             report_text = row[73]
                         break
                 
                 if report_text:
-                    # UDデザインと黒波線のCSSを注入
+                    # ====================================================
+                    # 🚀 Pythonの力でMarkdownを「超UDデザイン」に強制変換
+                    # ====================================================
+                    
+                    # 1. 宿命と現実の「確実な改行」
+                    report_text = report_text.replace("宿命：", "<br><span style='font-weight:900; color:#111; font-size:1.1rem;'>宿命：</span>")
+                    report_text = report_text.replace("現実：", "<br><br><span style='font-weight:900; color:#111; font-size:1.1rem;'>現実：</span>")
+                    
+                    # 2. 太字（**）を「黒波線 ＋ 薄い黄色マーカー」に変換（UDデザインの極み）
+                    report_text = re.sub(
+                        r'\*\*(.*?)\*\*', 
+                        r'<span style="font-weight: 900; color: #000; text-decoration: underline wavy #555555; text-decoration-thickness: 2px; text-underline-offset: 5px; background: linear-gradient(transparent 50%, #FFF59D 50%); padding: 0 4px;">\1</span>', 
+                        report_text
+                    )
+                    
+                    # 3. 大見出し（##）の装飾
+                    headings = [
+                        "宿命と現実", "あなたの中に眠る15の星", "生まれ持った宿命と現在の性格のギャップ", 
+                        "カテゴリ別・究極の自己分析", "あなたの5大欲求パラメーター", "結びの言葉"
+                    ]
+                    for h in headings:
+                        report_text = report_text.replace(f"## {h}", f"<h2 style='color:#111; font-size:1.5rem; border-bottom:3px solid #E0E0E0; padding-bottom:10px; margin-top:50px; margin-bottom:20px; font-weight:900;'>{h}</h2>")
+                    
+                    # 4. 小見出しの装飾
+                    report_text = report_text.replace("### ■ 本来の宿命（あなたが持って生まれた基礎設計）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 本来の宿命（あなたが持って生まれた基礎設計）</h3>")
+                    report_text = report_text.replace("### ■ 現在の性格（今のあなたが作っている外観）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 現在の性格（今のあなたが作っている外観）</h3>")
+                    
+                    # 5. カテゴリ別の「カラーブロック化」
+                    report_text = report_text.replace("### ■ 仕事と才能", "<div style='background-color:#FFF3E0; padding:12px 15px; border-left:6px solid #FF9800; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#E65100; margin:0; font-size:1.25rem; font-weight:800;'>💼 仕事と才能</h3></div>")
+                    report_text = report_text.replace("### ■ 恋愛と人間関係", "<div style='background-color:#FCE4EC; padding:12px 15px; border-left:6px solid #E91E63; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#C2185B; margin:0; font-size:1.25rem; font-weight:800;'>❤️ 恋愛と人間関係</h3></div>")
+                    report_text = report_text.replace("### ■ お金と豊かさ", "<div style='background-color:#E8F5E9; padding:12px 15px; border-left:6px solid #4CAF50; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#2E7D32; margin:0; font-size:1.25rem; font-weight:800;'>💰 お金と豊かさ</h3></div>")
+                    report_text = report_text.replace("### ■ 健康とメンタル", "<div style='background-color:#E3F2FD; padding:12px 15px; border-left:6px solid #2196F3; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#1565C0; margin:0; font-size:1.25rem; font-weight:800;'>🌿 健康とメンタル</h3></div>")
+
+                    # CSSベースの枠組み
                     st.markdown("""
                     <style>
                         .ud-report-box { 
                             background-color: #FAFAFA;
                             border: 1px solid #E0E0E0; 
                             border-radius: 8px; 
-                            padding: 40px 30px; 
+                            padding: 30px 25px; 
                             margin-top: 20px; 
                             margin-bottom: 40px; 
                             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -1162,60 +1189,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             line-height: 1.9;
                             letter-spacing: 0.05em;
                         }
-                        .ud-report-box h2 { 
-                            color: #111111 !important; 
-                            font-size: 1.5rem !important; 
-                            text-align: center; 
-                            border-bottom: 2px solid #DDDDDD; 
-                            padding-bottom: 12px; 
-                            margin-top: 40px !important; 
-                            margin-bottom: 25px !important; 
-                            font-weight: 900;
-                        }
-                        .ud-report-box h2:first-child {
-                            margin-top: 0 !important;
-                        }
-                        .ud-report-box h3 { 
-                            color: #333333 !important; 
-                            font-size: 1.25rem !important; 
-                            border-left: 6px solid #555555; 
-                            padding-left: 15px; 
-                            margin-top: 40px !important; 
-                            margin-bottom: 20px !important; 
-                            font-weight: 800;
-                            background-color: #F0F0F0;
-                            padding-top: 5px;
-                            padding-bottom: 5px;
-                        }
-                        .ud-report-box p, .ud-report-box li { 
-                            color: #333333; 
-                        }
-                        /* Markdownの太字(**)を「黒文字＋波線」に変換する魔法のCSS */
-                        .ud-report-box strong {
-                            font-weight: 900;
-                            color: #000000;
-                            text-decoration: underline wavy #555555;
-                            text-decoration-thickness: 2px;
-                            text-underline-offset: 5px;
-                            background-color: rgba(0,0,0,0.03);
-                            padding: 0 4px;
-                        }
-                        .ud-report-box table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin-bottom: 25px;
-                        }
-                        .ud-report-box th, .ud-report-box td {
-                            border: 1px solid #CCCCCC;
-                            padding: 12px;
-                            text-align: center;
-                            color: #222222;
-                            background-color: #FFFFFF;
-                        }
+                        .ud-report-box ul { margin-top: 10px; margin-bottom: 20px; }
+                        .ud-report-box li { margin-bottom: 8px; font-weight: 500; }
                     </style>
                     """, unsafe_allow_html=True)
                     
-                    # 不要な分割処理やモザイク処理を完全に削除し、スッキリとレポートだけを流し込む
                     st.markdown(f"<div class='ud-report-box'>{report_text}</div>", unsafe_allow_html=True)
                     
                 else:
