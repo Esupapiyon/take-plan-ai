@@ -1109,7 +1109,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
                 from oauth2client.service_account import ServiceAccountCredentials
                 import gspread
-                import re # 正規表現モジュールを追加
+                import re 
                 
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
@@ -1126,7 +1126,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
                 if report_text:
                     # ====================================================
-                    # 🚀 Pythonの力で「超UDデザイン」に強制変換
+                    # Pythonの力で「超UDデザイン」に強制変換
                     # ====================================================
                     
                     # 過去のレポートに残っているテーブル(表)のゴミを消去
@@ -1134,32 +1134,32 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     report_text = report_text.replace("|---|---|---|", "")
                     report_text = report_text.replace("|", "")
                     
-                    # 🌟 新規追加：15の星の「タグデザイン化」ハック
-                    # 「あなたの中に眠る15の星」から「生まれ持った宿命」までの文字を切り出す
-                    star_match = re.search(r'(あなたの中に眠る15の星.*?\n)(.*?)(生まれ持った宿命)', report_text, re.DOTALL)
+                    # 15の星の「タグデザイン化」ハック修正
+                    # 次の見出し(## 生まれ持った宿命)の手前までを正確に切り取る（巻き込み事故防止）
+                    star_match = re.search(r'(あなたの中に眠る15の星.*?\n)(.*?)(?=##\s*生まれ持った宿命)', report_text, re.DOTALL)
                     if star_match:
-                        heading_part = star_match.group(1)
                         content_part = star_match.group(2)
                         
                         # 不要な記号や改行をスペースに変換
                         clean_text = re.sub(r'[・\-\n]', ' ', content_part)
                         
-                        # 「星」という文字で文章をハサミで切り、リスト化する（最後に「星」を付け直す）
+                        # 「星」という文字で文章を切り、リスト化する
                         stars = [s.strip() + "星" for s in clean_text.split("星") if s.strip()]
                         
-                        # フレックスボックスを使ったタグデザインのHTMLを自動生成
+                        # フレックスボックスを使ったタグデザインのHTML
                         tags_html = "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 40px 0;'>"
                         for star in stars:
-                            if len(star) < 40: # 異常な長文の巻き込みを防ぐ安全装置
+                            # ゴミデータ(##など)が入らないように除外
+                            if len(star) > 1 and len(star) < 40 and "##" not in star:
                                 tags_html += f"<span style='background-color: #FFFFFF; color: #333333; padding: 8px 18px; border-radius: 25px; font-size: 0.95rem; font-weight: 800; border: 2px solid #E0E0E0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>{star}</span>"
                         tags_html += "</div>"
                         
-                        # レポート本文の該当箇所を、生成したタグデザインのHTMLに差し替え
+                        # レポート本文の該当箇所を差し替え
                         report_text = report_text[:star_match.start(2)] + tags_html + report_text[star_match.end(2):]
 
-                    # 宿命と現実の「確実な改行」
+                    # 宿命と現実の「確実な改行」（末尾の余計な<br><br>を削除して一体化）
                     report_text = report_text.replace("宿命：", "<span style='font-weight:900; color:#111; font-size:1.1rem;'>宿命：</span>")
-                    report_text = report_text.replace("現実：", "<br><br><span style='font-weight:900; color:#111; font-size:1.1rem;'>現実：</span><br><br>")
+                    report_text = report_text.replace("現実：", "<br><br><span style='font-weight:900; color:#111; font-size:1.1rem;'>現実：</span>")
                     
                     # 大見出し（##）の装飾
                     headings = [
@@ -1173,7 +1173,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     report_text = report_text.replace("### ■ 本来の宿命（あなたが持って生まれた基礎設計）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 本来の宿命（あなたが持って生まれた基礎設計）</h3>")
                     report_text = report_text.replace("### ■ 現在の性格（今のあなたが作っている外観）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 現在の性格（今のあなたが作っている外観）</h3>")
                     
-                    # カテゴリ別の「カラーブロック化」（絵文字なし）
+                    # カテゴリ別の「カラーブロック化」
                     report_text = report_text.replace("### ■ 仕事と才能", "<div style='background-color:#FFF3E0; padding:12px 15px; border-left:6px solid #FF9800; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#E65100; margin:0; font-size:1.25rem; font-weight:800;'>仕事と才能</h3></div>")
                     report_text = report_text.replace("### ■ 恋愛と人間関係", "<div style='background-color:#FCE4EC; padding:12px 15px; border-left:6px solid #E91E63; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#C2185B; margin:0; font-size:1.25rem; font-weight:800;'>恋愛と人間関係</h3></div>")
                     report_text = report_text.replace("### ■ お金と豊かさ", "<div style='background-color:#E8F5E9; padding:12px 15px; border-left:6px solid #4CAF50; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#2E7D32; margin:0; font-size:1.25rem; font-weight:800;'>お金と豊かさ</h3></div>")
