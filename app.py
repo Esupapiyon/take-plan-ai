@@ -447,20 +447,6 @@ def get_rule_based_stars(score, mind_reason):
     if score <= 2: stars = {k: "★☆☆" for k in stars}
     return stars
 
-def calculate_scores():
-    scores = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
-    counts = {"O": 0, "C": 0, "E": 0, "A": 0, "N": 0}
-    for q_id, val in st.session_state.answers.items():
-        question = QUESTIONS[q_id - 1]
-        trait = question["trait"]
-        is_reverse = question["is_reverse"]
-        actual_val = 6 - val if is_reverse else val
-        scores[trait] += actual_val
-        counts[trait] += 1
-    for t in scores:
-        scores[t] = round(scores[t] / counts[t], 1) if counts[t] > 0 else 3.0
-    return scores
-
 def generate_report_prompt(sanmeigaku, scores, user_data):
     gender = user_data.get("Gender", "回答しない")
     gender_instruction = ""
@@ -492,7 +478,6 @@ O(開放性): {scores['O']}, C(勤勉性): {scores['C']}, E(外向性): {scores[
 2. 摩擦の描写: 長所と短所（摩擦）を必ずセットで生々しく書くこと。
 3. アドバイスの禁止: 解決策やアドバイス（例：〇〇しましょう等）は【絶対に一切書かない】こと。事実の提示のみ。
 4. 絵文字の完全禁止: レポート内に絵文字は一切使用しないでください。
-5. 波線ハイライトの指定: 各項目の解説文の中で、最も痛いところを突いている【核心部分（1〜2箇所）】は、必ず前後にアスタリスク2つをつけて **太字** にしてください。
 
 # 出力構成（以下のマークダウンと指定の順番・文言を1文字も変えずに必ず出力してください）
 
@@ -501,9 +486,9 @@ O(開放性): {scores['O']}, C(勤勉性): {scores['C']}, E(外向性): {scores[
 現実：[※現在の性格を表す、生々しくリアルな一言]
 
 ## あなたの中に眠る15の星
-※ユーザーのデータから導き出される「具体的な特徴や日常のクセ」を15個抽出し、必ず箇条書き（- ）で出力してください。
-- 〇〇の星
-- 〇〇の星
+※絶対に表（テーブル）形式にはしないでください。必ず以下のように「・」を用いた箇条書きで15個出力してください。
+・〇〇の星
+・〇〇の星
 （※これを15個出力する）
 
 ## 生まれ持った宿命と現在の性格のギャップ
@@ -1124,7 +1109,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
                 from oauth2client.service_account import ServiceAccountCredentials
                 import gspread
-                import re # 追加
                 
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
@@ -1141,21 +1125,19 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
                 if report_text:
                     # ====================================================
-                    # 🚀 Pythonの力でMarkdownを「超UDデザイン」に強制変換
+                    # 🚀 Pythonの力で「超UDデザイン」に強制変換
                     # ====================================================
                     
-                    # 1. 宿命と現実の「確実な改行」
-                    report_text = report_text.replace("宿命：", "<br><span style='font-weight:900; color:#111; font-size:1.1rem;'>宿命：</span>")
-                    report_text = report_text.replace("現実：", "<br><br><span style='font-weight:900; color:#111; font-size:1.1rem;'>現実：</span>")
+                    # 過去のレポートに残っているテーブル(表)のゴミを消去
+                    report_text = report_text.replace("| | | |", "")
+                    report_text = report_text.replace("|---|---|---|", "")
+                    report_text = report_text.replace("|", "")
                     
-                    # 2. 太字（**）を「黒波線 ＋ 薄い黄色マーカー」に変換（UDデザインの極み）
-                    report_text = re.sub(
-                        r'\*\*(.*?)\*\*', 
-                        r'<span style="font-weight: 900; color: #000; text-decoration: underline wavy #555555; text-decoration-thickness: 2px; text-underline-offset: 5px; background: linear-gradient(transparent 50%, #FFF59D 50%); padding: 0 4px;">\1</span>', 
-                        report_text
-                    )
+                    # 宿命と現実の「確実な改行」
+                    report_text = report_text.replace("宿命：", "<span style='font-weight:900; color:#111; font-size:1.1rem;'>宿命：</span>")
+                    report_text = report_text.replace("現実：", "<br><br><span style='font-weight:900; color:#111; font-size:1.1rem;'>現実：</span><br><br>")
                     
-                    # 3. 大見出し（##）の装飾
+                    # 大見出し（##）の装飾
                     headings = [
                         "宿命と現実", "あなたの中に眠る15の星", "生まれ持った宿命と現在の性格のギャップ", 
                         "カテゴリ別・究極の自己分析", "あなたの5大欲求パラメーター", "結びの言葉"
@@ -1163,15 +1145,18 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     for h in headings:
                         report_text = report_text.replace(f"## {h}", f"<h2 style='color:#111; font-size:1.5rem; border-bottom:3px solid #E0E0E0; padding-bottom:10px; margin-top:50px; margin-bottom:20px; font-weight:900;'>{h}</h2>")
                     
-                    # 4. 小見出しの装飾
+                    # 小見出しの装飾
                     report_text = report_text.replace("### ■ 本来の宿命（あなたが持って生まれた基礎設計）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 本来の宿命（あなたが持って生まれた基礎設計）</h3>")
                     report_text = report_text.replace("### ■ 現在の性格（今のあなたが作っている外観）", "<h3 style='color:#333; font-size:1.2rem; border-left:5px solid #777; padding-left:10px; margin-top:30px; font-weight:800;'>■ 現在の性格（今のあなたが作っている外観）</h3>")
                     
-                    # 5. カテゴリ別の「カラーブロック化」
-                    report_text = report_text.replace("### ■ 仕事と才能", "<div style='background-color:#FFF3E0; padding:12px 15px; border-left:6px solid #FF9800; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#E65100; margin:0; font-size:1.25rem; font-weight:800;'>💼 仕事と才能</h3></div>")
-                    report_text = report_text.replace("### ■ 恋愛と人間関係", "<div style='background-color:#FCE4EC; padding:12px 15px; border-left:6px solid #E91E63; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#C2185B; margin:0; font-size:1.25rem; font-weight:800;'>❤️ 恋愛と人間関係</h3></div>")
-                    report_text = report_text.replace("### ■ お金と豊かさ", "<div style='background-color:#E8F5E9; padding:12px 15px; border-left:6px solid #4CAF50; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#2E7D32; margin:0; font-size:1.25rem; font-weight:800;'>💰 お金と豊かさ</h3></div>")
-                    report_text = report_text.replace("### ■ 健康とメンタル", "<div style='background-color:#E3F2FD; padding:12px 15px; border-left:6px solid #2196F3; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#1565C0; margin:0; font-size:1.25rem; font-weight:800;'>🌿 健康とメンタル</h3></div>")
+                    # カテゴリ別の「カラーブロック化」（絵文字を完全削除）
+                    report_text = report_text.replace("### ■ 仕事と才能", "<div style='background-color:#FFF3E0; padding:12px 15px; border-left:6px solid #FF9800; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#E65100; margin:0; font-size:1.25rem; font-weight:800;'>仕事と才能</h3></div>")
+                    report_text = report_text.replace("### ■ 恋愛と人間関係", "<div style='background-color:#FCE4EC; padding:12px 15px; border-left:6px solid #E91E63; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#C2185B; margin:0; font-size:1.25rem; font-weight:800;'>恋愛と人間関係</h3></div>")
+                    report_text = report_text.replace("### ■ お金と豊かさ", "<div style='background-color:#E8F5E9; padding:12px 15px; border-left:6px solid #4CAF50; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#2E7D32; margin:0; font-size:1.25rem; font-weight:800;'>お金と豊かさ</h3></div>")
+                    report_text = report_text.replace("### ■ 健康とメンタル", "<div style='background-color:#E3F2FD; padding:12px 15px; border-left:6px solid #2196F3; border-radius:4px; margin-top:35px; margin-bottom:15px;'><h3 style='color:#1565C0; margin:0; font-size:1.25rem; font-weight:800;'>健康とメンタル</h3></div>")
+
+                    # ★最重要★：テキストの改行(\n)をHTMLの改行(<br>)に変換し、文字の連続を防ぐ
+                    report_text = report_text.replace("\n", "<br>")
 
                     # CSSベースの枠組み
                     st.markdown("""
@@ -1189,8 +1174,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             line-height: 1.9;
                             letter-spacing: 0.05em;
                         }
-                        .ud-report-box ul { margin-top: 10px; margin-bottom: 20px; }
-                        .ud-report-box li { margin-bottom: 8px; font-weight: 500; }
                     </style>
                     """, unsafe_allow_html=True)
                     
