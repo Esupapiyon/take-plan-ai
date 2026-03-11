@@ -1120,7 +1120,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 st.error(f"エラーが発生しました: {e}")
 
     # ==========================================
-    # 【タブ3】極秘レポート完全版（モザイク＆アンロック機能付き）
+    # 【タブ3】極秘レポート完全版
     # ==========================================
     with tab3:
         st.subheader("📜 極秘レポート完全版")
@@ -1130,7 +1130,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
                 from oauth2client.service_account import ServiceAccountCredentials
                 import gspread
-                import re
                 
                 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                 client = gspread.authorize(creds)
@@ -1139,124 +1138,85 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 all_data = sheet.get_all_values()
                 
                 report_text = None
-                user_stripe_id = ""
                 for row in reversed(all_data):
                     if len(row) > 0 and row[0] == st.session_state.line_id:
+                        # 73列目（BY列）にレポートが保存されている前提
                         if len(row) > 73 and row[73].strip() != "":
                             report_text = row[73]
-                        if len(row) > 1:
-                            user_stripe_id = row[1]
                         break
                 
                 if report_text:
-                    exp, _ = get_user_status(st.session_state.line_id)
-                    user_level = math.floor(exp / 50) + 1
-                    is_premium = bool(user_stripe_id.strip())
-                    
-                    unlock_sec1 = is_premium or user_level >= 2
-                    unlock_sec2 = is_premium or user_level >= 5
-                    unlock_sec3 = is_premium or user_level >= 10
-
+                    # UDデザインと黒波線のCSSを注入
                     st.markdown("""
                     <style>
-                        .secret-report-box { background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%); border: 2px solid #D32F2F; border-radius: 15px; padding: 30px 20px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
-                        .secret-report-box h2 { color: #C62828 !important; font-size: 1.6rem !important; text-align: center; border-bottom: 2px solid #FFEBEE; padding-bottom: 15px; margin-bottom: 25px; }
-                        .secret-report-box h3 { color: #111111 !important; font-size: 1.3rem !important; border-left: 5px solid #D32F2F; padding-left: 10px; margin-top: 35px !important; margin-bottom: 15px !important; }
-                        .secret-report-box p, .secret-report-box li { font-size: 1.05rem; line-height: 1.8; color: #333333; }
-                        
-                        .blur-container { position: relative; margin-top: 20px; }
-                        .blur-text { filter: blur(5px); user-select: none; pointer-events: none; opacity: 0.6; }
-                        .lock-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; text-align: center; background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 10px; border: 2px solid #D32F2F; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; }
-                        .lock-overlay h4 { color: #C62828 !important; margin-bottom: 10px; font-weight: 900;}
-                        .lock-overlay p { font-size: 0.95rem; margin-bottom: 15px; }
-                        .premium-btn { display: inline-block; background: linear-gradient(90deg, #D32F2F 0%, #C62828 100%); color: white !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                        .ud-report-box { 
+                            background-color: #FAFAFA;
+                            border: 1px solid #E0E0E0; 
+                            border-radius: 8px; 
+                            padding: 40px 30px; 
+                            margin-top: 20px; 
+                            margin-bottom: 40px; 
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+                            color: #222222;
+                            font-size: 1.05rem;
+                            line-height: 1.9;
+                            letter-spacing: 0.05em;
+                        }
+                        .ud-report-box h2 { 
+                            color: #111111 !important; 
+                            font-size: 1.5rem !important; 
+                            text-align: center; 
+                            border-bottom: 2px solid #DDDDDD; 
+                            padding-bottom: 12px; 
+                            margin-top: 40px !important; 
+                            margin-bottom: 25px !important; 
+                            font-weight: 900;
+                        }
+                        .ud-report-box h2:first-child {
+                            margin-top: 0 !important;
+                        }
+                        .ud-report-box h3 { 
+                            color: #333333 !important; 
+                            font-size: 1.25rem !important; 
+                            border-left: 6px solid #555555; 
+                            padding-left: 15px; 
+                            margin-top: 40px !important; 
+                            margin-bottom: 20px !important; 
+                            font-weight: 800;
+                            background-color: #F0F0F0;
+                            padding-top: 5px;
+                            padding-bottom: 5px;
+                        }
+                        .ud-report-box p, .ud-report-box li { 
+                            color: #333333; 
+                        }
+                        /* Markdownの太字(**)を「黒文字＋波線」に変換する魔法のCSS */
+                        .ud-report-box strong {
+                            font-weight: 900;
+                            color: #000000;
+                            text-decoration: underline wavy #555555;
+                            text-decoration-thickness: 2px;
+                            text-underline-offset: 5px;
+                            background-color: rgba(0,0,0,0.03);
+                            padding: 0 4px;
+                        }
+                        .ud-report-box table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 25px;
+                        }
+                        .ud-report-box th, .ud-report-box td {
+                            border: 1px solid #CCCCCC;
+                            padding: 12px;
+                            text-align: center;
+                            color: #222222;
+                            background-color: #FFFFFF;
+                        }
                     </style>
                     """, unsafe_allow_html=True)
                     
-                    st.markdown("<div class='secret-report-box'>", unsafe_allow_html=True)
-                    
-                    public_text = report_text
-                    secrets_block = ""
-                    
-                    # 新しい【】タグのみで分割する（透明になるバグの原因を完全削除）
-                    if "【SECRETS_START】" in report_text:
-                        parts = report_text.split("【SECRETS_START】")
-                        public_text = parts[0]
-                        secrets_block = parts[1].split("【SECRETS_END】")[0] if "【SECRETS_END】" in parts[1] else parts[1]
-                    
-                    st.markdown(public_text)
-                    
-                    if secrets_block:
-                        st.markdown("<hr style='border: 1px dashed #D32F2F; margin: 40px 0;'>", unsafe_allow_html=True)
-                        st.markdown("<h2 style='text-align:center; color:#D32F2F;'>🔒 ここから先は極秘ライブラリです</h2>", unsafe_allow_html=True)
-                        
-                        # 第1章の抽出と描画（透明タグの判定を完全削除）
-                        sec1_match = re.search(r'【SECRET_1_START】(.*?)【SECRET_1_END】', secrets_block, re.DOTALL)
-                        if sec1_match:
-                            sec1_text = sec1_match.group(1).strip()
-                            if unlock_sec1:
-                                st.markdown(sec1_text)
-                            else:
-                                lines = sec1_text.split('\n')
-                                title = lines[0] if lines else "## 🔒 極秘ライブラリ 第1章"
-                                dummy_text = "あなたが最も評価される環境は〇〇です。しかし、〇〇なやり方をすると一気に評価が下がります。\n適職は〇〇や〇〇など、あなたの〇〇の星が活かせる場所です..."
-                                st.markdown(f"""
-                                {title}
-                                <div class="blur-container">
-                                    <div class="blur-text">{dummy_text}<br><br>{dummy_text}</div>
-                                    <div class="lock-overlay">
-                                        <h4>🔒 封印されています</h4>
-                                        <p>第1章を読むには、<b>ユーザーLv.2（現在Lv.{user_level}）</b>に到達するか、<br>プレミアムプランへの加入が必要です。</p>
-                                        <a href="#" class="premium-btn">✨ プレミアムで全解放する</a>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                        # 第2章の抽出と描画
-                        sec2_match = re.search(r'【SECRET_2_START】(.*?)【SECRET_2_END】', secrets_block, re.DOTALL)
-                        if sec2_match:
-                            sec2_text = sec2_match.group(1).strip()
-                            if unlock_sec2:
-                                st.markdown(sec2_text)
-                            else:
-                                lines = sec2_text.split('\n')
-                                title = lines[0] if lines else "## 🔒 極秘ライブラリ 第2章"
-                                dummy_text = "親密な関係になると、あなたは普段見せない〇〇な顔を見せます。特に〇〇なタイプの人に惹かれやすいですが、その関係は〇〇になりがちです..."
-                                st.markdown(f"""
-                                {title}
-                                <div class="blur-container">
-                                    <div class="blur-text">{dummy_text}<br><br>{dummy_text}</div>
-                                    <div class="lock-overlay">
-                                        <h4>🔒 封印されています</h4>
-                                        <p>第2章を読むには、<b>ユーザーLv.5（現在Lv.{user_level}）</b>に到達するか、<br>プレミアムプランへの加入が必要です。</p>
-                                        <a href="#" class="premium-btn">✨ プレミアムで全解放する</a>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                        # 第3章の抽出と描画
-                        sec3_match = re.search(r'【SECRET_3_START】(.*?)【SECRET_3_END】', secrets_block, re.DOTALL)
-                        if sec3_match:
-                            sec3_text = sec3_match.group(1).strip()
-                            if unlock_sec3:
-                                st.markdown(sec3_text)
-                            else:
-                                lines = sec3_text.split('\n')
-                                title = lines[0] if lines else "## 🔒 極秘ライブラリ 第3章"
-                                dummy_text = "あなたの人生の最終的なゴールは〇〇にあります。しかし、その前に必ず乗り越えなければならない最大のカルマ（業）が存在し、それは〇〇という形で現れます..."
-                                st.markdown(f"""
-                                {title}
-                                <div class="blur-container">
-                                    <div class="blur-text">{dummy_text}<br><br>{dummy_text}</div>
-                                    <div class="lock-overlay">
-                                        <h4>🔒 封印されています</h4>
-                                        <p>第3章（最終章）を読むには、<b>ユーザーLv.10（現在Lv.{user_level}）</b>に到達するか、<br>プレミアムプランへの加入が必要です。</p>
-                                        <a href="#" class="premium-btn">✨ プレミアムで全解放する</a>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    # 不要な分割処理やモザイク処理を完全に削除し、スッキリとレポートだけを流し込む
+                    st.markdown(f"<div class='ud-report-box'>{report_text}</div>", unsafe_allow_html=True)
                     
                 else:
                     st.warning("レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
