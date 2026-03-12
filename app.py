@@ -933,7 +933,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
         st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
 
-with tab2:
+    with tab2:
         st.subheader("📅 運命の波乗りダッシュボード")
         with st.spinner("運命の波とクエストを生成中..."):
             try:
