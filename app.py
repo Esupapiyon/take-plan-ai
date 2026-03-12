@@ -1027,8 +1027,136 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.info("※次回のアップデートで、ボタンを押すと実際にデータベースにEXPが加算され、HPが100%に回復する処理が実装されます（フェーズ3）")
                         st.markdown("</div>", unsafe_allow_html=True)
 
-                    # ▼ これより下の行は「with t_month:」が続きます（元のまま残してください）
+                        with t_month:
+                        st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
+                        st.info("前年終盤からの流れと、今年の着地点を確認して長期計画に活用してください。")
+                        
+                        months_data = []
+                        for m in range(10, 13):
+                            m_date = datetime.date(current_year - 1, m, 15)
+                            res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
+                            months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
+                        for m in range(1, 13):
+                            m_date = datetime.date(current_year, m, 15)
+                            res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
+                            months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
+                            
+                        df_m = pd.DataFrame(months_data)
+                        base_m = alt.Chart(df_m).encode(x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='black', tickColor='black', domainColor='black')))
+                        line_m = base_m.mark_line(color='#06C755', strokeWidth=3).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='月間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
+                        symbols_m = base_m.mark_text(size=18, dy=0).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
+                        st.altair_chart((line_m + symbols_m).properties(height=300, background='#FFFFFF'), use_container_width=True)
+                        
+                        st.markdown("### 📝 各月の総合解説と7つの指針")
+                        
+                        with st.spinner("AIが各月の固有テーマを分析中..."):
+                            @st.cache_data(ttl=86400)
+                            def get_cached_monthly_advices(year_str, _months_data):
+                                prompt = "あなたは日本一の戦略的ライフ・コンサルタントです。\n"
+                                prompt += "以下の15ヶ月分のデータをもとに、各月の「総合解説（2〜3文）」を作成してください。\n"
+                                prompt += "【重要】同じスコアの月でも、環境と精神のテーマに合わせて全く違う切り口で具体的な解説を書いてください。専門用語は使わず現代語に翻訳してください。\n\n"
+                                prompt += "# データ\n"
+                                for d in _months_data:
+                                    prompt += f"- {d['年月']}: スコア{d['スコア']}, 環境({d['環境理由']}), 精神({d['精神理由']})\n"
+                                prompt += "\n# 出力形式（以下のフォーマットを厳守）\n"
+                                for d in _months_data:
+                                    prompt += f"■{d['年月']}\n[ここに独自の解説]\n"
+                                    
+                                try:
+                                    openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                                    response = openai_client.chat.completions.create(
+                                        model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.7
+                                    )
+                                    return response.choices[0].message.content
+                                except:
+                                    return ""
+                            
+                            raw_ai_text = get_cached_monthly_advices(str(current_year), months_data)
+                            ai_dict = {}
+                            if raw_ai_text:
+                                parts = raw_ai_text.split("■")
+                                for part in parts:
+                                    if "\n" in part:
+                                        lines = part.strip().split("\n", 1)
+                                        ym = lines[0].strip()
+                                        desc = lines[1].strip() if len(lines) > 1 else ""
+                                        ai_dict[ym] = desc
+                        
+                        for data in months_data:
+                            stars = get_rule_based_stars(data["スコア"], data["精神理由"])
+                            ai_desc = ai_dict.get(data['年月'], f"スコア{data['スコア']}の月です。自身のテーマに沿って着実に行動しましょう。")
+                            
+                            st.markdown(f"#### {data['年月']} {data['シンボル']} {data['タイトル']} (スコア: {data['スコア']})")
+                            st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{ai_desc}</p>", unsafe_allow_html=True)
+                            st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
 
+                    with t_year:
+                        st.markdown("### 🗻 年間・運命の波（8年推移）")
+                        years_data = []
+                        for i in range(-2, 6):
+                            y_date = datetime.date(current_year + i, 6, 1)
+                            res = calculate_period_score(user_nikkanshi, y_date, period_type="year")
+                            years_data.append({"年": f"{y_date.year}年", "スコア": res["score"], "シンボル": res["symbol"], "res_obj": res})
+                            if i == 0: this_year_res = res
+                            
+                        df_y = pd.DataFrame(years_data)
+                        base_y = alt.Chart(df_y).encode(x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='black', tickColor='black', domainColor='black')))
+                        line_y = base_y.mark_line(color='#D32F2F', strokeWidth=4).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='年間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
+                        symbols_y = base_y.mark_text(size=24, dy=-5).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
+                        st.altair_chart((line_y + symbols_y).properties(height=300, background='#FFFFFF'), use_container_width=True)
+                        
+                        st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
+                        with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
+                            @st.cache_data(ttl=86400)
+                            def get_cached_yearly_advice(year_str, _res):
+                                prompt = f"""
+                                あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間アドバイス】を作成してください。
+                                [今年のスコア: {_res['score']}点, シンボル: {_res['symbol']}, 環境: {_res['env_reason']}, 精神: {_res['mind_reason']}]
+
+                                # 【絶対遵守の出力ルール】
+                                1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
+                                2. 1年間の長期的な視点で、ワクワクする力強いトーンで書くこと。
+                                3. 【重要】星評価（★☆☆など）は絶対に出力しないでください。文章のみで解説してください。
+                                4. 各項目に「具体的なアクション」を必ず入れること。
+                                5. 【重要】同じスコアや記号であっても、背景にある「環境」と「精神」のテーマ（例：今年は学びの年、今年は行動の年など）を反映し、その年ならではの独自の解説にしてください。
+
+                                # 出力構成
+                                ## 今年の運命の波（総合解説）
+                                今年のスコアとシンボルの意味を解説するとともに、「あなたにとって今年全体がどのような意味を持つ1年なのか（例：成長の年、手放しの年、飛躍の年など）」を追加して総括してください。
+
+                                ## 7つの指針と詳細解説（※星評価は書かない）
+                                ### 1. 総合運
+                                [解説]
+                                ### 2. 人間関係運
+                                [解説]
+                                ### 3. 仕事運
+                                [解説]
+                                ### 4. 恋愛＆結婚運
+                                [解説]
+                                ### 5. 金運（契約・買い物）
+                                [解説]
+                                ### 6. 健康運
+                                [解説]
+                                ### 7. 家族・親子運
+                                [解説]
+                                """
+                                try:
+                                    openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                                    response = openai_client.chat.completions.create(
+                                        model="gpt-4o-mini", messages=[{"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"}, {"role": "user", "content": prompt}], temperature=0.7
+                                    )
+                                    return response.choices[0].message.content
+                                except:
+                                    return "エラーが発生しました。"
+
+                            yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
+                            st.markdown(f"<div class='advice-box'>{yearly_advice}</div>", unsafe_allow_html=True)
+                            
+            except Exception as e:
+                st.error(f"エラーが発生しました: {e}")
+                        
+
+                    
     # ==========================================
     # 【タブ3】極秘レポート完全版
     # ==========================================
