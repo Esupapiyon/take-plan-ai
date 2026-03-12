@@ -1027,7 +1027,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.info("※次回のアップデートで、ボタンを押すと実際にデータベースにEXPが加算され、HPが100%に回復する処理が実装されます（フェーズ3）")
                         st.markdown("</div>", unsafe_allow_html=True)
 
-                        with t_month:
+                    with t_month:
                         st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
                         st.info("前年終盤からの流れと、今年の着地点を確認して長期計画に活用してください。")
                         
