@@ -778,6 +778,63 @@ def save_to_spreadsheet():
     except Exception as e:
         st.error(f"【開発者向けエラー(System)】: {e}")
         return False
+
+def update_mission_clear(line_id):
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        from oauth2client.service_account import ServiceAccountCredentials
+        import gspread
+        import datetime
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+        all_data = sheet.get_all_values()
+        
+        headers = all_data[0]
+        
+        # スプレッドシートにEXP列がない場合は自動で作成する安全装置
+        if 'EXP' not in headers:
+            sheet.update_cell(1, len(headers) + 1, 'EXP')
+            headers.append('EXP')
+        if '最終EXP獲得日' not in headers:
+            sheet.update_cell(1, len(headers) + 1, '最終EXP獲得日')
+            headers.append('最終EXP獲得日')
+            
+        exp_col = headers.index('EXP') + 1
+        date_col = headers.index('最終EXP獲得日') + 1
+        
+        target_row_idx = -1
+        current_exp = 0
+        last_date = ""
+        
+        for i in range(len(all_data)-1, 0, -1):
+            row = all_data[i]
+            if len(row) > 0 and row[0] == line_id:
+                target_row_idx = i + 1
+                if len(row) >= exp_col:
+                    try: current_exp = int(row[exp_col-1])
+                    except: current_exp = 0
+                if len(row) >= date_col:
+                    last_date = row[date_col-1]
+                break
+                
+        if target_row_idx == -1:
+            return False, "ユーザーデータが見つかりません。"
+            
+        today_str = datetime.date.today().strftime("%Y/%m/%d")
+        if last_date == today_str:
+            return False, "本日のミッションは既にクリア済みです！明日も挑戦しましょう。"
+            
+        # 経験値の加算と日付の更新
+        new_exp = current_exp + 10 # 1回のクリアで10EXP獲得
+        sheet.update_cell(target_row_idx, exp_col, new_exp)
+        sheet.update_cell(target_row_idx, date_col, today_str)
+        
+        return True, "ミッション達成！HPが100%に回復し、10 EXPを獲得しました！"
+        
+    except Exception as e:
+        return False, f"通信エラー: {e}"
         
 def get_user_status(line_id):
     try:
@@ -910,14 +967,76 @@ elif not st.session_state.line_id:
 if p_mode in ["portal", "report"] and st.session_state.line_id:
     st.markdown("<h2 style='text-align: center; color: #b8860b; margin-bottom: 20px;'>裏ステータス完全攻略ポータル</h2>", unsafe_allow_html=True)
     
+    with st.spinner("データを同期中..."):
+        try:
+            creds_dict = st.secrets["gcp_service_account"]
+            scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+            from oauth2client.service_account import ServiceAccountCredentials
+            import gspread
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+            client = gspread.authorize(creds)
+            sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+            all_data = sheet.get_all_values()
+            headers = all_data[0]
+            
+            user_row = None
+            for row in reversed(all_data[1:]):
+                if len(row) > 0 and row[0] == st.session_state.line_id:
+                    user_row = row
+                    break
+        except Exception as e:
+            st.error("データベース接続エラー")
+            user_row = None
+
+    if user_row:
+        # --- データ一括抽出 ---
+        user_nikkanshi = user_row[6] if len(user_row) > 6 else "不明"
+        
+        exp_idx = headers.index('EXP') if 'EXP' in headers else -1
+        date_idx = headers.index('最終EXP獲得日') if '最終EXP獲得日' in headers else -1
+        theme_idx = headers.index('次週のテーマ') if '次週のテーマ' in headers else -1
+        
+        exp = 0
+        if exp_idx != -1 and len(user_row) > exp_idx:
+            try: exp = int(user_row[exp_idx])
+            except: pass
+            
+        last_exp_date = ""
+        if date_idx != -1 and len(user_row) > date_idx:
+            last_exp_date = user_row[date_idx]
+            
+        theme = user_row[theme_idx] if theme_idx != -1 and len(user_row) > theme_idx else "未装備（算命学の自動選択）"
+        if not theme: theme = "未装備（算命学の自動選択）"
+        
+        # AIパーソナライズ用データ
+        user_data_for_ai = {"Job": "不明", "Pains": "特になし", "Free_Text": "特になし"}
+        scores_for_ai = {"O": 3.0, "C": 3.0, "E": 3.0, "A": 3.0, "N": 3.0}
+        if len(user_row) > 68:
+            try: scores_for_ai = {"O": float(user_row[64]), "C": float(user_row[65]), "E": float(user_row[66]), "A": float(user_row[67]), "N": float(user_row[68])}
+            except: pass
+        if len(user_row) > 76:
+            user_data_for_ai = {"Job": user_row[74], "Pains": user_row[75], "Free_Text": user_row[76]}
+            
+        # 今日の運勢とHP計算
+        today = datetime.date.today()
+        today_str = today.strftime("%Y/%m/%d")
+        today_res = calculate_period_score(user_nikkanshi, today, period_type="day")
+        
+        base_hp = today_res['score'] * 10
+        is_cleared_today = (last_exp_date == today_str)
+        current_hp = 100 if is_cleared_today else base_hp
+        hp_color = "#4CAF50" if current_hp >= 70 else ("#FF9800" if current_hp >= 40 else "#F44336")
+        
+    else:
+        st.warning("⚠️ ユーザーデータが見つかりません。先に診断を完了してください。")
+        st.stop()
+        
     tab1, tab2, tab3, tab4 = st.tabs(["マイページ", "波乗りダッシュボード", "極秘レポート", "対人レーダー"])
     
     with tab1:
-        with st.spinner("ステータスを同期中..."):
-            exp, theme = get_user_status(st.session_state.line_id)
-            level = math.floor(exp / 50) + 1
-            next_exp = level * 50
-            progress = (exp % 50) / 50.0
+        level = math.floor(exp / 50) + 1
+        next_exp = level * 50
+        progress = (exp % 50) / 50.0
 
         st.markdown(f"""
         <div style='background-color: #FAFAFA; padding: 20px; border-radius: 10px; border: 2px solid #b8860b; margin-bottom: 20px;'>
@@ -933,229 +1052,193 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
         st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
 
+        # 🔋 タブ1に移動してきたHPメーター
+        st.markdown(f"""
+        <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-top: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+            <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
+            <div style='background-color: #E0E0E0; border-radius: 20px; width: 100%; height: 35px; overflow: hidden; margin-top: 15px;'>
+                <div style='background-color: {hp_color}; width: {current_hp}%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.1rem; transition: width 1s ease-in-out;'>
+                    {current_hp}%
+                </div>
+            </div>
+            <p style='text-align: center; font-size: 0.9rem; color: #777; margin-top: 15px; margin-bottom:0; line-height: 1.6;'>
+                ※環境の負荷（運勢）により朝のHPは変動します。<br><b>ミッションをクリアするとHPが100%に回復します！</b>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
     with tab2:
         st.subheader("📅 運命の波乗りダッシュボード")
-        with st.spinner("運命の波とクエストを生成中..."):
-            try:
-                creds_dict = st.secrets["gcp_service_account"]
-                scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-                from oauth2client.service_account import ServiceAccountCredentials
-                import gspread
-                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-                client = gspread.authorize(creds)
-                sheet_url = st.secrets["spreadsheet_url"]
-                sheet = client.open_by_url(sheet_url).sheet1
-                all_data = sheet.get_all_values()
-                
-                user_nikkanshi = None
-                # AIに渡すためのデータを準備（万が一データが欠損していた場合の安全装置）
-                user_data_for_ai = {"Job": "不明", "Pains": "特になし", "Free_Text": "特になし"}
-                scores_for_ai = {"O": 3.0, "C": 3.0, "E": 3.0, "A": 3.0, "N": 3.0}
-                
-                for row in reversed(all_data):
-                    if len(row) > 6 and row[0] == st.session_state.line_id:
-                        user_nikkanshi = row[6]
-                        # Big5スコア（BY列の手前）の取得
-                        if len(row) > 68:
-                            try:
-                                scores_for_ai = {"O": float(row[64]), "C": float(row[65]), "E": float(row[66]), "A": float(row[67]), "N": float(row[68])}
-                            except: pass
-                        # 職業・悩み・自由記述の取得
-                        if len(row) > 76:
-                            user_data_for_ai = {"Job": row[74], "Pains": row[75], "Free_Text": row[76]}
-                        break
-                
-                if not user_nikkanshi:
-                    st.warning("⚠️ 運勢を計算するためのデータが見つかりません。先に診断を完了してください。")
-                else:
-                    today = datetime.date.today()
-                    current_year = today.year
+        current_year = today.year
+        t_day, t_month, t_year = st.tabs(["🌊 今日の波とミッション", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
+        
+        with t_day:
+            st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
+            
+            with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
+                @st.cache_data(ttl=3600)
+                def get_cached_daily_advice(date_str, _res, _ud, _sc):
+                    return generate_daily_advice(_res, _ud, _sc)
                     
-                    t_day, t_month, t_year = st.tabs(["🌊 今日の波とミッション", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
-                    
-                    with t_day:
-                        today_res = calculate_period_score(user_nikkanshi, today, period_type="day")
-                        
-                        # ==========================================
-                        # 🎮 RPG風ステータスUI（今日のHPバッテリー）
-                        # ==========================================
-                        hp_percent = today_res['score'] * 10
-                        hp_color = "#4CAF50" if hp_percent >= 70 else ("#FF9800" if hp_percent >= 40 else "#F44336")
-                        
-                        st.markdown(f"""
-                        <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-                            <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
-                            <div style='background-color: #E0E0E0; border-radius: 20px; width: 100%; height: 35px; overflow: hidden; margin-top: 15px;'>
-                                <div style='background-color: {hp_color}; width: {hp_percent}%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.1rem; transition: width 1s ease-in-out;'>
-                                    {hp_percent}%
-                                </div>
-                            </div>
-                            <p style='text-align: center; font-size: 0.9rem; color: #777; margin-top: 15px; margin-bottom:0; line-height: 1.6;'>
-                                ※環境の負荷（運勢）により朝のHPは変動します。<br><b>ミッションをクリアするとHPが回復し、EXPが貯まります！</b>
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                daily_advice = get_cached_daily_advice(today_str, today_res, user_data_for_ai, scores_for_ai)
+                
+                st.markdown("""
+                <style>
+                    .advice-box { background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%); border: 2px solid #b8860b; border-radius: 12px; padding: 25px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                    .advice-box h2 { color: #b8860b !important; font-size: 1.4rem !important; border-bottom: 1px solid #E0E0E0; padding-bottom: 10px; margin-bottom: 20px; font-weight: 900;}
+                    .advice-box h3 { color: #333333 !important; font-size: 1.1rem !important; margin-top: 25px !important; margin-bottom: 10px !important; border-left: 4px solid #b8860b; padding-left: 10px; font-weight: 800;}
+                    .advice-box p, .advice-box li { font-size: 1.05rem; line-height: 1.7; color: #222222; }
+                </style>
+                """, unsafe_allow_html=True)
+                st.markdown(f"<div class='advice-box'>{daily_advice}</div>", unsafe_allow_html=True)
 
-                        # 占いのシンボル表示
-                        st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
-                        st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
-                        st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
-                        
-                        # AIメッセージの取得（引数を追加してパーソナライズ化）
-                        with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
-                            @st.cache_data(ttl=3600)
-                            def get_cached_daily_advice(date_str, _res, _ud, _sc):
-                                return generate_daily_advice(_res, _ud, _sc)
-                                
-                            daily_advice = get_cached_daily_advice(today.strftime("%Y%m%d"), today_res, user_data_for_ai, scores_for_ai)
-                            
-                            st.markdown("""
-                            <style>
-                                .advice-box { background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%); border: 2px solid #b8860b; border-radius: 12px; padding: 25px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-                                .advice-box h2 { color: #b8860b !important; font-size: 1.4rem !important; border-bottom: 1px solid #E0E0E0; padding-bottom: 10px; margin-bottom: 20px; font-weight: 900;}
-                                .advice-box h3 { color: #333333 !important; font-size: 1.1rem !important; margin-top: 25px !important; margin-bottom: 10px !important; border-left: 4px solid #b8860b; padding-left: 10px; font-weight: 800;}
-                                .advice-box p, .advice-box li { font-size: 1.05rem; line-height: 1.7; color: #222222; }
-                            </style>
-                            """, unsafe_allow_html=True)
-                            st.markdown(f"<div class='advice-box'>{daily_advice}</div>", unsafe_allow_html=True)
-
-                        # フェーズ3（データベース連携）への布石となるボタン
-                        st.markdown("<div style='margin-top: 20px;'>", unsafe_allow_html=True)
-                        if st.button("🌟 今日のミッションをクリアした！", type="primary"):
+            # ★ 実装完了：クリアボタンとデータベース連携
+            st.markdown("<div style='margin-top: 20px;'>", unsafe_allow_html=True)
+            if is_cleared_today:
+                st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
+            else:
+                if st.button("🌟 今日のミッションをクリアした！", type="primary"):
+                    with st.spinner("データベースに経験値を記録中..."):
+                        import time
+                        success, msg = update_mission_clear(st.session_state.line_id)
+                        if success:
                             st.balloons()
-                            st.success("素晴らしい！行動したことでHPが回復し、経験値（EXP）を獲得しました！")
-                            st.info("※次回のアップデートで、ボタンを押すと実際にデータベースにEXPが加算され、HPが100%に回復する処理が実装されます（フェーズ3）")
-                        st.markdown("</div>", unsafe_allow_html=True)
-
-                    with t_month:
-                        st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
-                        st.info("前年終盤からの流れと、今年の着地点を確認して長期計画に活用してください。")
+                            st.success(msg)
+                            time.sleep(2) # 風船演出を見せるために2秒待つ
+                            st.rerun() # リロードしてHPバーとEXPを最新にする
+                        else:
+                            st.error(msg)
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        with t_month:
+            st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
+            st.info("前年終盤からの流れと、今年の着地点を確認して長期計画に活用してください。")
+            
+            months_data = []
+            for m in range(10, 13):
+                m_date = datetime.date(current_year - 1, m, 15)
+                res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
+                months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
+            for m in range(1, 13):
+                m_date = datetime.date(current_year, m, 15)
+                res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
+                months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
+                
+            df_m = pd.DataFrame(months_data)
+            base_m = alt.Chart(df_m).encode(x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='black', tickColor='black', domainColor='black')))
+            line_m = base_m.mark_line(color='#06C755', strokeWidth=3).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='月間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
+            symbols_m = base_m.mark_text(size=18, dy=0).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
+            st.altair_chart((line_m + symbols_m).properties(height=300, background='#FFFFFF'), use_container_width=True)
+            
+            st.markdown("### 📝 各月の総合解説と7つの指針")
+            
+            with st.spinner("AIが各月の固有テーマを分析中..."):
+                @st.cache_data(ttl=86400)
+                def get_cached_monthly_advices(year_str, _months_data):
+                    prompt = "あなたは日本一の戦略的ライフ・コンサルタントです。\n"
+                    prompt += "以下の15ヶ月分のデータをもとに、各月の「総合解説（2〜3文）」を作成してください。\n"
+                    prompt += "【重要】同じスコアの月でも、環境と精神のテーマに合わせて全く違う切り口で具体的な解説を書いてください。専門用語は使わず現代語に翻訳してください。\n\n"
+                    prompt += "# データ\n"
+                    for d in _months_data:
+                        prompt += f"- {d['年月']}: スコア{d['スコア']}, 環境({d['環境理由']}), 精神({d['精神理由']})\n"
+                    prompt += "\n# 出力形式（以下のフォーマットを厳守）\n"
+                    for d in _months_data:
+                        prompt += f"■{d['年月']}\n[ここに独自の解説]\n"
                         
-                        months_data = []
-                        for m in range(10, 13):
-                            m_date = datetime.date(current_year - 1, m, 15)
-                            res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
-                            months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
-                        for m in range(1, 13):
-                            m_date = datetime.date(current_year, m, 15)
-                            res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
-                            months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
-                            
-                        df_m = pd.DataFrame(months_data)
-                        base_m = alt.Chart(df_m).encode(x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='black', tickColor='black', domainColor='black')))
-                        line_m = base_m.mark_line(color='#06C755', strokeWidth=3).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='月間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
-                        symbols_m = base_m.mark_text(size=18, dy=0).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
-                        st.altair_chart((line_m + symbols_m).properties(height=300, background='#FFFFFF'), use_container_width=True)
-                        
-                        st.markdown("### 📝 各月の総合解説と7つの指針")
-                        
-                        with st.spinner("AIが各月の固有テーマを分析中..."):
-                            @st.cache_data(ttl=86400)
-                            def get_cached_monthly_advices(year_str, _months_data):
-                                prompt = "あなたは日本一の戦略的ライフ・コンサルタントです。\n"
-                                prompt += "以下の15ヶ月分のデータをもとに、各月の「総合解説（2〜3文）」を作成してください。\n"
-                                prompt += "【重要】同じスコアの月でも、環境と精神のテーマに合わせて全く違う切り口で具体的な解説を書いてください。専門用語は使わず現代語に翻訳してください。\n\n"
-                                prompt += "# データ\n"
-                                for d in _months_data:
-                                    prompt += f"- {d['年月']}: スコア{d['スコア']}, 環境({d['環境理由']}), 精神({d['精神理由']})\n"
-                                prompt += "\n# 出力形式（以下のフォーマットを厳守）\n"
-                                for d in _months_data:
-                                    prompt += f"■{d['年月']}\n[ここに独自の解説]\n"
-                                    
-                                try:
-                                    openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-                                    response = openai_client.chat.completions.create(
-                                        model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.7
-                                    )
-                                    return response.choices[0].message.content
-                                except:
-                                    return ""
-                            
-                            raw_ai_text = get_cached_monthly_advices(str(current_year), months_data)
-                            ai_dict = {}
-                            if raw_ai_text:
-                                parts = raw_ai_text.split("■")
-                                for part in parts:
-                                    if "\n" in part:
-                                        lines = part.strip().split("\n", 1)
-                                        ym = lines[0].strip()
-                                        desc = lines[1].strip() if len(lines) > 1 else ""
-                                        ai_dict[ym] = desc
-                        
-                        for data in months_data:
-                            stars = get_rule_based_stars(data["スコア"], data["精神理由"])
-                            ai_desc = ai_dict.get(data['年月'], f"スコア{data['スコア']}の月です。自身のテーマに沿って着実に行動しましょう。")
-                            
-                            st.markdown(f"#### {data['年月']} {data['シンボル']} {data['タイトル']} (スコア: {data['スコア']})")
-                            st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{ai_desc}</p>", unsafe_allow_html=True)
-                            st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+                    try:
+                        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                        response = openai_client.chat.completions.create(
+                            model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.7
+                        )
+                        return response.choices[0].message.content
+                    except:
+                        return ""
+                
+                raw_ai_text = get_cached_monthly_advices(str(current_year), months_data)
+                ai_dict = {}
+                if raw_ai_text:
+                    parts = raw_ai_text.split("■")
+                    for part in parts:
+                        if "\n" in part:
+                            lines = part.strip().split("\n", 1)
+                            ym = lines[0].strip()
+                            desc = lines[1].strip() if len(lines) > 1 else ""
+                            ai_dict[ym] = desc
+            
+            for data in months_data:
+                stars = get_rule_based_stars(data["スコア"], data["精神理由"])
+                ai_desc = ai_dict.get(data['年月'], f"スコア{data['スコア']}の月です。自身のテーマに沿って着実に行動しましょう。")
+                
+                st.markdown(f"#### {data['年月']} {data['シンボル']} {data['タイトル']} (スコア: {data['スコア']})")
+                st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{ai_desc}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
 
-                    with t_year:
-                        st.markdown("### 🗻 年間・運命の波（8年推移）")
-                        years_data = []
-                        for i in range(-2, 6):
-                            y_date = datetime.date(current_year + i, 6, 1)
-                            res = calculate_period_score(user_nikkanshi, y_date, period_type="year")
-                            years_data.append({"年": f"{y_date.year}年", "スコア": res["score"], "シンボル": res["symbol"], "res_obj": res})
-                            if i == 0: this_year_res = res
-                            
-                        df_y = pd.DataFrame(years_data)
-                        base_y = alt.Chart(df_y).encode(x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='black', tickColor='black', domainColor='black')))
-                        line_y = base_y.mark_line(color='#D32F2F', strokeWidth=4).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='年間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
-                        symbols_y = base_y.mark_text(size=24, dy=-5).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
-                        st.altair_chart((line_y + symbols_y).properties(height=300, background='#FFFFFF'), use_container_width=True)
-                        
-                        st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
-                        with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
-                            @st.cache_data(ttl=86400)
-                            def get_cached_yearly_advice(year_str, _res):
-                                prompt = f"""
-                                あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間アドバイス】を作成してください。
-                                [今年のスコア: {_res['score']}点, シンボル: {_res['symbol']}, 環境: {_res['env_reason']}, 精神: {_res['mind_reason']}]
+        with t_year:
+            st.markdown("### 🗻 年間・運命の波（8年推移）")
+            years_data = []
+            for i in range(-2, 6):
+                y_date = datetime.date(current_year + i, 6, 1)
+                res = calculate_period_score(user_nikkanshi, y_date, period_type="year")
+                years_data.append({"年": f"{y_date.year}年", "スコア": res["score"], "シンボル": res["symbol"], "res_obj": res})
+                if i == 0: this_year_res = res
+                
+            df_y = pd.DataFrame(years_data)
+            base_y = alt.Chart(df_y).encode(x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='black', tickColor='black', domainColor='black')))
+            line_y = base_y.mark_line(color='#D32F2F', strokeWidth=4).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='年間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
+            symbols_y = base_y.mark_text(size=24, dy=-5).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
+            st.altair_chart((line_y + symbols_y).properties(height=300, background='#FFFFFF'), use_container_width=True)
+            
+            st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
+            with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
+                @st.cache_data(ttl=86400)
+                def get_cached_yearly_advice(year_str, _res):
+                    prompt = f"""
+                    あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間アドバイス】を作成してください。
+                    [今年のスコア: {_res['score']}点, シンボル: {_res['symbol']}, 環境: {_res['env_reason']}, 精神: {_res['mind_reason']}]
 
-                                # 【絶対遵守の出力ルール】
-                                1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
-                                2. 1年間の長期的な視点で、ワクワクする力強いトーンで書くこと。
-                                3. 【重要】星評価（★☆☆など）は絶対に出力しないでください。文章のみで解説してください。
-                                4. 各項目に「具体的なアクション」を必ず入れること。
-                                5. 【重要】同じスコアや記号であっても、背景にある「環境」と「精神」のテーマ（例：今年は学びの年、今年は行動の年など）を反映し、その年ならではの独自の解説にしてください。
+                    # 【絶対遵守の出力ルール】
+                    1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
+                    2. 1年間の長期的な視点で、ワクワクする力強いトーンで書くこと。
+                    3. 【重要】星評価（★☆☆など）は絶対に出力しないでください。文章のみで解説してください。
+                    4. 各項目に「具体的なアクション」を必ず入れること。
+                    5. 【重要】同じスコアや記号であっても、背景にある「環境」と「精神」のテーマ（例：今年は学びの年、今年は行動の年など）を反映し、その年ならではの独自の解説にしてください。
 
-                                # 出力構成
-                                ## 今年の運命の波（総合解説）
-                                今年のスコアとシンボルの意味を解説するとともに、「あなたにとって今年全体がどのような意味を持つ1年なのか（例：成長の年、手放しの年、飛躍の年など）」を追加して総括してください。
+                    # 出力構成
+                    ## 今年の運命の波（総合解説）
+                    今年のスコアとシンボルの意味を解説するとともに、「あなたにとって今年全体がどのような意味を持つ1年なのか（例：成長の年、手放しの年、飛躍の年など）」を追加して総括してください。
 
-                                ## 7つの指針と詳細解説（※星評価は書かない）
-                                ### 1. 総合運
-                                [解説]
-                                ### 2. 人間関係運
-                                [解説]
-                                ### 3. 仕事運
-                                [解説]
-                                ### 4. 恋愛＆結婚運
-                                [解説]
-                                ### 5. 金運（契約・買い物）
-                                [解説]
-                                ### 6. 健康運
-                                [解説]
-                                ### 7. 家族・親子運
-                                [解説]
-                                """
-                                try:
-                                    openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-                                    response = openai_client.chat.completions.create(
-                                        model="gpt-4o-mini", messages=[{"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"}, {"role": "user", "content": prompt}], temperature=0.7
-                                    )
-                                    return response.choices[0].message.content
-                                except:
-                                    return "エラーが発生しました。"
+                    ## 7つの指針と詳細解説（※星評価は書かない）
+                    ### 1. 総合運
+                    [解説]
+                    ### 2. 人間関係運
+                    [解説]
+                    ### 3. 仕事運
+                    [解説]
+                    ### 4. 恋愛＆結婚運
+                    [解説]
+                    ### 5. 金運（契約・買い物）
+                    [解説]
+                    ### 6. 健康運
+                    [解説]
+                    ### 7. 家族・親子運
+                    [解説]
+                    """
+                    try:
+                        openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                        response = openai_client.chat.completions.create(
+                            model="gpt-4o-mini", messages=[{"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"}, {"role": "user", "content": prompt}], temperature=0.7
+                        )
+                        return response.choices[0].message.content
+                    except:
+                        return "エラーが発生しました。"
 
-                            yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
-                            st.markdown(f"<div class='advice-box'>{yearly_advice}</div>", unsafe_allow_html=True)
-                            
+                yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
+                st.markdown(f"<div class='advice-box'>{yearly_advice}</div>", unsafe_allow_html=True)
+                
             except Exception as e:
                 st.error(f"エラーが発生しました: {e}")
-                        
-
                     
     # ==========================================
     # 【タブ3】極秘レポート完全版
