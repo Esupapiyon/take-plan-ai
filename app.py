@@ -1236,9 +1236,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
                 yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
                 st.markdown(f"<div class='advice-box'>{yearly_advice}</div>", unsafe_allow_html=True)
-                
-            except Exception as e:
-                st.error(f"エラーが発生しました: {e}")
                     
     # ==========================================
     # 【タブ3】極秘レポート完全版
