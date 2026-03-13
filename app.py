@@ -21,35 +21,37 @@ from openai import OpenAI
 openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # システムプロンプトを変数として定義
+# システムプロンプトを変数として定義
 SYSTEM_PROMPT = """
 あなたは、ユーザーの心に寄り添う「占い×科学」の専属ナビゲーターです。
-ユーザーの「今日の運勢」と「ビッグファイブの性格特性」に基づき、以下のJSONフォーマットに厳密に従ってテキストを生成してください。
+ユーザーの「今日の運勢」と「ビッグファイブの性格特性」「職業や悩み」に基づき、以下のJSONフォーマットに厳密に従って出力してください。
 
-【出力ルール】
+【🚨絶対遵守の出力ルール🚨】
 1. 出力は必ずJSON形式のみとすること。マークダウンや余計な挨拶は一切含めないこと。
 2. 各運勢のスコア（score）は1〜3の整数で出力すること。星マークや絵文字は含めないこと。
-3. クエストの行動（action）には、ユーザーが一切迷わないよう「例えば『自販機のコーヒーが美味しかった』『天気が良かった』など」といった【超具体的な例】を必ず複数入れること。
-4. クエストの目的（benefit）には、「これは心理学で『〇〇』と呼ばれる手法をアレンジした魔法です」と、ベースにした科学的アプローチの名称をサラッと入れ、それがどう効くのかを中学生でもわかる言葉で解説すること。
-5. クエストの最後（closing）には、必ず「もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。」と提示すること。
+3. 【超具体化のルール】クエストの行動（action）は「例えば〜」「〜など」と複数提示してはいけません。ユーザーの職業に合わせ「いつ（例：帰りの電車の中で）」「どこで」「何を」「どうするか」を【1つだけに絞って】情景が浮かぶレベルで断言してください。
+4. 【NGワードと禁止表現】「カフェ」「深呼吸」「散歩」は使用禁止。「効果的な計画立案が可能になる」「新しいアイデアが浮かぶ」といった抽象的なメリットも禁止です。「頭の中のモヤモヤが外に出ることで、夕食の時に仕事のイライラを家族にぶつけなくなります」のように、生々しい日常のメリットを書いてください。
+5. ボーナスアドバイス（bonus_advice）には、クエストの背景にある心理学や脳科学の深い知識（例：デフォルト・モード・ネットワーク等）を解説してください。
 
 【JSONフォーマット】
 {
   "fortunes": {
-    "total": { "score": 1, "text": "総合運のアドバイス" },
-    "relation": { "score": 1, "text": "人間関係運のアドバイス" },
-    "work": { "score": 1, "text": "仕事運のアドバイス" },
-    "love": { "score": 1, "text": "恋愛＆結婚運のアドバイス" },
-    "money": { "score": 1, "text": "金運のアドバイス" },
-    "health": { "score": 1, "text": "健康運のアドバイス" },
-    "family": { "score": 1, "text": "家族・親子運のアドバイス" }
+    "total": { "score": 1, "text": "総合運のアドバイス（30文字以内の一言）" },
+    "relation": { "score": 1, "text": "人間関係運のアドバイス（30文字以内の一言）" },
+    "work": { "score": 1, "text": "仕事運のアドバイス（30文字以内の一言）" },
+    "love": { "score": 1, "text": "恋愛＆結婚運のアドバイス（30文字以内の一言）" },
+    "money": { "score": 1, "text": "金運のアドバイス（30文字以内の一言）" },
+    "health": { "score": 1, "text": "健康運のアドバイス（30文字以内の一言）" },
+    "family": { "score": 1, "text": "家族・親子運のアドバイス（30文字以内の一言）" }
   },
-  "aura_focus": "本日のフォーカスとオーラの解説",
+  "aura_focus": "本日のフォーカス（一番ピンチかチャンスな項目）と、ユーザーの性格特性を紐づけた自己肯定感を上げる解説",
   "mission": {
-    "title": "タイトル",
-    "action": "具体的な行動（具体例を必ず複数含む）",
-    "benefit": "それをするとどうなるか（ベースにした科学的手法の名前を含む）",
+    "title": "〇〇の魔法",
+    "action": "いつ・どこで・何を・どうするかを1つに絞った超具体的な行動指示",
+    "benefit": "心理学の手法名を含め、日常のどんな生々しい場面で役立つかの具体的メリット",
     "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
-  }
+  },
+  "bonus_advice": "なぜこのミッションが効果的なのか、知的好奇心を満たす深い科学的解説"
 }
 """
 
@@ -1125,19 +1127,19 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 # ▼ 本番稼働時はこちら（先頭の「#」を消して、下のダミーデータを消す）
                 data = get_cached_daily_json(user_traits_str, daily_data_str)
                 
-# UIのスタイル定義（画像のデザインを完全再現）
+                # UIのスタイル定義（一つの大きなフレームに統合）
                 st.markdown("""
                 <style>
-                    /* 全体を囲む大枠のスタイル（影を無くし、純白背景に） */
-                    .advice-box { background-color: #FFFFFF; border: 2px solid #b8860b; border-radius: 8px; padding: 25px; margin-top: 10px; margin-bottom: 30px; }
+                    /* 全体を囲むゴールドの枠線（一つの大きなフレーム） */
+                    .daily-frame { border: 2px solid #b8860b; border-radius: 8px; padding: 25px; background-color: #FFFFFF; margin-bottom: 30px; color: #333333; line-height: 1.7; font-size: 1.05rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                     /* 見出しのスタイル */
-                    .h2-style { color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 20px; margin-bottom: 15px; font-weight: 900; }
-                    /* 文章ごとに囲む小さな枠線（画像のデザイン） */
-                    .gold-frame { border: 2px solid #b8860b; border-radius: 8px; padding: 15px 20px; background-color: #FFFFFF; margin-bottom: 20px; color: #333333; line-height: 1.7; font-size: 1.05rem; }
+                    .h2-style { color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 15px; font-weight: 900; }
+                    .h2-style:first-child { margin-top: 0; }
                 </style>
                 """, unsafe_allow_html=True)
 
-                st.markdown("<div class='advice-box'>", unsafe_allow_html=True)
+                # 全体を囲む大きな枠（フレーム）の開始
+                st.markdown("<div class='daily-frame'>", unsafe_allow_html=True)
                 
                 # --- 7つの星の導き ---
                 st.markdown("<h2 class='h2-style'>7つの星の導き</h2>", unsafe_allow_html=True)
@@ -1157,21 +1159,18 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
                 # --- フォーカスとオーラ ---
                 st.markdown("<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>", unsafe_allow_html=True)
-                # ★画像を再現したゴールドの枠線で文章を囲む
-                st.markdown(f"<div class='gold-frame'>{data.get('aura_focus', '')}</div>", unsafe_allow_html=True)
+                st.markdown(f"{data.get('aura_focus', '')}", unsafe_allow_html=True)
 
                 # --- 魔法のミッション ---
                 st.markdown("<h2 class='h2-style'>今日の魔法のミッション</h2>", unsafe_allow_html=True)
-                # ★画像を再現したゴールドの枠線で文章を囲む
                 st.markdown(f"""
-                <div class='gold-frame'>
-                    <h4 style='margin-top:0; color:#b8860b;'>⚔️ {data['mission'].get('title', '')}</h4>
-                    <b>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
-                    <b>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
-                    {data['mission'].get('closing', '')}
-                </div>
+                <h4 style='margin-top:0; color:#b8860b;'>⚔️ {data['mission'].get('title', '')}</h4>
+                <b>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
+                <b>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
+                {data['mission'].get('closing', '')}
                 """, unsafe_allow_html=True)
                 
+                # 全体を囲む大きな枠（フレーム）の終了
                 st.markdown("</div>", unsafe_allow_html=True)
             
             if is_cleared_today:
@@ -1193,6 +1192,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             # ==========================================
             # 📖 追加スキル：賢者の書（ボーナスEXP）アコーディオン
             # ==========================================
+            # エラーの原因だった「JSONからの抽出漏れ」を修正
+            bonus_advice = data.get("bonus_advice", "")
             if bonus_advice:
                 st.markdown("<br>", unsafe_allow_html=True)
                 with st.expander("📖 【追加スキル】深い科学の知識を学ぶ（ボーナスEXPあり）"):
@@ -1205,7 +1206,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.success("ボーナス +5 EXP を獲得しました！")
                     else:
                         if st.button("読了してボーナスを獲得する", key="btn_bonus"):
-                            # ※簡易的にセッション内でEXP獲得をシミュレート（次回DBへ統合）
                             st.session_state[f"bonus_{today_str}"] = True
                             st.toast("ボーナスEXPを獲得しました！")
                             st.rerun()
