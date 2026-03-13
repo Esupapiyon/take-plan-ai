@@ -27,27 +27,29 @@ SYSTEM_PROMPT = """
 
 【出力ルール】
 1. 出力は必ずJSON形式のみとすること。マークダウンや余計な挨拶は一切含めないこと。
-2. 各運勢のスコア（score）は1〜3の整数で出力すること。テキスト内に「★★★」などの星マークや絵文字（🔮など）は絶対に含めないこと。
-3. 専門用語（例：開放性、認知行動療法など）は使わず、中学生でも情景が浮かぶ温かい言葉に言い換えること。
-4. クエスト（mission）は「いつ・どこで・何を・どうする」を超具体的に設定し、「実践する目的（どうなるか）」を必ず含めること。
-5. クエストの最後（closing）には、必ず「もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。」という選択の自由（BYAF法）を提示すること。
+2. 各運勢のスコア（score）は1〜3の整数で出力すること。星マークや絵文字は含めないこと。
+3. クエストの行動（action）には、ユーザーが一切迷わないよう「例えば『自販機のコーヒーが美味しかった』『天気が良かった』など」といった【超具体的な例】を必ず複数入れること。
+4. クエストの目的（benefit）には、「これは心理学で『〇〇』と呼ばれる手法をアレンジした魔法です」と、ベースにした科学的アプローチの名称をサラッと入れ、それがどう効くのかを中学生でもわかる言葉で解説すること。
+5. クエストの最後（closing）には、必ず「もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。」と提示すること。
 
 【JSONフォーマット】
 {
   "fortunes": {
-    "love": { "score": 1, "text": "アドバイス" },
-    "work": { "score": 1, "text": "アドバイス" },
-    "health": { "score": 1, "text": "アドバイス" },
-    "money": { "score": 1, "text": "アドバイス" }
+    "total": { "score": 1, "text": "総合運のアドバイス" },
+    "relation": { "score": 1, "text": "人間関係運のアドバイス" },
+    "work": { "score": 1, "text": "仕事運のアドバイス" },
+    "love": { "score": 1, "text": "恋愛＆結婚運のアドバイス" },
+    "money": { "score": 1, "text": "金運のアドバイス" },
+    "health": { "score": 1, "text": "健康運のアドバイス" },
+    "family": { "score": 1, "text": "家族・親子運のアドバイス" }
   },
   "aura_focus": "本日のフォーカスとオーラの解説",
   "mission": {
     "title": "タイトル",
-    "action": "具体的な行動",
-    "benefit": "それをするとどうなるか",
+    "action": "具体的な行動（具体例を必ず複数含む）",
+    "benefit": "それをするとどうなるか（ベースにした科学的手法の名前を含む）",
     "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
   }
-  "bonus_knowledge": "【追加スキル：賢者の書】なぜ今日のミッションが効果的なのか、心理学・脳科学を用いた深い解説（200文字程度）"
 }
 """
 
@@ -1117,29 +1119,30 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 def get_cached_daily_json(user_traits, daily_data):
                     return get_daily_fortune_json(user_traits, daily_data)
                 
-                # AIに渡すための情報テキストを作成
                 user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
                 daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
                 
                 # ▼ 本番稼働時はこちら（先頭の「#」を消して、下のダミーデータを消す）
                 # data = get_cached_daily_json(user_traits_str, daily_data_str)
                 
-                # ▼ テスト用ダミーデータ（デザイン確認用。本番時は消してください）
+                # ▼ テスト用ダミーデータ
                 data = {
                     "fortunes": {
-                        "love": {"score": 3, "text": "今日はあなたの魅力が自然と伝わる日。聞き役に徹するとさらに吉です。"},
-                        "work": {"score": 2, "text": "新しいアイデアが浮かびやすい状態です。思いついたことはすぐメモを。"},
-                        "health": {"score": 1, "text": "無意識に肩に力が入っています。こまめなストレッチを心がけてください。"},
-                        "money": {"score": 3, "text": "賢い選択ができる状態です。小さな自己投資が吉。"}
+                        "total": {"score": 2, "text": "少しずつ前進できる日。焦らず自分のペースを大切に。"},
+                        "relation": {"score": 1, "text": "言葉のすれ違いに注意。聞き役に徹するのが無難です。"},
+                        "work": {"score": 3, "text": "新しいアイデアが湧く状態。思いついたことはすぐメモを。"},
+                        "love": {"score": 2, "text": "自然体でいることで、あなたの魅力が伝わりやすくなります。"},
+                        "money": {"score": 3, "text": "賢い選択ができる状態です。小さな自己投資が吉。"},
+                        "health": {"score": 1, "text": "無意識に肩に力が入っています。こまめな深呼吸を。"},
+                        "family": {"score": 2, "text": "身近な人への感謝を言葉にすると、絆が深まる日です。"}
                     },
                     "aura_focus": "今日は周囲の慌ただしさに巻き込まれやすく、少し気疲れしやすい星回りです。あなたの持つ「感受性の高さ」が普段より強く反応しているためです。しかし、それは裏を返せば、誰よりも細やかに気づける素晴らしい才能。今日は無理に周りに合わせず、自分の心を守ることを最優先に過ごしてみてください。",
                     "mission": {
                         "title": "外界のノイズを遮断する魔法",
-                        "action": "今日の帰り道、駅のホームで電車を待っている間の「1分間」だけ、今日あった「ちょっと良かったこと」を3つ思い出してみてください。",
-                        "benefit": "気疲れしやすい時は、脳が不安を探すモードになっています。この魔法を使うと、脳のスイッチがポジティブな方向へ切り替わり、自動的に肩の力が抜けて穏やかな気持ちになれますよ。",
+                        "action": "今日の帰り道、駅のホームで電車を待っている間の「1分間」だけ、今日あった「ちょっと良かったこと」を3つ思い出してみてください。例えば『自販機で買ったコーヒーが美味しかった』『仕事でミスなくエクセル入力が終わった』『夕焼けが綺麗だった』など、本当に些細なことで構いません。",
+                        "benefit": "これは心理学で『スリー・グッド・シングス』と呼ばれる手法をアレンジした魔法です。気疲れしやすい時は、脳が生存本能から「不安」ばかりを探すモード（ネガティビティ・バイアス）になっています。この魔法を使うと、そのバグがリセットされ、自動的に肩の力が抜けて穏やかな気持ちになれますよ。",
                         "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
-                    },
-                    "bonus_knowledge": "【スリー・グッド・シングスの科学】\n脳は生存のためにネガティブな情報を優先して探す「ネガティビティ・バイアス」を持っています。良かったことを3つ思い出す行動は、このバイアスを強制的にハックし、ポジティブな神経回路を太くする効果があります。"
+                    }
                 }
 
                 # UIのスタイル定義
@@ -1150,7 +1153,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 </style>
                 """, unsafe_allow_html=True)
 
-                # 全体を枠線（advice-box）で囲む
                 st.markdown("<div class='advice-box'>", unsafe_allow_html=True)
                 
                 # --- 7つの星の導き ---
@@ -1161,10 +1163,14 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.markdown(f"<span style='font-weight:900;'>{title}：{stars}</span><br><span style='font-size:0.95rem;'>{fortune_data.get('text', '')}</span>", unsafe_allow_html=True)
                     st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
-                render_fortune("恋愛運", data["fortunes"]["love"])
+                # 7つすべてを描画
+                render_fortune("総合運", data["fortunes"]["total"])
+                render_fortune("人間関係運", data["fortunes"]["relation"])
                 render_fortune("仕事運", data["fortunes"]["work"])
-                render_fortune("健康運", data["fortunes"]["health"])
+                render_fortune("恋愛＆結婚運", data["fortunes"]["love"])
                 render_fortune("金運", data["fortunes"]["money"])
+                render_fortune("健康運", data["fortunes"]["health"])
+                render_fortune("家族・親子運", data["fortunes"]["family"])
 
                 # --- フォーカスとオーラ ---
                 st.markdown("<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>", unsafe_allow_html=True)
