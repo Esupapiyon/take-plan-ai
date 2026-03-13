@@ -1123,33 +1123,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
                 
                 # ▼ 本番稼働時はこちら（先頭の「#」を消して、下のダミーデータを消す）
-                # data = get_cached_daily_json(user_traits_str, daily_data_str)
+                data = get_cached_daily_json(user_traits_str, daily_data_str)
                 
-                # ▼ テスト用ダミーデータ
-                data = {
-                    "fortunes": {
-                        "total": {"score": 2, "text": "少しずつ前進できる日。焦らず自分のペースを大切に。"},
-                        "relation": {"score": 1, "text": "言葉のすれ違いに注意。聞き役に徹するのが無難です。"},
-                        "work": {"score": 3, "text": "新しいアイデアが湧く状態。思いついたことはすぐメモを。"},
-                        "love": {"score": 2, "text": "自然体でいることで、あなたの魅力が伝わりやすくなります。"},
-                        "money": {"score": 3, "text": "賢い選択ができる状態です。小さな自己投資が吉。"},
-                        "health": {"score": 1, "text": "無意識に肩に力が入っています。こまめな深呼吸を。"},
-                        "family": {"score": 2, "text": "身近な人への感謝を言葉にすると、絆が深まる日です。"}
-                    },
-                    "aura_focus": "今日は周囲の慌ただしさに巻き込まれやすく、少し気疲れしやすい星回りです。あなたの持つ「感受性の高さ」が普段より強く反応しているためです。しかし、それは裏を返せば、誰よりも細やかに気づける素晴らしい才能。今日は無理に周りに合わせず、自分の心を守ることを最優先に過ごしてみてください。",
-                    "mission": {
-                        "title": "外界のノイズを遮断する魔法",
-                        "action": "今日の帰り道、駅のホームで電車を待っている間の「1分間」だけ、今日あった「ちょっと良かったこと」を3つ思い出してみてください。例えば『自販機で買ったコーヒーが美味しかった』『仕事でミスなくエクセル入力が終わった』『夕焼けが綺麗だった』など、本当に些細なことで構いません。",
-                        "benefit": "これは心理学で『スリー・グッド・シングス』と呼ばれる手法をアレンジした魔法です。気疲れしやすい時は、脳が生存本能から「不安」ばかりを探すモード（ネガティビティ・バイアス）になっています。この魔法を使うと、そのバグがリセットされ、自動的に肩の力が抜けて穏やかな気持ちになれますよ。",
-                        "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
-                    }
-                }
-
-                # UIのスタイル定義
+# UIのスタイル定義（画像のデザインを完全再現）
                 st.markdown("""
                 <style>
-                    .advice-box { background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%); border: 2px solid #b8860b; border-radius: 12px; padding: 25px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                    /* 全体を囲む大枠のスタイル（影を無くし、純白背景に） */
+                    .advice-box { background-color: #FFFFFF; border: 2px solid #b8860b; border-radius: 8px; padding: 25px; margin-top: 10px; margin-bottom: 30px; }
+                    /* 見出しのスタイル */
                     .h2-style { color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 20px; margin-bottom: 15px; font-weight: 900; }
+                    /* 文章ごとに囲む小さな枠線（画像のデザイン） */
+                    .gold-frame { border: 2px solid #b8860b; border-radius: 8px; padding: 15px 20px; background-color: #FFFFFF; margin-bottom: 20px; color: #333333; line-height: 1.7; font-size: 1.05rem; }
                 </style>
                 """, unsafe_allow_html=True)
 
@@ -1163,32 +1147,32 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.markdown(f"<span style='font-weight:900;'>{title}：{stars}</span><br><span style='font-size:0.95rem;'>{fortune_data.get('text', '')}</span>", unsafe_allow_html=True)
                     st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
-                # 7つすべてを描画
-                render_fortune("総合運", data["fortunes"]["total"])
-                render_fortune("人間関係運", data["fortunes"]["relation"])
-                render_fortune("仕事運", data["fortunes"]["work"])
-                render_fortune("恋愛＆結婚運", data["fortunes"]["love"])
-                render_fortune("金運", data["fortunes"]["money"])
-                render_fortune("健康運", data["fortunes"]["health"])
-                render_fortune("家族・親子運", data["fortunes"]["family"])
+                render_fortune("総合運", data["fortunes"].get("total", {}))
+                render_fortune("人間関係運", data["fortunes"].get("relation", {}))
+                render_fortune("仕事運", data["fortunes"].get("work", {}))
+                render_fortune("恋愛＆結婚運", data["fortunes"].get("love", {}))
+                render_fortune("金運", data["fortunes"].get("money", {}))
+                render_fortune("健康運", data["fortunes"].get("health", {}))
+                render_fortune("家族・親子運", data["fortunes"].get("family", {}))
 
                 # --- フォーカスとオーラ ---
                 st.markdown("<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>", unsafe_allow_html=True)
-                st.write(data["aura_focus"])
+                # ★画像を再現したゴールドの枠線で文章を囲む
+                st.markdown(f"<div class='gold-frame'>{data.get('aura_focus', '')}</div>", unsafe_allow_html=True)
 
                 # --- 魔法のミッション ---
                 st.markdown("<h2 class='h2-style'>今日の魔法のミッション</h2>", unsafe_allow_html=True)
-                st.subheader(f"⚔️ {data['mission']['title']}")
-                st.markdown("**【クエスト内容】**")
-                st.write(data["mission"]["action"])
-                st.markdown("**【この魔法を使うとどうなる？】**")
-                st.write(data["mission"]["benefit"])
-                st.write(data["mission"]["closing"])
+                # ★画像を再現したゴールドの枠線で文章を囲む
+                st.markdown(f"""
+                <div class='gold-frame'>
+                    <h4 style='margin-top:0; color:#b8860b;'>⚔️ {data['mission'].get('title', '')}</h4>
+                    <b>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
+                    <b>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
+                    {data['mission'].get('closing', '')}
+                </div>
+                """, unsafe_allow_html=True)
                 
                 st.markdown("</div>", unsafe_allow_html=True)
-                
-                # 後の「追加スキル」アコーディオンで使うための変数をセット
-                bonus_advice = data.get("bonus_knowledge", "")
             
             if is_cleared_today:
                 st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
