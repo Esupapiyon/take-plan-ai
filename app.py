@@ -18,7 +18,7 @@ import json
 from openai import OpenAI
 
 # APIキーの読み込み（StreamlitのSecrets機能を使用）
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # システムプロンプトを変数として定義
 SYSTEM_PROMPT = """
@@ -55,7 +55,7 @@ SYSTEM_PROMPT = """
 
 # AIからJSONデータを取得する関数を定義
 def get_daily_fortune_json(user_traits, daily_data):
-    response = client.chat.completions.create(
+    response = openai_client.chat.completions.create(
         model="gpt-4o", # または gpt-4-turbo など
         response_format={ "type": "json_object" },
         messages=[
