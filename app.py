@@ -13,6 +13,55 @@ import calendar
 from datetime import timedelta
 import altair as alt
 import re
+import streamlit as st
+import json
+from openai import OpenAI
+
+# APIキーの読み込み（StreamlitのSecrets機能を使用）
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# システムプロンプトを変数として定義
+SYSTEM_PROMPT = """
+あなたは、ユーザーの心に寄り添う「占い×科学」の専属ナビゲーターです。
+ユーザーの「今日の運勢」と「ビッグファイブの性格特性」に基づき、以下のJSONフォーマットに厳密に従ってテキストを生成してください。
+
+【出力ルール】
+1. 出力は必ずJSON形式のみとすること。マークダウンや余計な挨拶は一切含めないこと。
+2. 各運勢のスコア（score）は1〜3の整数で出力すること。テキスト内に「★★★」などの星マークや絵文字（🔮など）は絶対に含めないこと。
+3. 専門用語（例：開放性、認知行動療法など）は使わず、中学生でも情景が浮かぶ温かい言葉に言い換えること。
+4. クエスト（mission）は「いつ・どこで・何を・どうする」を超具体的に設定し、「実践する目的（どうなるか）」を必ず含めること。
+5. クエストの最後（closing）には、必ず「もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。」という選択の自由（BYAF法）を提示すること。
+
+【JSONフォーマット】
+{
+  "fortunes": {
+    "love": { "score": 1, "text": "アドバイス" },
+    "work": { "score": 1, "text": "アドバイス" },
+    "health": { "score": 1, "text": "アドバイス" },
+    "money": { "score": 1, "text": "アドバイス" }
+  },
+  "aura_focus": "本日のフォーカスとオーラの解説",
+  "mission": {
+    "title": "タイトル",
+    "action": "具体的な行動",
+    "benefit": "それをするとどうなるか",
+    "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
+  }
+  "bonus_knowledge": "【追加スキル：賢者の書】なぜ今日のミッションが効果的なのか、心理学・脳科学を用いた深い解説（200文字程度）"
+}
+"""
+
+# AIからJSONデータを取得する関数を定義
+def get_daily_fortune_json(user_traits, daily_data):
+    response = client.chat.completions.create(
+        model="gpt-4o", # または gpt-4-turbo など
+        response_format={ "type": "json_object" },
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"ユーザー特性: {user_traits}, 今日のデータ: {daily_data}"}
+        ]
+    )
+    return json.loads(response.choices[0].message.content)
 
 # ==========================================
 # 1. ページ設定とUI改善CSS
@@ -1063,47 +1112,78 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
             
             with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
-                # AIに渡すための「本日のフォーカス運勢」をPython側で決定する
-                stars_dict = get_rule_based_stars(today_res['score'], today_res['mind_reason'])
-                focus_target = "総合運"
-                for k, v in stars_dict.items():
-                    if v == "★☆☆": # ピンチの項目を優先
-                        focus_target = k
-                        break
-                if focus_target == "総合運":
-                    for k, v in stars_dict.items():
-                        if v == "★★★": # チャンスの項目を探す
-                            focus_target = k
-                            break
-
+            # キャッシュを使ってAPIを呼び出す（無駄な課金を防ぐため）
                 @st.cache_data(ttl=3600)
-                def get_cached_daily_advice(date_str, _res, _ud, _sc, _focus):
-                    return generate_daily_advice(_res, _ud, _sc, _focus)
-                    
-                daily_advice = get_cached_daily_advice(today_str, today_res, user_data_for_ai, scores_for_ai, focus_target)
+                def get_cached_daily_json(user_traits, daily_data):
+                    return get_daily_fortune_json(user_traits, daily_data)
                 
-                # 【】を美しい見出しデザインに強制変換（##は使わない）
-                import re
-                daily_advice = re.sub(r'【(.*?)】', r"<h2 style='color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 900;'>\1</h2>", daily_advice)
+                # AIに渡すための情報テキストを作成
+                user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
+                daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
                 
-                # 賢者の書（追加スキル）部分を分離する
-                advice_parts = daily_advice.split("<h2 style='color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 900;'>追加スキル：賢者の書（深い科学的知識）</h2>")
-                main_advice = advice_parts[0]
-                bonus_advice = advice_parts[1] if len(advice_parts) > 1 else ""
+                # ▼ 本番稼働時はこちら（先頭の「#」を消して、下のダミーデータを消す）
+                # data = get_cached_daily_json(user_traits_str, daily_data_str)
+                
+                # ▼ テスト用ダミーデータ（デザイン確認用。本番時は消してください）
+                data = {
+                    "fortunes": {
+                        "love": {"score": 3, "text": "今日はあなたの魅力が自然と伝わる日。聞き役に徹するとさらに吉です。"},
+                        "work": {"score": 2, "text": "新しいアイデアが浮かびやすい状態です。思いついたことはすぐメモを。"},
+                        "health": {"score": 1, "text": "無意識に肩に力が入っています。こまめなストレッチを心がけてください。"},
+                        "money": {"score": 3, "text": "賢い選択ができる状態です。小さな自己投資が吉。"}
+                    },
+                    "aura_focus": "今日は周囲の慌ただしさに巻き込まれやすく、少し気疲れしやすい星回りです。あなたの持つ「感受性の高さ」が普段より強く反応しているためです。しかし、それは裏を返せば、誰よりも細やかに気づける素晴らしい才能。今日は無理に周りに合わせず、自分の心を守ることを最優先に過ごしてみてください。",
+                    "mission": {
+                        "title": "外界のノイズを遮断する魔法",
+                        "action": "今日の帰り道、駅のホームで電車を待っている間の「1分間」だけ、今日あった「ちょっと良かったこと」を3つ思い出してみてください。",
+                        "benefit": "気疲れしやすい時は、脳が不安を探すモードになっています。この魔法を使うと、脳のスイッチがポジティブな方向へ切り替わり、自動的に肩の力が抜けて穏やかな気持ちになれますよ。",
+                        "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
+                    },
+                    "bonus_knowledge": "【スリー・グッド・シングスの科学】\n脳は生存のためにネガティブな情報を優先して探す「ネガティビティ・バイアス」を持っています。良かったことを3つ思い出す行動は、このバイアスを強制的にハックし、ポジティブな神経回路を太くする効果があります。"
+                }
 
+                # UIのスタイル定義
                 st.markdown("""
                 <style>
                     .advice-box { background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%); border: 2px solid #b8860b; border-radius: 12px; padding: 25px; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-                    .advice-box p, .advice-box li { font-size: 1.05rem; line-height: 1.7; color: #222222; }
-                    .advice-box strong { color: #D32F2F; }
+                    .h2-style { color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 20px; margin-bottom: 15px; font-weight: 900; }
                 </style>
                 """, unsafe_allow_html=True)
-                
-                # メインミッションの表示
-                st.markdown(f"<div class='advice-box'>{main_advice}</div>", unsafe_allow_html=True)
 
-            # クリアボタン（前回作成したもの）
-            st.markdown("<div style='margin-top: 20px;'>", unsafe_allow_html=True)
+                # 全体を枠線（advice-box）で囲む
+                st.markdown("<div class='advice-box'>", unsafe_allow_html=True)
+                
+                # --- 7つの星の導き ---
+                st.markdown("<h2 class='h2-style'>7つの星の導き</h2>", unsafe_allow_html=True)
+                def render_fortune(title, fortune_data):
+                    score = fortune_data.get("score", 1)
+                    stars = "★" * score + "☆" * (3 - score)
+                    st.markdown(f"<span style='font-weight:900;'>{title}：{stars}</span><br><span style='font-size:0.95rem;'>{fortune_data.get('text', '')}</span>", unsafe_allow_html=True)
+                    st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+
+                render_fortune("恋愛運", data["fortunes"]["love"])
+                render_fortune("仕事運", data["fortunes"]["work"])
+                render_fortune("健康運", data["fortunes"]["health"])
+                render_fortune("金運", data["fortunes"]["money"])
+
+                # --- フォーカスとオーラ ---
+                st.markdown("<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>", unsafe_allow_html=True)
+                st.write(data["aura_focus"])
+
+                # --- 魔法のミッション ---
+                st.markdown("<h2 class='h2-style'>今日の魔法のミッション</h2>", unsafe_allow_html=True)
+                st.subheader(f"⚔️ {data['mission']['title']}")
+                st.markdown("**【クエスト内容】**")
+                st.write(data["mission"]["action"])
+                st.markdown("**【この魔法を使うとどうなる？】**")
+                st.write(data["mission"]["benefit"])
+                st.write(data["mission"]["closing"])
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+                # 後の「追加スキル」アコーディオンで使うための変数をセット
+                bonus_advice = data.get("bonus_knowledge", "")
+            
             if is_cleared_today:
                 st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
             else:
