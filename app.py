@@ -1127,52 +1127,64 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 # ▼ 本番稼働時はこちら（先頭の「#」を消して、下のダミーデータを消す）
                 data = get_cached_daily_json(user_traits_str, daily_data_str)
                 
-                # UIのスタイル定義（一つの大きなフレームに統合）
+                # UIのスタイル定義
                 st.markdown("""
                 <style>
                     /* 全体を囲むゴールドの枠線（一つの大きなフレーム） */
-                    .daily-frame { border: 2px solid #b8860b; border-radius: 8px; padding: 25px; background-color: #FFFFFF; margin-bottom: 30px; color: #333333; line-height: 1.7; font-size: 1.05rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                    .daily-frame { border: 2px solid #b8860b; border-radius: 12px; padding: 25px; background-color: #FFFFFF; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222; line-height: 1.7; font-size: 1.05rem; }
                     /* 見出しのスタイル */
-                    .h2-style { color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 15px; font-weight: 900; }
+                    .h2-style { color: #b8860b; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 900; }
                     .h2-style:first-child { margin-top: 0; }
+                    /* 運勢リストのスタイル */
+                    .fortune-item { margin-bottom: 10px; }
+                    .fortune-title { font-weight: 900; }
+                    .fortune-desc { font-size: 0.95rem; }
+                    .fortune-hr { margin: 12px 0; border: 0; border-top: 1px dashed #DDDDDD; }
                 </style>
                 """, unsafe_allow_html=True)
 
-                # 全体を囲む大きな枠（フレーム）の開始
-                st.markdown("<div class='daily-frame'>", unsafe_allow_html=True)
+                # 💡 ここがハック：すべてを「1つのHTML文字列」として結合する
+                html_content = "<div class='daily-frame'>"
                 
                 # --- 7つの星の導き ---
-                st.markdown("<h2 class='h2-style'>7つの星の導き</h2>", unsafe_allow_html=True)
-                def render_fortune(title, fortune_data):
+                html_content += "<h2 class='h2-style'>7つの星の導き</h2>"
+                
+                def get_fortune_html(title, fortune_data):
                     score = fortune_data.get("score", 1)
                     stars = "★" * score + "☆" * (3 - score)
-                    st.markdown(f"<span style='font-weight:900;'>{title}：{stars}</span><br><span style='font-size:0.95rem;'>{fortune_data.get('text', '')}</span>", unsafe_allow_html=True)
-                    st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+                    text = fortune_data.get('text', '')
+                    return f"<div class='fortune-item'><span class='fortune-title'>{title}：{stars}</span><br><span class='fortune-desc'>{text}</span></div><hr class='fortune-hr'>"
 
-                render_fortune("総合運", data["fortunes"].get("total", {}))
-                render_fortune("人間関係運", data["fortunes"].get("relation", {}))
-                render_fortune("仕事運", data["fortunes"].get("work", {}))
-                render_fortune("恋愛＆結婚運", data["fortunes"].get("love", {}))
-                render_fortune("金運", data["fortunes"].get("money", {}))
-                render_fortune("健康運", data["fortunes"].get("health", {}))
-                render_fortune("家族・親子運", data["fortunes"].get("family", {}))
+                html_content += get_fortune_html("総合運", data["fortunes"].get("total", {}))
+                html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", {}))
+                html_content += get_fortune_html("仕事運", data["fortunes"].get("work", {}))
+                html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", {}))
+                html_content += get_fortune_html("金運", data["fortunes"].get("money", {}))
+                html_content += get_fortune_html("健康運", data["fortunes"].get("health", {}))
+                html_content += get_fortune_html("家族・親子運", data["fortunes"].get("family", {}))
 
                 # --- フォーカスとオーラ ---
-                st.markdown("<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>", unsafe_allow_html=True)
-                st.markdown(f"{data.get('aura_focus', '')}", unsafe_allow_html=True)
+                html_content += "<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>"
+                html_content += f"<div>{data.get('aura_focus', '')}</div>"
 
                 # --- 魔法のミッション ---
-                st.markdown("<h2 class='h2-style'>今日の魔法のミッション</h2>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <h4 style='margin-top:0; color:#b8860b;'>⚔️ {data['mission'].get('title', '')}</h4>
-                <b>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
-                <b>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
-                {data['mission'].get('closing', '')}
-                """, unsafe_allow_html=True)
+                html_content += "<h2 class='h2-style'>今日の魔法のミッション</h2>"
+                html_content += f"""
+                <div>
+                    <h4 style='margin-top:0; color:#b8860b;'>⚔️ {data['mission'].get('title', '')}</h4>
+                    <b style='color:#D32F2F;'>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
+                    <b style='color:#D32F2F;'>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
+                    {data['mission'].get('closing', '')}
+                </div>
+                """
                 
-                # 全体を囲む大きな枠（フレーム）の終了
-                st.markdown("</div>", unsafe_allow_html=True)
-            
+                # 枠を閉じる
+                html_content += "</div>"
+                
+                # 最後に一発で出力する！
+                st.markdown(html_content, unsafe_allow_html=True)
+                
+            # --- 以下のクリアボタン処理はそのまま残ります ---
             if is_cleared_today:
                 st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
             else:
