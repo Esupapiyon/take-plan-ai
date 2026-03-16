@@ -21,22 +21,20 @@ from openai import OpenAI
 openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # システムプロンプトを変数として定義
-# システムプロンプトを変数として定義
 SYSTEM_PROMPT = """
 あなたは、ユーザーの心に寄り添う「占い×科学」の専属ナビゲーターです。
-ユーザーの「今日の運勢」と「ビッグファイブの性格特性」「職業や悩み」に基づき、以下のJSONフォーマットに厳密に従って出力してください。
+ユーザーの「今日の運勢スコアと精神テーマ」と「ビッグファイブの性格特性」、そして「現在フォーカスしている悩み」に基づき、以下のJSONフォーマットに厳密に従って出力してください。
 
 【🚨絶対遵守の出力ルール🚨】
 1. 出力は必ずJSON形式のみとすること。マークダウンや余計な挨拶は一切含めないこと。
 2. 各運勢のスコア（score）は1〜3の整数で出力すること。星マークや絵文字は含めないこと。
-3. 【超具体化のルール】クエストの行動（action）は「例えば〜」「〜など」と複数提示してはいけません。ユーザーの職業に合わせ「いつ（例：帰りの電車の中で）」「どこで」「何を」「どうするか」を【1つだけに絞って】情景が浮かぶレベルで断言してください。
-4. 【NGワードと禁止表現】「カフェ」「深呼吸」「散歩」は使用禁止。「効果的な計画立案が可能になる」「新しいアイデアが浮かぶ」といった抽象的なメリットも禁止です。「頭の中のモヤモヤが外に出ることで、夕食の時に仕事のイライラを家族にぶつけなくなります」のように、生々しい日常のメリットを書いてください。
-5. ボーナスアドバイス（bonus_advice）には、クエストの背景にある心理学や脳科学の深い知識（例：デフォルト・モード・ネットワーク等）を解説してください。
+3. 【超具体化のルール】クエストの行動（action）は「例えば〜」「〜など」と複数提示してはいけません。ユーザーの職業に合わせ「いつ」「どこで」「何を」「どうするか」を【1つだけに絞って】情景が浮かぶレベルで断言してください。
+4. 【NGワードと禁止表現】「カフェ」「深呼吸」「散歩」は使用禁止。「効果的な計画立案が可能になる」などの抽象的なメリットも禁止です。生々しい日常のメリットを書いてください。
+5. 【戦略構築】今日の運勢の全体スコア（1〜10）と精神テーマをもとに、ユーザーのBig5特性と『現在の悩み』に直結する「今日の戦略（フォーカスとミッション）」を組み立ててください。
 
 【JSONフォーマット】
 {
   "fortunes": {
-    "total": { "score": 1, "text": "総合運のアドバイス（30文字以内の一言）" },
     "relation": { "score": 1, "text": "人間関係運のアドバイス（30文字以内の一言）" },
     "work": { "score": 1, "text": "仕事運のアドバイス（30文字以内の一言）" },
     "love": { "score": 1, "text": "恋愛＆結婚運のアドバイス（30文字以内の一言）" },
@@ -44,14 +42,13 @@ SYSTEM_PROMPT = """
     "health": { "score": 1, "text": "健康運のアドバイス（30文字以内の一言）" },
     "family": { "score": 1, "text": "家族・親子運のアドバイス（30文字以内の一言）" }
   },
-  "aura_focus": "本日のフォーカス（一番ピンチかチャンスな項目）と、ユーザーの性格特性を紐づけた自己肯定感を上げる解説",
+  "aura_focus": "本日のフォーカス。今日の全体的な運勢の波と、ユーザーの特性（Big5）、そして『現在の悩み』をどう結びつけて今日を乗り切るか、自己肯定感が上がるように解説（約150文字）",
   "mission": {
     "title": "〇〇の魔法",
     "action": "いつ・どこで・何を・どうするかを1つに絞った超具体的な行動指示",
     "benefit": "心理学の手法名を含め、日常のどんな生々しい場面で役立つかの具体的メリット",
     "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
-  },
-  "bonus_advice": "なぜこのミッションが効果的なのか、知的好奇心を満たす深い科学的解説"
+  }
 }
 """
 
@@ -873,6 +870,26 @@ def update_mission_clear(line_id):
         
     except Exception as e:
         return False, f"通信エラー: {e}"
+
+def update_user_focus(line_id, new_focus):
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        from oauth2client.service_account import ServiceAccountCredentials
+        import gspread
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+        all_data = sheet.get_all_values()
+        
+        for i in range(len(all_data)-1, 0, -1):
+            if len(all_data[i]) > 0 and all_data[i][0] == line_id:
+                # 76列目（インデックス75）が「Pains（悩み）」の列
+                sheet.update_cell(i + 1, 76, new_focus)
+                return True, "フォーカスを変更しました！明日のミッションから反映されます。"
+        return False, "ユーザーが見つかりません"
+    except Exception as e:
+        return False, f"エラー: {e}"
         
 def get_user_status(line_id):
     try:
@@ -1105,6 +1122,25 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         </div>
         """, unsafe_allow_html=True)
 
+        # --- 新規追加：フォーカス変更UI ---
+        st.markdown("### 🎯 現在のフォーカス（目標）設定")
+        current_pain = user_data_for_ai.get("Pains", "未設定")
+        focus_options = ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"]
+        default_index = focus_options.index(current_pain) if current_pain in focus_options else 0
+        
+        new_pain = st.selectbox("AIが重点的にアドバイスするテーマを選択してください", focus_options, index=default_index)
+        if new_pain != current_pain:
+            if st.button("このテーマに変更する", type="primary"):
+                with st.spinner("設定を保存中..."):
+                    success, msg = update_user_focus(st.session_state.line_id, new_pain)
+                    if success:
+                        st.success(msg)
+                        import time
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(msg)
+
     with tab2:
         st.subheader("📅 運命の波乗りダッシュボード")
         current_year = today.year
@@ -1124,7 +1160,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
                 daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
                 
-                # ▼ 本番稼働時はこちら（先頭の「#」を消して、下のダミーデータを消す）
+                # ▼ 本番稼働時はこちら
                 data = get_cached_daily_json(user_traits_str, daily_data_str)
                 
                 # UIのスタイル定義
@@ -1143,11 +1179,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 </style>
                 """, unsafe_allow_html=True)
 
-                # 💡 ここがハック：すべてを「1つのHTML文字列」として結合する
                 html_content = "<div class='daily-frame'>"
                 
-                # --- 7つの星の導き ---
-                html_content += "<h2 class='h2-style'>7つの星の導き</h2>"
+                # --- 6つの星の導き ---
+                html_content += "<h2 class='h2-style'>6つの星の導き</h2>"
                 
                 def get_fortune_html(title, fortune_data):
                     score = fortune_data.get("score", 1)
@@ -1155,7 +1190,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     text = fortune_data.get('text', '')
                     return f"<div class='fortune-item'><span class='fortune-title'>{title}：{stars}</span><br><span class='fortune-desc'>{text}</span></div><hr class='fortune-hr'>"
 
-                html_content += get_fortune_html("総合運", data["fortunes"].get("total", {}))
+                # 総合運を削除し、6つの項目のみ出力
                 html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", {}))
                 html_content += get_fortune_html("仕事運", data["fortunes"].get("work", {}))
                 html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", {}))
@@ -1178,13 +1213,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 </div>
                 """
                 
-                # 枠を閉じる
                 html_content += "</div>"
-                
-                # 最後に一発で出力する！
                 st.markdown(html_content, unsafe_allow_html=True)
                 
-            # --- 以下のクリアボタン処理はそのまま残ります ---
             if is_cleared_today:
                 st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
             else:
@@ -1630,10 +1661,9 @@ if st.session_state.step == "user_info":
             ["会社員（一般）", "会社員（管理職・マネージャー）", "経営者・役員", "フリーランス・個人事業主", "公務員", "学生", "主婦・主夫", "その他"]
         )
         
-        pain_points = st.multiselect(
-            "現在、最も解決したい・フォーカスしたいテーマはどれですか？（複数選択可）",
-            ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"],
-            placeholder="ここをタップして選択（複数可）"
+        pain_points = st.selectbox(
+            "現在、最も解決したい・フォーカスしたいテーマはどれですか？（必須）",
+            ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"]
         )
         
         # ▼ 修正：例文が確実に見えるように改行コード（\n）を使用して配置
