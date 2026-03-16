@@ -1180,38 +1180,39 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 </style>
                 """, unsafe_allow_html=True)
 
-                html_content = "<div class='daily-frame'>"
+                # ▼▼ ここから下が抜け落ちていた・修正する部分 ▼▼
+                st.markdown("<div class='daily-frame'>", unsafe_allow_html=True)
                 
                 # --- 6つの星の導き ---
-                html_content += "<h2 class='h2-style'>6つの星の導き</h2>"
+                st.markdown("<h2 class='h2-style'>6つの星の導き</h2>", unsafe_allow_html=True)
                 
-                def get_fortune_html(title, fortune_data):
+                def render_fortune(title, fortune_data):
+                    if not fortune_data: return
                     score = fortune_data.get("score", 1)
                     stars = "★" * score + "☆" * (3 - score)
                     text = fortune_data.get('text', '')
-                    return f"<div class='fortune-item'><span class='fortune-title'>{title}：{stars}</span><br><span class='fortune-desc'>{text}</span></div><hr class='fortune-hr'>"
+                    st.markdown(f"<div class='fortune-item'><span class='fortune-title'>{title}：{stars}</span><br><span class='fortune-desc'>{text}</span></div><hr class='fortune-hr'>", unsafe_allow_html=True)
 
-                # 総合運を削除し、6つの項目のみ出力
-                html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", {}))
-                html_content += get_fortune_html("仕事運", data["fortunes"].get("work", {}))
-                html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", {}))
-                html_content += get_fortune_html("金運", data["fortunes"].get("money", {}))
-                html_content += get_fortune_html("健康運", data["fortunes"].get("health", {}))
-                html_content += get_fortune_html("家族・親子運", data["fortunes"].get("family", {}))
+                render_fortune("人間関係運", data["fortunes"].get("relation", {}))
+                render_fortune("仕事運", data["fortunes"].get("work", {}))
+                render_fortune("恋愛＆結婚運", data["fortunes"].get("love", {}))
+                render_fortune("金運", data["fortunes"].get("money", {}))
+                render_fortune("健康運", data["fortunes"].get("health", {}))
+                render_fortune("家族・親子運", data["fortunes"].get("family", {}))
 
                 # --- フォーカスとオーラ ---
-                html_content += "<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>"
-                html_content += f"<div>{data.get('aura_focus', '')}</div>"
+                st.markdown("<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>", unsafe_allow_html=True)
+                st.markdown(f"<div>{data.get('aura_focus', '')}</div>", unsafe_allow_html=True)
 
                 # --- 魔法のミッション ---
                 st.markdown("<h2 class='h2-style'>今日の魔法のミッション</h2>", unsafe_allow_html=True)
                 
-                # ★ 今日のミッションの内容を一言で表示（AIが出力した summary を使用）
+                # ★ 今日のミッションの内容を一言で表示
                 st.markdown(f"<p style='font-size: 1.15rem; font-weight: 900; color: #222222; margin-bottom: 15px;'>✨ {data['mission'].get('summary', '')}</p>", unsafe_allow_html=True)
                 
-                # ★ コード側で【クエスト内容】などの見出しを固定化し、ゴールドの枠線で囲む
+                # ★ コード側で【クエスト内容】などの見出しを固定化
                 st.markdown(f"""
-                <div class='gold-frame'>
+                <div>
                     <b style='color:#b8860b;'>【クエスト内容】</b><br>
                     {data['mission'].get('action', '')}<br><br>
                     <b style='color:#b8860b;'>【この魔法を使うとどうなる？】</b><br>
