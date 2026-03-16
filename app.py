@@ -1041,7 +1041,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     user_row = row
                     break
         except Exception as e:
-            st.error("データベース接続エラー")
+            st.error(f"データベース通信エラー（数秒待ってリロードしてください）: {e}")
             user_row = None
 
     if user_row:
