@@ -29,7 +29,7 @@ SYSTEM_PROMPT = """
 1. 出力は必ずJSON形式のみ。マークダウンや余計な挨拶は一切含めない。
 2. 【NGワードと専門用語の禁止】「カフェ」「深呼吸」「散歩」は使用禁止。「Big5」「開放性」「4.9」といった専門用語・数値は絶対に書かず、自然な褒め言葉（例：人一倍の気配り上手等）に翻訳する。
 3. 【見出しの禁止】actionやbenefitの文章内に「【クエスト内容】」等の見出し文字は絶対に書かない。
-4. 【トーン＆マナー（圧倒的な寄り添い）】「〜してください」「〜しましょう」というティーチング（指導）のトーンを極力減らし、「〜してみませんか？」「〜で大丈夫ですよ」というコーチング（寄り添い）のトーンに統一する。
+4. 【トーン＆マナー（圧倒的な寄り添い）】「〜してください」「〜しましょう」というティーチングのトーンを極力減らし、「〜してみませんか？」「〜で大丈夫ですよ」というコーチングのトーンに統一する。
 
 【🧠思考プロセス（Chain of Thought）の強制】
 文章を書く前に、必ずJSON内の `thought_process` で設計図を作成すること。
@@ -42,7 +42,7 @@ SYSTEM_PROMPT = """
 以下の要素を自然な文章で繋げること（「例えば〜」と複数提示するのは禁止。1つの情景に絞る）。
 ① 日常のトリガー（例：駅のホームでスマホを取り出す前の1分間、等）
 ② 具体的な行動指示
-③ Show, Don't Tell：必ず「」カギ括弧を使い、実際にメモする言葉や頭でつぶやくセリフを1文字残らず具体的に書く（例：「自販機で買ったお茶が美味しかった」等）。
+③ Show, Don't Tell：必ず「」カギ括弧を使い、実際にメモする言葉や頭でつぶやくセリフを1文字残らず具体的に書く。
 ④ 極限のハードル低下（逃げ道）：「もし疲れていてできなくても、〇〇と心の中でつぶやくだけで立派なクリアです」「無理はしないでくださいね」と失敗を許容する一文。
 
 【🎁魔法の効果（benefit）の構成数式】
@@ -55,16 +55,16 @@ SYSTEM_PROMPT = """
 {
   "thought_process": "ここでactionとbenefitの設計図（トリガー、具体例、逃げ道、身体的変化）を思考する",
   "fortunes": {
-    "relation": { "score": 1, "text": "人間関係運のアドバイス（30文字以内の一言）" },
-    "work": { "score": 1, "text": "仕事運のアドバイス（30文字以内の一言）" },
-    "love": { "score": 1, "text": "恋愛＆結婚運のアドバイス（30文字以内の一言）" },
-    "money": { "score": 1, "text": "金運のアドバイス（30文字以内の一言）" },
-    "health": { "score": 1, "text": "健康運のアドバイス（30文字以内の一言）" },
-    "family": { "score": 1, "text": "家族・親子運のアドバイス（30文字以内の一言）" }
+    "relation": "人間関係運のアドバイス（30文字以内の一言）",
+    "work": "仕事運のアドバイス（30文字以内の一言）",
+    "love": "恋愛＆結婚運のアドバイス（30文字以内の一言）",
+    "money": "金運のアドバイス（30文字以内の一言）",
+    "health": "健康運のアドバイス（30文字以内の一言）",
+    "family": "家族・親子運のアドバイス（30文字以内の一言）"
   },
   "aura_focus": "本日のフォーカス。今日の運勢の波とユーザーの特性、そして『現在の悩み』を結びつけて自己肯定感が上がるように解説（約150文字）",
   "mission": {
-    "summary": "今日実行するミッションを一言で表した短いテキスト（例：『1分間の感情メモ』でモヤモヤを書き出す）",
+    "summary": "今日実行するミッションを一言で表した短いテキスト",
     "action": "構成数式①〜④を完璧に満たした、見出しのない超具体的な1段落の文章",
     "benefit": "構成数式①〜③を完璧に満たした、見出しのない1段落の文章",
     "closing": "今日1日、本当にお疲れ様でした。（※ユーザーの職業や悩みに寄り添う労いの一言）。もちろん、この魔法（ミッション）を使うかどうかはあなたの自由です。準備ができたら、ぜひ試してみてくださいね。"
@@ -1205,19 +1205,19 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 # --- 6つの星の導き ---
                 html_content += "<h2 class='h2-style'>6つの星の導き</h2>"
                 
-                def get_fortune_html(title, fortune_data):
-                    score = fortune_data.get("score", 1)
-                    stars = "★" * score + "☆" * (3 - score)
-                    text = fortune_data.get('text', '')
-                    return f"<div class='fortune-item'><span class='fortune-title'>{title}：{stars}</span><br><span class='fortune-desc'>{text}</span></div><hr class='fortune-hr'>"
+                # ★ Pythonのシステムで正確な星の評価を計算する（AIには頼らない）
+                calculated_stars = get_rule_based_stars(today_res['score'], today_res['mind_reason'])
+                
+                def get_fortune_html(title, ai_text, star_string):
+                    return f"<div class='fortune-item'><span class='fortune-title'>{title}：{star_string}</span><br><span class='fortune-desc'>{ai_text}</span></div><hr class='fortune-hr'>"
 
-                # 総合運を削除し、6つの項目のみ出力
-                html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", {}))
-                html_content += get_fortune_html("仕事運", data["fortunes"].get("work", {}))
-                html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", {}))
-                html_content += get_fortune_html("金運", data["fortunes"].get("money", {}))
-                html_content += get_fortune_html("健康運", data["fortunes"].get("health", {}))
-                html_content += get_fortune_html("家族・親子運", data["fortunes"].get("family", {}))
+                # AIの文章と、Pythonが計算した星を合体させて出力する
+                html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", ""), calculated_stars["人間関係"])
+                html_content += get_fortune_html("仕事運", data["fortunes"].get("work", ""), calculated_stars["仕事運"])
+                html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", ""), calculated_stars["恋愛結婚"])
+                html_content += get_fortune_html("金運", data["fortunes"].get("money", ""), calculated_stars["金運"])
+                html_content += get_fortune_html("健康運", data["fortunes"].get("health", ""), calculated_stars["健康運"])
+                html_content += get_fortune_html("家族・親子運", data["fortunes"].get("family", ""), calculated_stars["家族親子"])
 
                 # --- フォーカスとオーラ ---
                 html_content += "<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>"
