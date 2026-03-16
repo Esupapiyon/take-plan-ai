@@ -45,7 +45,7 @@ SYSTEM_PROMPT = """
   },
   "aura_focus": "本日のフォーカス。今日の全体的な運勢の波と、ユーザーの特性（※数値や専門用語は使わず自然な言葉で）、そして『現在の悩み』をどう結びつけて今日を乗り切るか、自己肯定感が上がるように解説（約150文字）",
   "mission": {
-    "title": "〇〇の魔法",
+    "summary": "ミッションの内容を一言で表すテキスト（例：外界のノイズを遮断する魔法 など）",
     "action": "いつ・どこで・何を・どうするかを1つに絞った超具体的な行動指示",
     "benefit": "心理学の手法名を含め、日常のどんな生々しい場面で役立つかの具体的メリット",
     "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
@@ -1204,18 +1204,23 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 html_content += f"<div>{data.get('aura_focus', '')}</div>"
 
                 # --- 魔法のミッション ---
-                html_content += "<h2 class='h2-style'>今日の魔法のミッション</h2>"
-                html_content += f"""
-                <div>
-                    <h4 style='margin-top:0; color:#b8860b;'>⚔️ {data['mission'].get('title', '')}</h4>
-                    <b style='color:#D32F2F;'>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
-                    <b style='color:#D32F2F;'>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
+                st.markdown("<h2 class='h2-style'>今日の魔法のミッション</h2>", unsafe_allow_html=True)
+                
+                # ★ 今日のミッションの内容を一言で表示（AIが出力した summary を使用）
+                st.markdown(f"<p style='font-size: 1.15rem; font-weight: 900; color: #222222; margin-bottom: 15px;'>✨ {data['mission'].get('summary', '')}</p>", unsafe_allow_html=True)
+                
+                # ★ コード側で【クエスト内容】などの見出しを固定化し、ゴールドの枠線で囲む
+                st.markdown(f"""
+                <div class='gold-frame'>
+                    <b style='color:#b8860b;'>【クエスト内容】</b><br>
+                    {data['mission'].get('action', '')}<br><br>
+                    <b style='color:#b8860b;'>【この魔法を使うとどうなる？】</b><br>
+                    {data['mission'].get('benefit', '')}<br><br>
                     {data['mission'].get('closing', '')}
                 </div>
-                """
+                """, unsafe_allow_html=True)
                 
-                html_content += "</div>"
-                st.markdown(html_content, unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
                 
             if is_cleared_today:
                 st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
