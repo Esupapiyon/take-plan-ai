@@ -30,8 +30,9 @@ SYSTEM_PROMPT = """
 2. 各運勢のスコア（score）は1〜3の整数で出力すること。星マークや絵文字は含めないこと。
 3. 【超具体化のルール】クエストの行動（action）は「例えば〜」「〜など」と複数提示してはいけません。ユーザーの職業に合わせ「いつ」「どこで」「何を」「どうするか」を【1つだけに絞って】情景が浮かぶレベルで断言してください。
 4. 【NGワードと禁止表現】「カフェ」「深呼吸」「散歩」は使用禁止。「効果的な計画立案が可能になる」などの抽象的なメリットも禁止です。生々しい日常のメリットを書いてください。
-5. 【専門用語と数値の完全排除】「Big5」「開放性」「誠実性」「外向性」「協調性」「神経症的傾向」といった心理学用語や、「オープンさ」「4.9」のような【点数・数値】は文章内に絶対に出力しないでください。必ず「あなたの持ち前の強い知的好奇心」「人一倍の気配り上手」「繊細なレーダー」など、自然で温かみのある褒め言葉に完全翻訳してください。
-6. 【戦略構築】今日の運勢の全体スコア（1〜10）と精神テーマをもとに、ユーザーの特性と『現在の悩み』に直結する「今日の戦略（フォーカスとミッション）」を組み立ててください。
+5. 【専門用語と数値の完全排除】「Big5」「開放性」「誠実性」などの心理学用語や、「4.9」のような【点数・数値】は文章内に絶対に出力しないでください。必ず自然で温かみのある褒め言葉に完全翻訳してください。
+6. 【見出しの禁止】システム側で見出しを用意するため、actionやbenefitの文章内に「【クエスト内容】」や「【この魔法を使うとどうなる？】」といった見出し文字は絶対に書かないでください。純粋な文章のみを出力してください。
+7. 【戦略構築】今日の全体スコア（1〜10）と精神テーマをもとに、ユーザーの特性と『現在の悩み』に直結する「今日の戦略（フォーカスとミッション）」を組み立ててください。
 
 【JSONフォーマット】
 {
@@ -45,9 +46,9 @@ SYSTEM_PROMPT = """
   },
   "aura_focus": "本日のフォーカス。今日の全体的な運勢の波と、ユーザーの特性（※数値や専門用語は使わず自然な言葉で）、そして『現在の悩み』をどう結びつけて今日を乗り切るか、自己肯定感が上がるように解説（約150文字）",
   "mission": {
-    "summary": "ミッションの内容を一言で表すテキスト（例：外界のノイズを遮断する魔法 など）",
-    "action": "いつ・どこで・何を・どうするかを1つに絞った超具体的な行動指示",
-    "benefit": "心理学の手法名を含め、日常のどんな生々しい場面で役立つかの具体的メリット",
+    "summary": "今日実行するミッションを一言で表した短いテキスト（例：『1分間の感情メモ』でモヤモヤを書き出す）",
+    "action": "いつ・どこで・何を・どうするかを1つに絞った超具体的な行動指示（※見出し不要）",
+    "benefit": "心理学の手法名を含め、日常のどんな生々しい場面で役立つかの具体的メリット（※見出し不要）",
     "closing": "もちろん、この魔法（クエスト）を使うかどうかはあなたの自由です。"
   }
 }
@@ -1164,7 +1165,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 # ▼ 本番稼働時はこちら
                 data = get_cached_daily_json(user_traits_str, daily_data_str)
                 
-                # UIのスタイル定義
+                # UIのスタイル定義（一つの大きなフレームに統合）
                 st.markdown("""
                 <style>
                     /* 全体を囲むゴールドの枠線（一つの大きなフレーム） */
@@ -1180,48 +1181,48 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 </style>
                 """, unsafe_allow_html=True)
 
-                # ▼▼ ここから下が抜け落ちていた・修正する部分 ▼▼
-                st.markdown("<div class='daily-frame'>", unsafe_allow_html=True)
+                # HTMLコンテンツの組み立て開始
+                html_content = "<div class='daily-frame'>"
                 
                 # --- 6つの星の導き ---
-                st.markdown("<h2 class='h2-style'>6つの星の導き</h2>", unsafe_allow_html=True)
+                html_content += "<h2 class='h2-style'>6つの星の導き</h2>"
                 
-                def render_fortune(title, fortune_data):
-                    if not fortune_data: return
+                def get_fortune_html(title, fortune_data):
                     score = fortune_data.get("score", 1)
                     stars = "★" * score + "☆" * (3 - score)
                     text = fortune_data.get('text', '')
-                    st.markdown(f"<div class='fortune-item'><span class='fortune-title'>{title}：{stars}</span><br><span class='fortune-desc'>{text}</span></div><hr class='fortune-hr'>", unsafe_allow_html=True)
+                    return f"<div class='fortune-item'><span class='fortune-title'>{title}：{stars}</span><br><span class='fortune-desc'>{text}</span></div><hr class='fortune-hr'>"
 
-                render_fortune("人間関係運", data["fortunes"].get("relation", {}))
-                render_fortune("仕事運", data["fortunes"].get("work", {}))
-                render_fortune("恋愛＆結婚運", data["fortunes"].get("love", {}))
-                render_fortune("金運", data["fortunes"].get("money", {}))
-                render_fortune("健康運", data["fortunes"].get("health", {}))
-                render_fortune("家族・親子運", data["fortunes"].get("family", {}))
+                # 総合運を削除し、6つの項目のみ出力
+                html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", {}))
+                html_content += get_fortune_html("仕事運", data["fortunes"].get("work", {}))
+                html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", {}))
+                html_content += get_fortune_html("金運", data["fortunes"].get("money", {}))
+                html_content += get_fortune_html("健康運", data["fortunes"].get("health", {}))
+                html_content += get_fortune_html("家族・親子運", data["fortunes"].get("family", {}))
 
                 # --- フォーカスとオーラ ---
-                st.markdown("<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>", unsafe_allow_html=True)
-                st.markdown(f"<div>{data.get('aura_focus', '')}</div>", unsafe_allow_html=True)
+                html_content += "<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>"
+                html_content += f"<div>{data.get('aura_focus', '')}</div>"
 
                 # --- 魔法のミッション ---
-                st.markdown("<h2 class='h2-style'>今日の魔法のミッション</h2>", unsafe_allow_html=True)
-                
-                # ★ 今日のミッションの内容を一言で表示
-                st.markdown(f"<p style='font-size: 1.15rem; font-weight: 900; color: #222222; margin-bottom: 15px;'>✨ {data['mission'].get('summary', '')}</p>", unsafe_allow_html=True)
-                
-                # ★ コード側で【クエスト内容】などの見出しを固定化
-                st.markdown(f"""
+                html_content += "<h2 class='h2-style'>今日の魔法のミッション</h2>"
+                html_content += f"""
                 <div>
-                    <b style='color:#b8860b;'>【クエスト内容】</b><br>
-                    {data['mission'].get('action', '')}<br><br>
-                    <b style='color:#b8860b;'>【この魔法を使うとどうなる？】</b><br>
-                    {data['mission'].get('benefit', '')}<br><br>
+                    <p style='font-size:1.15rem; font-weight:bold; color:#333333; margin-top:0; margin-bottom:20px; line-height:1.5;'>
+                        🎯 {data['mission'].get('summary', '')}
+                    </p>
+                    <b style='color:#D32F2F;'>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
+                    <b style='color:#D32F2F;'>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
                     {data['mission'].get('closing', '')}
                 </div>
-                """, unsafe_allow_html=True)
+                """
                 
-                st.markdown("</div>", unsafe_allow_html=True)
+                # HTMLコンテンツの組み立て終了
+                html_content += "</div>"
+                
+                # 画面に出力
+                st.markdown(html_content, unsafe_allow_html=True)
                 
             if is_cleared_today:
                 st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
