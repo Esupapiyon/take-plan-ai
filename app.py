@@ -1297,7 +1297,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
                 
                 # ▼ 本番稼働時はこちら
-                data = get_cached_daily_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), line_id)
+                data = get_cached_daily_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), st.session_state.line_id)
                 
                 # UIのスタイル定義（一つの大きなフレームに統合）
                 st.markdown("""
