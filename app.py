@@ -1363,42 +1363,34 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error(msg)
 
     with tab2:
-        # --- 真のカルーセル化＆横揺れ完全防止CSS（完成版） ---
+        # --- スマホ画面クラッシュを防ぐ「安全な」カルーセル＆横揺れ防止CSS ---
         st.markdown("""
         <style>
-            /* 1. 画面全体の横スクロールを完全に殺す絶対防壁（復活） */
-            html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+            /* 1. 根幹システムを破壊せず、横揺れだけを優しく防ぐ */
+            .stApp {
                 overflow-x: hidden !important;
-                width: 100% !important;
-                max-width: 100vw !important;
-                position: relative;
             }
             
-            /* 2. グラフの箱をスマホ幅に固定し、中身だけを横滑りさせる（真のカルーセル） */
+            /* 2. グラフの箱が画面幅を突き破らないように制限し、中身だけを横滑りさせる */
             [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
-                width: 100% !important;
                 max-width: 100% !important;
                 overflow-x: auto !important;
                 overflow-y: hidden !important;
-                -webkit-overflow-scrolling: touch !important; /* スマホでの滑らかな慣性スクロール */
+                -webkit-overflow-scrolling: touch !important; /* スマホの慣性スクロール */
             }
 
-            /* 3. スマホの時だけダサいスクロールバーを隠す（PCでは見切れ防止のために残す） */
+            /* 3. スマホの時だけダサいスクロールバーを隠す */
             @media (max-width: 768px) {
                 [data-testid="stArrowVegaLiteChart"]::-webkit-scrollbar, 
                 [data-testid="stVegaLiteChart"]::-webkit-scrollbar {
                     display: none !important;
                 }
-                [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
-                    -ms-overflow-style: none !important;
-                    scrollbar-width: none !important;
-                }
             }
 
-            /* 4. 全てのテキストを強制的に折り返し、見切れを防止 */
+            /* 4. テキストの折り返し（見切れ防止） */
             p, div, span, h1, h2, h3, h4, h5, h6 {
-                word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
             }
         </style>
         """, unsafe_allow_html=True)
