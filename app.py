@@ -1363,13 +1363,18 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error(msg)
 
     with tab2:
-        # --- スマホでの不快な「横揺れ（横スクロール）」を物理的に完全ブロックする強力なCSS ---
+        # --- スマホの横揺れを殺し、文章の折り返しを強制する安全なCSS ---
         st.markdown("""
         <style>
-            html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+            /* 画面全体の横スクロールを隠しつつ、中身の幅を100%に制限 */
+            .stApp {
                 overflow-x: hidden !important;
-                width: 100% !important;
                 max-width: 100vw !important;
+            }
+            /* 全てのテキストを強制的に折り返し、見切れを防止 */
+            p, div, span, h1, h2, h3, h4, h5, h6 {
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
             }
         </style>
         """, unsafe_allow_html=True)
@@ -1512,9 +1517,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
                 months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
                 
-            df_m = pd.DataFrame(months_data)
+df_m = pd.DataFrame(months_data)
             
-            # Y軸の天井を11から「12.5」に引き上げ、一番上の絵文字が見切れないように余白を作る
+            # Y軸の天井を12.5に設定し、絵文字の余白を確保
             base_m = alt.Chart(df_m).encode(
                 x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
                 y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 12.5]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
@@ -1526,7 +1531,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 ]
             )
 
-            # 1. 美しいグラデーションエリア
             area_m = base_m.mark_area(
                 interpolate='monotone',
                 color=alt.Gradient(
@@ -1537,41 +1541,60 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 )
             )
 
-            # 2. 滑らかな波（曲線）
             line_m = base_m.mark_line(
                 interpolate='monotone',
                 color='#06C755',
                 strokeWidth=3
             )
 
-            # 3. 発光するような白いドット
             points_m = base_m.mark_circle(
                 color='#FFFFFF',
-                size=50,
+                size=40, # ドットを少し小さく上品に
                 stroke='#06C755',
                 strokeWidth=2,
                 opacity=1
             )
 
-            # 4. 上品に浮遊する絵文字（フローティング・アイコン）
             text_m = base_m.mark_text(
                 align='center',
                 baseline='bottom',
-                dy=-12,  # ドットから上に12px浮かせる
-                size=18  # 巨大すぎず、スマホでもタップ不要で見える上品なサイズ
+                dy=-10,  # 浮遊感を調整
+                size=14  # 絵文字を14pxに縮小し、渋滞を緩和
             ).encode(
                 text='シンボル:N'
             )
 
-            # 合成と枠線の完全消去
+            # 横幅を「600px」に固定し、スマホで横スワイプ（カルーセル）させる
             chart_m = (area_m + line_m + points_m + text_m).properties(
                 height=250,
+                width=600, 
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
             )
             
-            st.altair_chart(chart_m, use_container_width=True)
+            # use_container_width=False にすることで、枠内でスワイプ可能になる
+            st.altair_chart(chart_m, use_container_width=False)
+            
+            # --- 絵文字の凡例（10段階）の追加 ---
+            legend_html = """
+            <div style='background-color:#FAFAFA; padding:15px; border-radius:8px; border:1px solid #EEEEEE; margin-bottom:30px; font-size:0.85rem; color:#555; line-height:1.8;'>
+                <div style='font-weight:900; color:#333; margin-bottom:8px;'>※ 運命の波・10段階シンボル</div>
+                <div style='display:flex; flex-wrap:wrap; gap:12px;'>
+                    <span style='white-space:nowrap;'>🌈 10: 超幸運の波</span>
+                    <span style='white-space:nowrap;'>⭐️ 9: 最高にツイてる波</span>
+                    <span style='white-space:nowrap;'>🔴 8: 迷わず動く波</span>
+                    <span style='white-space:nowrap;'>⚪️ 7: 思い切って決断する波</span>
+                    <span style='white-space:nowrap;'>🟡 6: 基礎を固める波</span>
+                    <span style='white-space:nowrap;'>🟢 5: 味方が増える波</span>
+                    <span style='white-space:nowrap;'>🔵 4: 頭の中を整理する波</span>
+                    <span style='white-space:nowrap;'>🟪 3: 無理をしない波</span>
+                    <span style='white-space:nowrap;'>⬜️ 2: 不要なものを手放す波</span>
+                    <span style='white-space:nowrap;'>⚫️ 1: 心と体を休ませる波</span>
+                </div>
+            </div>
+            """
+            st.markdown(legend_html, unsafe_allow_html=True)
             
             st.markdown("### 📝 各月の総合解説と7つの指針")
             
@@ -1663,7 +1686,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 years_data.append({"年": f"{y_date.year}年", "スコア": res["score"], "シンボル": res["symbol"], "res_obj": res})
                 if i == 0: this_year_res = res
                 
-            df_y = pd.DataFrame(years_data)
+df_y = pd.DataFrame(years_data)
             
             base_y = alt.Chart(df_y).encode(
                 x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
@@ -1693,7 +1716,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
             points_y = base_y.mark_circle(
                 color='#FFFFFF',
-                size=60,
+                size=40,
                 stroke='#D32F2F',
                 strokeWidth=2
             )
@@ -1701,20 +1724,26 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             text_y = base_y.mark_text(
                 align='center',
                 baseline='bottom',
-                dy=-12,
-                size=20
+                dy=-10,
+                size=16  # 年間はデータ数が少ないので少しだけ大きめ
             ).encode(
                 text='シンボル:N'
             )
 
+            # 横幅を「600px」に固定し、スマホで横スワイプ（カルーセル）させる
             chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
+                width=600,
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
             )
             
-            st.altair_chart(chart_y, use_container_width=True)
+            # use_container_width=False にすることで、枠内でスワイプ可能になる
+            st.altair_chart(chart_y, use_container_width=False)
+
+            # --- 絵文字の凡例（10段階）の追加 ---
+            st.markdown(legend_html, unsafe_allow_html=True)
             
             st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
             with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
