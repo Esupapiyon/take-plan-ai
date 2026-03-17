@@ -1205,19 +1205,24 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 # --- 6つの星の導き ---
                 html_content += "<h2 class='h2-style'>6つの星の導き</h2>"
                 
-                # ★ Pythonのシステムで正確な星の評価を計算する（AIには頼らない）
+                # ★ Pythonのシステムで正確な星の評価を計算する
                 calculated_stars = get_rule_based_stars(today_res['score'], today_res['mind_reason'])
                 
-                def get_fortune_html(title, ai_text, star_string):
+                def get_fortune_html(title, fortune_data, star_string):
+                    # 【防弾処理】AIが辞書(dict)で返してきても、文字列(str)で返してきても対応する
+                    if isinstance(fortune_data, dict):
+                        ai_text = fortune_data.get('text', '')
+                    else:
+                        ai_text = str(fortune_data)
                     return f"<div class='fortune-item'><span class='fortune-title'>{title}：{star_string}</span><br><span class='fortune-desc'>{ai_text}</span></div><hr class='fortune-hr'>"
 
                 # AIの文章と、Pythonが計算した星を合体させて出力する
-                html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", ""), calculated_stars["人間関係"])
-                html_content += get_fortune_html("仕事運", data["fortunes"].get("work", ""), calculated_stars["仕事運"])
-                html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", ""), calculated_stars["恋愛結婚"])
-                html_content += get_fortune_html("金運", data["fortunes"].get("money", ""), calculated_stars["金運"])
-                html_content += get_fortune_html("健康運", data["fortunes"].get("health", ""), calculated_stars["健康運"])
-                html_content += get_fortune_html("家族・親子運", data["fortunes"].get("family", ""), calculated_stars["家族親子"])
+                html_content += get_fortune_html("人間関係運", data["fortunes"].get("relation", ""), calculated_stars.get("人間関係", "★★☆"))
+                html_content += get_fortune_html("仕事運", data["fortunes"].get("work", ""), calculated_stars.get("仕事運", "★★☆"))
+                html_content += get_fortune_html("恋愛＆結婚運", data["fortunes"].get("love", ""), calculated_stars.get("恋愛結婚", "★★☆"))
+                html_content += get_fortune_html("金運", data["fortunes"].get("money", ""), calculated_stars.get("金運", "★★☆"))
+                html_content += get_fortune_html("健康運", data["fortunes"].get("health", ""), calculated_stars.get("健康運", "★★☆"))
+                html_content += get_fortune_html("家族・親子運", data["fortunes"].get("family", ""), calculated_stars.get("家族親子", "★★☆"))
 
                 # --- フォーカスとオーラ ---
                 html_content += "<h2 class='h2-style'>本日のフォーカスとあなたのオーラ</h2>"
