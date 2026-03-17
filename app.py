@@ -1500,10 +1500,55 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
                 
             df_m = pd.DataFrame(months_data)
-            base_m = alt.Chart(df_m).encode(x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='black', tickColor='black', domainColor='black')))
-            line_m = base_m.mark_line(color='#06C755', strokeWidth=3).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='月間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
-            symbols_m = base_m.mark_text(size=18, dy=0).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
-            st.altair_chart((line_m + symbols_m).properties(height=300, background='#FFFFFF'), use_container_width=True)
+            
+            # ベースのチャート設定（ツールチップを追加し、不要な線を消去）
+            base_m = alt.Chart(df_m).encode(
+                x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
+                y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
+                tooltip=[
+                    alt.Tooltip('年月:O', title='時期'),
+                    alt.Tooltip('シンボル:N', title='運勢'),
+                    alt.Tooltip('タイトル:N', title='テーマ'),
+                    alt.Tooltip('スコア:Q', title='スコア')
+                ]
+            )
+
+            # 1. グラデーションエリア（波の下の塗りつぶし）
+            area_m = base_m.mark_area(
+                interpolate='monotone', # 滑らかな曲線
+                color=alt.Gradient(
+                    gradient='linear',
+                    stops=[alt.GradientStop(color='rgba(6, 199, 85, 0.4)', offset=0),
+                           alt.GradientStop(color='rgba(255, 255, 255, 0)', offset=1)],
+                    x1=1, x2=1, y1=0, y2=1
+                )
+            )
+
+            # 2. 滑らかな曲線（メインの波）
+            line_m = base_m.mark_line(
+                interpolate='monotone',
+                color='#06C755',
+                strokeWidth=3
+            )
+
+            # 3. スタイリッシュなドット（タップ判定用）
+            points_m = base_m.mark_circle(
+                color='#FFFFFF',
+                size=60,
+                stroke='#06C755',
+                strokeWidth=2,
+                opacity=1
+            )
+
+            # チャートの合成と背景設定（外枠も完全消去）
+            chart_m = (area_m + line_m + points_m).properties(
+                height=250,
+                background='#FFFFFF'
+            ).configure_view(
+                strokeWidth=0
+            )
+            
+            st.altair_chart(chart_m, use_container_width=True)
             
             st.markdown("### 📝 各月の総合解説と7つの指針")
             
@@ -1596,10 +1641,48 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 if i == 0: this_year_res = res
                 
             df_y = pd.DataFrame(years_data)
-            base_y = alt.Chart(df_y).encode(x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='black', tickColor='black', domainColor='black')))
-            line_y = base_y.mark_line(color='#D32F2F', strokeWidth=4).encode(y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(title='年間スコア', labelColor='black', titleColor='black', tickColor='black', domainColor='black')))
-            symbols_y = base_y.mark_text(size=24, dy=-5).encode(y=alt.Y('スコア:Q'), text='シンボル:N')
-            st.altair_chart((line_y + symbols_y).properties(height=300, background='#FFFFFF'), use_container_width=True)
+            
+            base_y = alt.Chart(df_y).encode(
+                x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
+                y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
+                tooltip=[
+                    alt.Tooltip('年:O', title='年'),
+                    alt.Tooltip('シンボル:N', title='運勢'),
+                    alt.Tooltip('スコア:Q', title='スコア')
+                ]
+            )
+
+            area_y = base_y.mark_area(
+                interpolate='monotone',
+                color=alt.Gradient(
+                    gradient='linear',
+                    stops=[alt.GradientStop(color='rgba(211, 47, 47, 0.4)', offset=0),
+                           alt.GradientStop(color='rgba(255, 255, 255, 0)', offset=1)],
+                    x1=1, x2=1, y1=0, y2=1
+                )
+            )
+
+            line_y = base_y.mark_line(
+                interpolate='monotone',
+                color='#D32F2F',
+                strokeWidth=3
+            )
+
+            points_y = base_y.mark_circle(
+                color='#FFFFFF',
+                size=70,
+                stroke='#D32F2F',
+                strokeWidth=2
+            )
+
+            chart_y = (area_y + line_y + points_y).properties(
+                height=250,
+                background='#FFFFFF'
+            ).configure_view(
+                strokeWidth=0
+            )
+            
+            st.altair_chart(chart_y, use_container_width=True)
             
             st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
             with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
