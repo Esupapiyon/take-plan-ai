@@ -21,34 +21,32 @@ from openai import OpenAI
 openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # システムプロンプトを変数として定義
-SYSTEM_PROMPT = """
+# ※波括弧 { } はJSONフォーマットで使うため、プレースホルダーには独自の [WEAPON_NAME] 等を使用します。
+SYSTEM_PROMPT_TEMPLATE = """
 あなたは、ユーザーの心に寄り添う「占い×科学」の専属ナビゲーターです。
 ユーザーの「今日の運勢スコアと精神テーマ」と「ビッグファイブの性格特性」、そして「現在フォーカスしている悩み」に基づき、以下のJSONフォーマットに厳密に従って出力してください。
 
 【🚨絶対遵守のルール🚨】
 1. 出力は必ずJSON形式のみ。マークダウンや余計な挨拶は一切含めない。
-2. 【NGワードと専門用語の禁止】「カフェ」「深呼吸」「散歩」は使用禁止。「Big5」「開放性」「4.9」といった専門用語・数値は絶対に書かず、自然な褒め言葉（例：人一倍の気配り上手等）に翻訳する。
-3. 【見出しの禁止】actionやbenefitの文章内に「【クエスト内容】」等の見出し文字は絶対に書かない。
-4. 【トーン＆マナー（圧倒的な寄り添い）】「〜してください」「〜しましょう」というティーチングのトーンを極力減らし、「〜してみませんか？」「〜で大丈夫ですよ」というコーチングのトーンに統一する。
+2. 【NGワードと専門用語の禁止】「カフェ」「深呼吸」「散歩」は使用禁止。「Big5」「開放性」等の数値は書かず自然な褒め言葉に翻訳する。
+3. 【見出しの禁止】actionやbenefitの文章内に見出し文字は絶対に書かない。
+4. 【トーン＆マナー】「〜してください」というティーチングを減らし、「〜してみませんか？」というコーチングのトーンに統一する。
 
-【🧠思考プロセス（Chain of Thought）の強制】
-文章を書く前に、必ずJSON内の `thought_process` で設計図を作成すること。
-・ユーザーの職業・悩みに合った「日常のトリガー（いつ・どこで）」は何か？
-・Show, Don't Tellを満たすための「具体的なセリフやメモの中身（カギ括弧）」は何か？
-・極限まで下げた「逃げ道」は何か？
-・即効性のある「身体的・感情的な変化」は何か？
+【⚔️強制発動スキル（ダイナミック・インジェクション）】
+今日は以下の科学的メソッド「のみ」を使用してミッションを作成すること。他の手法をでっち上げることは一切許さない。
+・使用するメソッド名：[WEAPON_NAME]
+・科学的根拠（理論）：[WEAPON_THEORY]
+・具体的な行動指示：[WEAPON_ACTION]
 
 【🧙‍♀️魔法のミッション（action）の構成数式】
-以下の要素を自然な文章で繋げること（「例えば〜」と複数提示するのは禁止。1つの情景に絞る）。
 ① 日常のトリガー（例：駅のホームでスマホを取り出す前の1分間、等）
-② 具体的な行動指示
+② 上記の【具体的な行動指示】を、ユーザーの職業や悩みに合わせて自然な文章に翻訳して組み込むこと。
 ③ Show, Don't Tell：必ず「」カギ括弧を使い、実際にメモする言葉や頭でつぶやくセリフを1文字残らず具体的に書く。
-④ 極限のハードル低下（逃げ道）：「もし疲れていてできなくても、〇〇と心の中でつぶやくだけで立派なクリアです」「無理はしないでくださいね」と失敗を許容する一文。
+④ 極限のハードル低下（逃げ道）：「もし疲れていてできなくても、〇〇と心の中でつぶやくだけで立派なクリアです」と失敗を許容する一文を入れる。
 
 【🎁魔法の効果（benefit）の構成数式】
-以下の要素を順番通りに自然な文章で繋げること。
-① 心理学・脳科学の手法名の提示（例：心理学の「〇〇」という手法をアレンジした魔法です。）
-② 脳のネガティブな状態の肯定（例：気疲れしやすい時、脳は防衛本能から自動的に不安を探すモードになっています。この魔法でスイッチを切り替えます。）
+① 手法名の提示：「これは心理学（または脳科学など）の『[WEAPON_NAME]』という手法をアレンジした魔法です。」と必ず明記する。
+② 上記の【科学的根拠（理論）】を、中学生でもわかる優しい言葉に噛み砕いて解説する。
 ③ 身体的・感情的な即効性のある変化の描写（例：1分後、気づかないうちに入っていた肩の力がフッと抜け、呼吸が深くなるのを感じるはずです。）
 
 【JSONフォーマット】
@@ -65,20 +63,28 @@ SYSTEM_PROMPT = """
   "aura_focus": "本日のフォーカス。今日の運勢の波とユーザーの特性、そして『現在の悩み』を結びつけて自己肯定感が上がるように解説（約150文字）",
   "mission": {
     "summary": "今日実行するミッションを一言で表した短いテキスト",
-    "action": "構成数式①〜④を完璧に満たした、見出しのない超具体的な1段落の文章",
-    "benefit": "構成数式①〜③を完璧に満たした、見出しのない1段落の文章",
+    "action": "構成数式①〜④を満たした、見出しのない超具体的な1段落の文章",
+    "benefit": "構成数式①〜③を満たした、見出しのない1段落の文章",
     "closing": "今日1日、本当にお疲れ様でした。（※ユーザーの職業や悩みに寄り添う労いの一言）。もちろん、この魔法（ミッション）を使うかどうかはあなたの自由です。準備ができたら、ぜひ試してみてくださいね。"
   }
 }
 """
 
 # AIからJSONデータを取得する関数を定義
-def get_daily_fortune_json(user_traits, daily_data):
+def get_daily_fortune_json(user_traits, daily_data, mind_reason, user_id):
+    # 1. 今日の武器をシステム（Python）が決定する
+    today_weapon = get_daily_science_weapon(mind_reason, user_id)
+    
+    # 2. 決定した武器の情報を、システムプロンプトの[WEAPON_NAME]等の部分に埋め込む
+    final_system_prompt = SYSTEM_PROMPT_TEMPLATE.replace("[WEAPON_NAME]", today_weapon["name"])
+    final_system_prompt = final_system_prompt.replace("[WEAPON_THEORY]", today_weapon["theory"])
+    final_system_prompt = final_system_prompt.replace("[WEAPON_ACTION]", today_weapon["action"])
+
     response = openai_client.chat.completions.create(
-        model="gpt-4o", # または gpt-4-turbo など
+        model="gpt-4o", 
         response_format={ "type": "json_object" },
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": final_system_prompt},
             {"role": "user", "content": f"ユーザー特性: {user_traits}, 今日のデータ: {daily_data}"}
         ]
     )
@@ -566,6 +572,66 @@ def get_rule_based_stars(score, mind_reason):
 
     # 算命学の計算結果をそのままストレートに返す（作為的なズラしは行わない）
     return final_stars
+
+import datetime
+
+def get_daily_science_weapon(mind_reason, user_id):
+    """
+    ハイブリッド算命学の五行属性に合わせて、100個の武器庫から
+    ハルシネーションなしの科学的メソッドを日替わりで1つ抽出する関数
+    """
+    if mind_reason is None:
+        mind_reason = ""
+        
+    # 1. 五行の判定（最も強い属性をベースにする）
+    element = "土"  # デフォルトは日常・グラウンディングの土
+    if any(x in mind_reason for x in ["貫索", "石門"]): element = "木"
+    elif any(x in mind_reason for x in ["鳳閣", "調舒"]): element = "火"
+    elif any(x in mind_reason for x in ["禄存", "司禄"]): element = "土"
+    elif any(x in mind_reason for x in ["車騎", "牽牛"]): element = "金"
+    elif any(x in mind_reason for x in ["龍高", "玉堂"]): element = "水"
+
+    # 2. 100個の科学的武器庫（※各属性20個をここに格納します）
+    weapons_db = {
+        "木": [
+            {"name": "ツァイガルニク効果", "theory": "B.ツァイガルニク。未完了のタスクは脳のメモリを食う現象。", "action": "気になっている「未完了の小さなタスク」を1つだけスマホのメモに書き出す。"},
+            {"name": "2分間ルール", "theory": "D.アレン（GTD理論）。着手にかかる心理的ハードルを極限まで減らす手法。", "action": "部屋のゴミを捨てる、靴を揃えるなど「2分以内で終わる作業」を今すぐ1つだけやる。"},
+            # ... 残りの18個を追加
+        ],
+        "火": [
+            {"name": "エクスプレッシブ・ライティング", "theory": "J.ペネベーカー。感情を書き出すことでストレスホルモンを低下させる。", "action": "今感じているネガティブな感情を、誰にも見せないメモに1分間だけそのまま書き殴る。"},
+            {"name": "意図的表情表出", "theory": "P.エクマン等。特定の表情筋を動かし生理的変化を人工的に引き起こす。", "action": "トイレの鏡の前で、目尻にシワが寄るほどの「全力の笑顔の形」を3秒間だけキープする。"},
+            # ... 残りの18個を追加
+        ],
+        "土": [
+            {"name": "サボアリング（味わい）", "theory": "F.ブライアント。ポジティブな対象に注意を向け、喜びを意図的に増幅させる。", "action": "身の回りの「一番お気に入りのアイテム」を10秒間見つめ、その良さや魅力を再確認する。"},
+            {"name": "マインドフル・イーティング", "theory": "ジョン・カバット・ジン。今この瞬間に意識を向ける認知療法。", "action": "次の食事や飲み物の「最初の一口」だけ、目を閉じて味覚と温度に全集中する。"},
+            # ... 残りの18個を追加
+        ],
+        "金": [
+            {"name": "5秒ルール", "theory": "M.ロビンズ。脳がやらない言い訳を考える前にカウントダウンで思考を強制終了させる。", "action": "「5、4、3、2、1」と心の中でカウントダウンし、ゼロになった瞬間に立ち上がる。"},
+            {"name": "作業興奮の誘発", "theory": "E.クレペリン。着手のハードルを下げてドーパミンを出す手法。", "action": "迷って動けない時、考えるのをやめて「資料のファイルを新規作成するだけ」「靴を履くだけ」という物理的な第一歩を踏む。"},
+            # ... 残りの18個を追加
+        ],
+        "水": [
+            {"name": "自己距離化", "theory": "E.クロス。第三者の視点を持つことで、感情の暴走を抑えるメタ認知手法。", "action": "今の自分を、天井に止まっている「一匹のハエ」の視点から客観的に見下ろして観察する。"},
+            {"name": "脱フュージョン", "theory": "S.ヘイズ（ACT）。思考と自分を切り離す手法。", "action": "「私はダメだ」という思考に対し、「私はダメだ【と思った】」と語尾に名札をつける。"},
+            # ... 残りの18個を追加
+        ]
+    }
+
+    # 3. 日替わりローテーション（毎日違う武器を選出）
+    # 日付とユーザーIDを組み合わせてハッシュ化し、要素数で割った余りを使う
+    today_str = datetime.date.today().strftime("%Y%m%d")
+    seed_string = f"{user_id}_{today_str}"
+    
+    # Pythonのhash()は実行毎に変わるため、安定したハッシュとしてmd5などを使うか、簡易的に文字コード合計を使う
+    hash_val = sum(ord(c) for c in seed_string)
+    
+    category_weapons = weapons_db.get(element, weapons_db["土"])
+    selected_weapon = category_weapons[hash_val % len(category_weapons)]
+
+    return selected_weapon
     
 def generate_report_prompt(sanmeigaku, scores, user_data):
     gender = user_data.get("Gender", "回答しない")
@@ -1224,14 +1290,14 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
             # キャッシュを使ってAPIを呼び出す（無駄な課金を防ぐため）
                 @st.cache_data(ttl=3600)
-                def get_cached_daily_json(user_traits, daily_data):
-                    return get_daily_fortune_json(user_traits, daily_data)
+                def get_cached_daily_json(user_traits, daily_data, mind_reason, user_id):
+                    return get_daily_fortune_json(user_traits, daily_data, mind_reason, user_id)
                 
                 user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
                 daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
                 
                 # ▼ 本番稼働時はこちら
-                data = get_cached_daily_json(user_traits_str, daily_data_str)
+                data = get_cached_daily_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), line_id)
                 
                 # UIのスタイル定義（一つの大きなフレームに統合）
                 st.markdown("""
