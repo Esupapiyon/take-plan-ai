@@ -1540,13 +1540,51 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             desc = lines[1].strip() if len(lines) > 1 else ""
                             ai_dict[ym] = desc
             
+            # 1. デイリーと同じCSSスタイルを月間リストにも適用（追加のスタイル調整が必要な場合はここに記述）
+            st.markdown("""
+            <style>
+                /* 月間リスト用の追加スタイル調整 */
+                .month-list-frame { margin-bottom: 25px; /* リスト間の余白 */ }
+                .month-fortune-h3 { font-size: 1.2rem !important; margin-top: 25px !important; border-bottom: 1px solid #E0E0E0 !important; }
+            </style>
+            """, unsafe_allow_html=True)
+
             for data in months_data:
                 stars = get_rule_based_stars(data["スコア"], data["精神理由"])
                 ai_desc = ai_dict.get(data['年月'], f"スコア{data['スコア']}の月です。自身のテーマに沿って着実に行動しましょう。")
                 
-                st.markdown(f"#### {data['年月']} {data['シンボル']} {data['タイトル']} (スコア: {data['スコア']})")
-                st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{ai_desc}</p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>人間関係: {stars.get('人間関係', '★★★')} | 仕事: {stars.get('仕事運', '★★★')} | 恋愛: {stars.get('恋愛結婚', '★★★')} | 金運: {stars.get('金運', '★★★')} | 健康: {stars.get('健康運', '★★★')} | 家族: {stars.get('家族親子', '★★★')}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+                # HTMLコンテンツの組み立て開始（デイリーと同じ 'daily-frame' クラスを使用）
+                html_content = "<div class='daily-frame month-list-frame'>"
+                
+                # --- 見出し（年月、シンボル、タイトル） ---
+                # デイリーと同じ 'h2-style' クラスを使用し、内容を月間用に調整
+                html_content += f"<h2 class='h2-style'>{data['年月']} {data['シンボル']} {data['タイトル']} (スコア: {data['スコア']})</h2>"
+                
+                # --- AI解説 ---
+                # デイリーと同じスタイルで解説文を表示
+                html_content += f"<div style='margin-bottom: 20px;'>{ai_desc}</div>"
+                
+                # --- 6つの星の導き（デイリーと同じスタイル） ---
+                # デイリーと同じ見出しスタイルを適用（少しサイズを調整）
+                html_content += "<h3 class='h2-style month-fortune-h3'>6つの星の導き</h3>"
+                
+                # デイリーと同じ星表示用の関数（デイリー部分で定義されている前提、なければここで定義）
+                def get_month_fortune_html(title, star_string):
+                    return f"<div class='fortune-item'><span class='fortune-title'>{title}：{star_string}</span></div><hr class='fortune-hr'>"
+
+                # 計算された星を使って出力（AI解説はデイリーと同じHTML構造に組み込まれているため、ここでは不要）
+                html_content += get_month_fortune_html("人間関係運", stars.get("人間関係", "★★★"))
+                html_content += get_month_fortune_html("仕事運", stars.get("仕事運", "★★★"))
+                html_content += get_month_fortune_html("恋愛＆結婚運", stars.get("恋愛結婚", "★★★"))
+                html_content += get_month_fortune_html("金運", stars.get("金運", "★★★"))
+                html_content += get_month_fortune_html("健康運", stars.get("健康運", "★★★"))
+                html_content += get_month_fortune_html("家族・親子運", stars.get("家族親子", "★★★"))
+                
+                # HTMLコンテンツの組み立て終了
+                html_content += "</div>"
+                
+                # 画面に出力
+                st.markdown(html_content, unsafe_allow_html=True)
 
         with t_year:
             st.markdown("### 🗻 年間・運命の波（8年推移）")
