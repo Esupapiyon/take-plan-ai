@@ -1363,15 +1363,35 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error(msg)
 
     with tab2:
-        # --- スマホの横揺れを殺し、文章の折り返しを強制する安全なCSS ---
+        # --- 真のカルーセル化＆横揺れ完全防止CSS ---
         st.markdown("""
         <style>
-            /* 画面全体の横スクロールを隠しつつ、中身の幅を100%に制限 */
-            .stApp {
+            /* 1. 画面全体の横スクロールを完全に殺す（念押し） */
+            .stApp, .main, .block-container {
                 overflow-x: hidden !important;
                 max-width: 100vw !important;
             }
-            /* 全てのテキストを強制的に折り返し、見切れを防止 */
+            
+            /* 2. グラフの「透明な箱」をスマホ幅に固定し、中身だけを横滑りさせる（真のカルーセル） */
+            [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
+                width: 100% !important;
+                max-width: 100vw !important;
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                -webkit-overflow-scrolling: touch !important; /* スマホでの滑らかな慣性スクロール */
+            }
+
+            /* 3. ダサいスクロールバーを隠してネイティブアプリ感を出す */
+            [data-testid="stArrowVegaLiteChart"]::-webkit-scrollbar, 
+            [data-testid="stVegaLiteChart"]::-webkit-scrollbar {
+                display: none !important;
+            }
+            [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
+                -ms-overflow-style: none !important;
+                scrollbar-width: none !important;
+            }
+
+            /* 4. 全てのテキストを強制的に折り返し、見切れを防止 */
             p, div, span, h1, h2, h3, h4, h5, h6 {
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
