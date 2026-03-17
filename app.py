@@ -501,21 +501,71 @@ def calculate_period_score(user_nikkanshi, target_date, period_type="day"):
     }
 
 def get_rule_based_stars(score, mind_reason):
-    if score >= 9: base_star = "★★★"
-    elif score >= 5: base_star = "★★☆"
-    else: base_star = "★☆☆"
+    """
+    ハイブリッド算命学（十大主星×位相法）のテキストと全体スコアから、
+    6つの運勢カテゴリの星（1〜3）を精密に算出する本格アルゴリズム（純度100%版）
+    """
+    if mind_reason is None:
+        mind_reason = ""
         
-    stars = {
-        "総合運": "★★★" if score >= 8 else ("★★☆" if score >= 4 else "★☆☆"),
-        "人間関係": "★★★" if "石門" in mind_reason or "禄存" in mind_reason else base_star,
-        "仕事運": "★★★" if "車騎" in mind_reason or "牽牛" in mind_reason else base_star,
-        "恋愛結婚": "★★★" if "禄存" in mind_reason or "司禄" in mind_reason else base_star,
-        "金運": "★★★" if "禄存" in mind_reason or "司禄" in mind_reason else base_star,
-        "健康運": "★★★" if score >= 5 else "★☆☆",
-        "家族親子": "★★★" if "玉堂" in mind_reason or "司禄" in mind_reason else base_star
+    # 1. 全体スコア（1〜10）からのベース配分
+    base_stars = {
+        "人間関係": 2, "仕事運": 2, "恋愛結婚": 2,
+        "金運": 2, "健康運": 2, "家族親子": 2
     }
-    if score <= 2: stars = {k: "★☆☆" for k in stars}
-    return stars
+    
+    if score >= 8:
+        base_stars = {"人間関係": 3, "仕事運": 3, "恋愛結婚": 2, "金運": 2, "健康運": 2, "家族親子": 3}
+    elif score <= 3:
+        base_stars = {"人間関係": 1, "仕事運": 1, "恋愛結婚": 2, "金運": 2, "健康運": 1, "家族親子": 2}
+
+    # 2. 【十大主星】のエネルギーによるパラメーターの増減
+    # 木性（守備・自立）
+    if "貫索" in mind_reason or "石門" in mind_reason:
+        base_stars["仕事運"] += 1
+        base_stars["人間関係"] += 1
+    # 火性（伝達・表現）
+    if "鳳閣" in mind_reason or "調舒" in mind_reason:
+        base_stars["恋愛結婚"] += 1
+        base_stars["人間関係"] -= 1  # 調舒星の孤独・反発を考慮
+    # 土性（引力・蓄積）
+    if "禄存" in mind_reason or "司禄" in mind_reason:
+        base_stars["金運"] += 1
+        base_stars["家族親子"] += 1
+    # 金性（攻撃・行動）
+    if "車騎" in mind_reason or "牽牛" in mind_reason:
+        base_stars["仕事運"] += 1
+        base_stars["健康運"] -= 1    # 過労・ストレスを考慮
+    # 水性（習得・知恵）
+    if "龍高" in mind_reason or "玉堂" in mind_reason:
+        base_stars["仕事運"] += 1
+        base_stars["家族親子"] += 1
+        base_stars["恋愛結婚"] -= 1  # 理屈っぽさを考慮
+
+    # 3. 【位相法】（合法・散法）の条件による強烈な運勢のブレ
+    # 合法（広がり・まとまり）
+    if "半会" in mind_reason or "支合" in mind_reason or "三合" in mind_reason:
+        base_stars["人間関係"] += 1
+        base_stars["仕事運"] += 1
+    # 散法（破壊・分離・ストレス）
+    if "冲動" in mind_reason or "天剋地冲" in mind_reason or "納音" in mind_reason:
+        base_stars["人間関係"] -= 1
+        base_stars["金運"] -= 1
+    if "刑" in mind_reason or "害" in mind_reason or "破" in mind_reason:
+        base_stars["健康運"] -= 1
+        base_stars["家族親子"] -= 1
+
+    # 4. バランス補正とフォーマット変換（1〜3の範囲に強制的に収める）
+    final_stars = {}
+    star_marks = {1: "★☆☆", 2: "★★☆", 3: "★★★"}
+    
+    for key, val in base_stars.items():
+        if val < 1: val = 1
+        if val > 3: val = 3
+        final_stars[key] = star_marks[val]
+
+    # 算命学の計算結果をそのままストレートに返す（作為的なズラしは行わない）
+    return final_stars
     
 def generate_report_prompt(sanmeigaku, scores, user_data):
     gender = user_data.get("Gender", "回答しない")
