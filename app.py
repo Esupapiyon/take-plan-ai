@@ -1363,7 +1363,20 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error(msg)
 
     with tab2:
+        # --- スマホでの不快な「横揺れ（横スクロール）」を物理的に完全ブロックする強力なCSS ---
+        st.markdown("""
+        <style>
+            html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+                overflow-x: hidden !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        # ------------------------------------------------------------------------
+
         st.subheader("📅 運命の波乗りダッシュボード")
+
         current_year = today.year
         t_day, t_month, t_year = st.tabs(["🌊 今日の波とミッション", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
         
@@ -1501,10 +1514,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
             df_m = pd.DataFrame(months_data)
             
-            # ベースのチャート設定（ツールチップを追加し、不要な線を消去）
+            # Y軸の天井を11から「12.5」に引き上げ、一番上の絵文字が見切れないように余白を作る
             base_m = alt.Chart(df_m).encode(
                 x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
-                y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
+                y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 12.5]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
                 tooltip=[
                     alt.Tooltip('年月:O', title='時期'),
                     alt.Tooltip('シンボル:N', title='運勢'),
@@ -1513,9 +1526,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 ]
             )
 
-            # 1. グラデーションエリア（波の下の塗りつぶし）
+            # 1. 美しいグラデーションエリア
             area_m = base_m.mark_area(
-                interpolate='monotone', # 滑らかな曲線
+                interpolate='monotone',
                 color=alt.Gradient(
                     gradient='linear',
                     stops=[alt.GradientStop(color='rgba(6, 199, 85, 0.4)', offset=0),
@@ -1524,24 +1537,34 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 )
             )
 
-            # 2. 滑らかな曲線（メインの波）
+            # 2. 滑らかな波（曲線）
             line_m = base_m.mark_line(
                 interpolate='monotone',
                 color='#06C755',
                 strokeWidth=3
             )
 
-            # 3. スタイリッシュなドット（タップ判定用）
+            # 3. 発光するような白いドット
             points_m = base_m.mark_circle(
                 color='#FFFFFF',
-                size=60,
+                size=50,
                 stroke='#06C755',
                 strokeWidth=2,
                 opacity=1
             )
 
-            # チャートの合成と背景設定（外枠も完全消去）
-            chart_m = (area_m + line_m + points_m).properties(
+            # 4. 上品に浮遊する絵文字（フローティング・アイコン）
+            text_m = base_m.mark_text(
+                align='center',
+                baseline='bottom',
+                dy=-12,  # ドットから上に12px浮かせる
+                size=18  # 巨大すぎず、スマホでもタップ不要で見える上品なサイズ
+            ).encode(
+                text='シンボル:N'
+            )
+
+            # 合成と枠線の完全消去
+            chart_m = (area_m + line_m + points_m + text_m).properties(
                 height=250,
                 background='#FFFFFF'
             ).configure_view(
@@ -1644,7 +1667,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             
             base_y = alt.Chart(df_y).encode(
                 x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
-                y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 11]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
+                y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 12.5]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
                 tooltip=[
                     alt.Tooltip('年:O', title='年'),
                     alt.Tooltip('シンボル:N', title='運勢'),
@@ -1670,12 +1693,21 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
             points_y = base_y.mark_circle(
                 color='#FFFFFF',
-                size=70,
+                size=60,
                 stroke='#D32F2F',
                 strokeWidth=2
             )
 
-            chart_y = (area_y + line_y + points_y).properties(
+            text_y = base_y.mark_text(
+                align='center',
+                baseline='bottom',
+                dy=-12,
+                size=20
+            ).encode(
+                text='シンボル:N'
+            )
+
+            chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
                 background='#FFFFFF'
             ).configure_view(
