@@ -104,7 +104,7 @@ st.markdown("""
     <style>
     div[data-testid="stButton"] button { padding: 0.2rem 0.5rem; min-height: 2.5rem; }
     div.stButton { margin-bottom: -15px; }
-    .block-container { padding-top: 1.5rem !important; padding-bottom: 1rem !important; }
+    .block-container { padding-top: 1.5rem !important; padding-bottom: 1rem !important; max-width: 480px !important; margin: 0 auto !important; }
     .stApp, .stApp > header, .stApp .main { background-color: #FFFFFF !important; }
     h1, h2, h3, h4, h5, h6, p, span, div, label, li { color: #000000 !important; }
     button[kind="secondary"] { width: 100% !important; height: 65px !important; font-size: 18px !important; font-weight: 900 !important; color: #000000 !important; background-color: #FFFFFF !important; border: 3px solid #444444 !important; border-radius: 12px !important; margin-bottom: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important; }
