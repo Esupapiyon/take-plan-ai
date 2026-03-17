@@ -1584,10 +1584,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 text='シンボル:N'
             )
 
-            # 横幅を「600px」に固定し、スマホで横スワイプ（カルーセル）させる
+            # 横幅を「700px」に固定（PCでは全幅、スマホでは横スワイプになる魔法の数字）
             chart_m = (area_m + line_m + points_m + text_m).properties(
                 height=250,
-                width=600, 
+                width=700, 
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
@@ -1750,10 +1750,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 text='シンボル:N'
             )
 
-            # 横幅を「600px」に固定し、スマホで横スワイプ（カルーセル）させる
+            # 横幅を「700px」に固定
             chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
-                width=600,
+                width=700,
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
