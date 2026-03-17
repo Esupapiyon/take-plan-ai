@@ -104,7 +104,7 @@ st.markdown("""
     <style>
     div[data-testid="stButton"] button { padding: 0.2rem 0.5rem; min-height: 2.5rem; }
     div.stButton { margin-bottom: -15px; }
-    .block-container, div[data-testid="stMainBlockContainer"] { padding-top: 1.5rem !important; padding-bottom: 1rem !important; max-width: 450px !important; margin: 0 auto !important; }
+    .block-container, div[data-testid="stMainBlockContainer"] { padding-top: 1.5rem !important; padding-bottom: 1rem !important; max-width: 750px !important; margin: 0 auto !important; }
     .stApp, .stApp > header, .stApp .main { background-color: #FFFFFF !important; }
     h1, h2, h3, h4, h5, h6, p, span, div, label, li { color: #000000 !important; }
     button[kind="secondary"] { width: 100% !important; height: 65px !important; font-size: 18px !important; font-weight: 900 !important; color: #000000 !important; background-color: #FFFFFF !important; border: 3px solid #444444 !important; border-radius: 12px !important; margin-bottom: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important; }
@@ -1363,31 +1363,36 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error(msg)
 
     with tab2:
-        # --- 真のカルーセル化＆横揺れ完全防止CSS ---
+        # --- 真のカルーセル化＆横揺れ完全防止CSS（完成版） ---
         st.markdown("""
         <style>
-            /* 1. 画面全体の横スクロールを完全に殺す（念押し） */
-            .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+            /* 1. 画面全体の横スクロールを完全に殺す絶対防壁（復活） */
+            html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
                 overflow-x: hidden !important;
-            }
-            
-            /* 2. グラフの「透明な箱」をスマホ幅に固定し、中身だけを横滑りさせる（真のカルーセル） */
-            [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
                 width: 100% !important;
                 max-width: 100vw !important;
+                position: relative;
+            }
+            
+            /* 2. グラフの箱をスマホ幅に固定し、中身だけを横滑りさせる（真のカルーセル） */
+            [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
+                width: 100% !important;
+                max-width: 100% !important;
                 overflow-x: auto !important;
                 overflow-y: hidden !important;
                 -webkit-overflow-scrolling: touch !important; /* スマホでの滑らかな慣性スクロール */
             }
 
-            /* 3. ダサいスクロールバーを隠してネイティブアプリ感を出す */
-            [data-testid="stArrowVegaLiteChart"]::-webkit-scrollbar, 
-            [data-testid="stVegaLiteChart"]::-webkit-scrollbar {
-                display: none !important;
-            }
-            [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
-                -ms-overflow-style: none !important;
-                scrollbar-width: none !important;
+            /* 3. スマホの時だけダサいスクロールバーを隠す（PCでは見切れ防止のために残す） */
+            @media (max-width: 768px) {
+                [data-testid="stArrowVegaLiteChart"]::-webkit-scrollbar, 
+                [data-testid="stVegaLiteChart"]::-webkit-scrollbar {
+                    display: none !important;
+                }
+                [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
+                    -ms-overflow-style: none !important;
+                    scrollbar-width: none !important;
+                }
             }
 
             /* 4. 全てのテキストを強制的に折り返し、見切れを防止 */
