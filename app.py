@@ -1517,7 +1517,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
                 months_data.append({"年月": m_date.strftime("%Y年%m月"), "スコア": res["score"], "シンボル": res["symbol"], "タイトル": res["title"], "環境理由": res["env_reason"], "精神理由": res["mind_reason"]})
                 
-df_m = pd.DataFrame(months_data)
+            df_m = pd.DataFrame(months_data)
             
             # Y軸の天井を12.5に設定し、絵文字の余白を確保
             base_m = alt.Chart(df_m).encode(
@@ -1686,7 +1686,7 @@ df_m = pd.DataFrame(months_data)
                 years_data.append({"年": f"{y_date.year}年", "スコア": res["score"], "シンボル": res["symbol"], "res_obj": res})
                 if i == 0: this_year_res = res
                 
-df_y = pd.DataFrame(years_data)
+            df_y = pd.DataFrame(years_data)
             
             base_y = alt.Chart(df_y).encode(
                 x=alt.X('年:O', axis=alt.Axis(labelAngle=0, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
