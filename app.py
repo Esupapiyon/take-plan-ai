@@ -1395,7 +1395,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
                 st.markdown(f"#### {data['年月']} {data['シンボル']} {data['タイトル']} (スコア: {data['スコア']})")
                 st.markdown(f"<p style='color:#333; line-height:1.6; margin-bottom:5px;'>{ai_desc}</p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>総合: {stars['総合運']} | 人間関係: {stars['人間関係']} | 仕事: {stars['仕事運']} | 恋愛: {stars['恋愛結婚']} | 金運: {stars['金運']} | 健康: {stars['健康運']} | 家族: {stars['家族親子']}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size: 0.95rem; margin-top: 0px;'>人間関係: {stars.get('人間関係', '★★★')} | 仕事: {stars.get('仕事運', '★★★')} | 恋愛: {stars.get('恋愛結婚', '★★★')} | 金運: {stars.get('金運', '★★★')} | 健康: {stars.get('健康運', '★★★')} | 家族: {stars.get('家族親子', '★★★')}</p><hr style='margin: 15px 0;'>", unsafe_allow_html=True)
 
         with t_year:
             st.markdown("### 🗻 年間・運命の波（8年推移）")
