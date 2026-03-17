@@ -1374,15 +1374,15 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             
             with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
             # キャッシュを使ってAPIを呼び出す（無駄な課金を防ぐため）
-                @st.cache_data(ttl=3600)
-                def get_cached_daily_json(user_traits, daily_data, mind_reason, user_id):
+                @st.cache_data(ttl=86400) # 記憶時間を1時間(3600)から24時間(86400)に延長
+                def get_cached_daily_json(user_traits, daily_data, mind_reason, user_id, today_date_str):
                     return get_daily_fortune_json(user_traits, daily_data, mind_reason, user_id)
                 
                 user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
                 daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
                 
-                # ▼ 本番稼働時はこちら
-                data = get_cached_daily_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), st.session_state.line_id)
+                # ▼ 本番稼働時はこちら（引数の最後に today_str を追加し、日付が変わった時だけ強制リセットさせる）
+                data = get_cached_daily_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), st.session_state.line_id, today_str)
                 
                 # UIのスタイル定義（一つの大きなフレームに統合）
                 st.markdown("""
