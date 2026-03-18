@@ -1365,6 +1365,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error(msg)
 
     with tab2:
+            
         # --- スマホの横揺れをOSレベルで殺し、グラフだけを滑らせる最終CSS ---
         st.markdown("""
         <style>
@@ -1397,6 +1398,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 overflow-wrap: break-word !important;
                 word-wrap: break-word !important;
             }
+          
+            /* 5. ツールチップ（吹き出し）の視認性改善（白背景に黒文字） */
+            #vg-tooltip-element {
+                background-color: #FFFFFF !important;
+                color: #111111 !important;
+                border: 2px solid #b8860b !important; /* ゴールドの枠線で高級感を出す */
+                border-radius: 8px !important;
+                font-weight: bold !important;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+            }
+
         </style>
         """, unsafe_allow_html=True)
         # ------------------------------------------------------------------------
@@ -1585,18 +1597,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 text='シンボル:N'
             )
 
-            # 横幅を「700px」に固定し、スマホで横スワイプ（カルーセル）させる
-            chart_m = (area_m + line_m + points_m + text_m).properties(
+            # エラーの原因だった configure_tooltip を削除！
+            chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
-                width=700, 
+                width=700,
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
-            ).configure_tooltip( # ツールチップの改善（背景白・文字黒）
-                background='white',
-                color='black',
-                borderColor='#EEEEEE'
             )
+            
+            # use_container_width=False にすることで、枠内でスワイプ可能になる
+            st.altair_chart(chart_y, use_container_width=False)
             
             # use_container_width=False にすることで、枠内でスワイプ可能になる
             st.altair_chart(chart_m, use_container_width=False)
@@ -1755,18 +1766,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 text='シンボル:N'
             )
 
-            # 横幅を「700px」に固定し、ツールチップを白背景・黒文字に改善
+            # エラーの原因だった configure_tooltip を削除！
             chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
                 width=700,
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
-            ).configure_tooltip(
-                background='white',
-                color='black',
-                borderColor='#EEEEEE'
             )
+            
+            # use_container_width=False にすることで、枠内でスワイプ可能になる
+            st.altair_chart(chart_y, use_container_width=False)      
             
             # use_container_width=False にすることで、枠内でスワイプ可能になる
             st.altair_chart(chart_y, use_container_width=False)
