@@ -104,7 +104,7 @@ st.markdown("""
     <style>
     div[data-testid="stButton"] button { padding: 0.2rem 0.5rem; min-height: 2.5rem; }
     div.stButton { margin-bottom: -15px; }
-    .block-container, div[data-testid="stMainBlockContainer"] { padding-top: 1.5rem !important; padding-bottom: 1rem !important; max-width: 750px !important; margin: 0 auto !important; }
+    .block-container, div[data-testid="stMainBlockContainer"] { padding-top: 1.5rem !important; padding-bottom: 1rem !important; max-width: 750px !important; margin: 0 auto !important; overflow-x: hidden !important; }
     .stApp, .stApp > header, .stApp .main { background-color: #FFFFFF !important; }
     h1, h2, h3, h4, h5, h6, p, span, div, label, li { color: #000000 !important; }
     button[kind="secondary"] { width: 100% !important; height: 65px !important; font-size: 18px !important; font-weight: 900 !important; color: #000000 !important; background-color: #FFFFFF !important; border: 3px solid #444444 !important; border-radius: 12px !important; margin-bottom: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important; }
@@ -1363,28 +1363,31 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error(msg)
 
     with tab2:
-        # --- スマホ画面クラッシュを防ぐ「安全な」カルーセル＆横揺れ防止CSS ---
+        # --- スマホの横揺れをOSレベルで殺し、グラフだけを滑らせる最終CSS ---
         st.markdown("""
         <style>
-            /* 1. 根幹システムを破壊せず、横揺れだけを優しく防ぐ */
-            .stApp {
-                overflow-x: hidden !important;
+            /* 1. スマホ特有の「スワイプで戻る/進む」時の画面揺れをOSレベルで無効化 */
+            html, body {
+                overscroll-behavior-x: none !important;
             }
             
-            /* 2. グラフの箱が画面幅を突き破らないように制限し、中身だけを横滑りさせる */
+            /* 2. グラフの箱をスマホ幅（100%）に固定し、中身だけを横滑りさせる */
             [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
                 max-width: 100% !important;
                 overflow-x: auto !important;
                 overflow-y: hidden !important;
-                -webkit-overflow-scrolling: touch !important; /* スマホの慣性スクロール */
+                -webkit-overflow-scrolling: touch !important; /* スマホ特有の滑らかな慣性スクロール */
+                overscroll-behavior-x: contain !important; /* スワイプの勢いが画面全体に伝染するのを防ぐ */
             }
 
-            /* 3. スマホの時だけダサいスクロールバーを隠す */
-            @media (max-width: 768px) {
-                [data-testid="stArrowVegaLiteChart"]::-webkit-scrollbar, 
-                [data-testid="stVegaLiteChart"]::-webkit-scrollbar {
-                    display: none !important;
-                }
+            /* 3. ダサいスクロールバーを完全に消去（PC・スマホ共通） */
+            [data-testid="stArrowVegaLiteChart"]::-webkit-scrollbar, 
+            [data-testid="stVegaLiteChart"]::-webkit-scrollbar {
+                display: none !important;
+            }
+            [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] {
+                -ms-overflow-style: none !important;
+                scrollbar-width: none !important;
             }
 
             /* 4. テキストの折り返し（見切れ防止） */
