@@ -705,9 +705,10 @@ def get_daily_science_weapon(mind_reason, user_id):
         ]
     }
 
-    # 3. 日替わりローテーション（毎日違う武器を選出）
-    # 日付とユーザーIDを組み合わせてハッシュ化し、要素数で割った余りを使う
-    today_str = datetime.date.today().strftime("%Y%m%d")
+# 3. 日替わりローテーション（毎日違う武器を選出）
+    # サーバーのタイムゾーンに依存せず、強制的に日本時間(JST)を取得する
+    JST = datetime.timezone(datetime.timedelta(hours=+9), 'JST')
+    today_str = datetime.datetime.now(JST).strftime("%Y%m%d")
     seed_string = f"{user_id}_{today_str}"
     
     # Pythonのhash()は実行毎に変わるため、安定したハッシュとしてmd5などを使うか、簡易的に文字コード合計を使う
@@ -1293,8 +1294,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         if len(user_row) > 76:
             user_data_for_ai = {"Job": user_row[74], "Pains": user_row[75], "Free_Text": user_row[76]}
             
-        # 今日の運勢とHP計算
-        today = datetime.date.today()
+        # 今日の運勢とHP計算（強制的に日本時間を使用）
+        JST = datetime.timezone(datetime.timedelta(hours=+9), 'JST')
+        today = datetime.datetime.now(JST).date()
         today_str = today.strftime("%Y/%m/%d")
         today_res = calculate_period_score(user_nikkanshi, today, period_type="day")
         
@@ -1583,13 +1585,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 text='シンボル:N'
             )
 
-            # 横幅を「700px」に固定（PCでは全幅、スマホでは横スワイプになる魔法の数字）
+            # 横幅を「700px」に固定し、スマホで横スワイプ（カルーセル）させる
             chart_m = (area_m + line_m + points_m + text_m).properties(
                 height=250,
                 width=700, 
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
+            ).configure_tooltip( # ツールチップの改善（背景白・文字黒）
+                background='white',
+                color='black',
+                borderColor='#EEEEEE'
             )
             
             # use_container_width=False にすることで、枠内でスワイプ可能になる
@@ -1749,13 +1755,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 text='シンボル:N'
             )
 
-            # 横幅を「700px」に固定
+            # 横幅を「700px」に固定し、ツールチップを白背景・黒文字に改善
             chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
                 width=700,
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
+            ).configure_tooltip(
+                background='white',
+                color='black',
+                borderColor='#EEEEEE'
             )
             
             # use_container_width=False にすることで、枠内でスワイプ可能になる
@@ -1809,7 +1819,48 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         return "エラーが発生しました。"
 
                 yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
-                st.markdown(f"<div class='advice-box'>{yearly_advice}</div>", unsafe_allow_html=True)
+                
+                # --- 月間グラフと同じゴールドフレームのCSSを注入 ---
+                st.markdown("""
+                <style>
+                .year-wrapper {
+                    border: 2px solid #b8860b; 
+                    border-radius: 12px; 
+                    padding: 25px; 
+                    background-color: #FFFFFF; 
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+                    color: #222222; 
+                    line-height: 1.7; 
+                    font-size: 1.05rem;
+                    margin-top: 10px;
+                    margin-bottom: 30px;
+                }
+                .year-wrapper h2 {
+                    color: #b8860b !important;
+                    font-size: 1.4rem !important;
+                    border-bottom: 2px solid #E0E0E0 !important;
+                    padding-bottom: 8px !important;
+                    margin-top: 35px !important;
+                    margin-bottom: 20px !important;
+                    font-weight: 900 !important;
+                }
+                .year-wrapper h2:first-of-type {
+                    margin-top: 0 !important;
+                }
+                .year-wrapper h3 {
+                    color: #333333 !important;
+                    font-size: 1.15rem !important;
+                    margin-top: 25px !important;
+                    margin-bottom: 10px !important;
+                    border-left: 4px solid #b8860b !important;
+                    padding-left: 10px !important;
+                    font-weight: 900 !important;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
+                # HTMLのdivタグの中でMarkdownを正常に処理させるため、\n\nで囲んで出力
+                st.markdown(f"<div class='year-wrapper'>\n\n{yearly_advice}\n\n</div>", unsafe_allow_html=True)
                     
     # ==========================================
     # 【タブ3】極秘レポート完全版
