@@ -1552,7 +1552,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
             df_m = pd.DataFrame(months_data)
             
-            # Y軸の天井を12.5に設定し、絵文字の余白を確保
             base_m = alt.Chart(df_m).encode(
                 x=alt.X('年月:O', axis=alt.Axis(labelAngle=-45, title=None, labelColor='#777777', tickColor='transparent', domainColor='#EEEEEE', grid=False)),
                 y=alt.Y('スコア:Q', scale=alt.Scale(domain=[0, 12.5]), axis=alt.Axis(labels=False, title=None, grid=False, ticks=False, domain=False)),
@@ -1582,7 +1581,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
             points_m = base_m.mark_circle(
                 color='#FFFFFF',
-                size=40, # ドットを少し小さく上品に
+                size=40,
                 stroke='#06C755',
                 strokeWidth=2,
                 opacity=1
@@ -1591,25 +1590,21 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             text_m = base_m.mark_text(
                 align='center',
                 baseline='bottom',
-                dy=-10,  # 浮遊感を調整
-                size=14  # 絵文字を14pxに縮小し、渋滞を緩和
+                dy=-10,
+                size=14
             ).encode(
                 text='シンボル:N'
             )
 
-            # エラーの原因だった configure_tooltip を削除！
-            chart_y = (area_y + line_y + points_y + text_y).properties(
+            # 横幅700px固定、エラーの原因(configure_tooltip)を持たない安全な形
+            chart_m = (area_m + line_m + points_m + text_m).properties(
                 height=250,
-                width=700,
+                width=700, 
                 background='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
             )
             
-            # use_container_width=False にすることで、枠内でスワイプ可能になる
-            st.altair_chart(chart_y, use_container_width=False)
-            
-            # use_container_width=False にすることで、枠内でスワイプ可能になる
             st.altair_chart(chart_m, use_container_width=False)
             
             # --- 絵文字の凡例（10段階）の追加 ---
@@ -1766,7 +1761,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 text='シンボル:N'
             )
 
-            # エラーの原因だった configure_tooltip を排除した安全で正しい形
+            # 横幅700px固定、エラーの原因(configure_tooltip)を持たない安全な形
             chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
                 width=700,
@@ -1775,7 +1770,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 strokeWidth=0
             )
             
-            # use_container_width=False にすることで、枠内でスワイプ可能になる
             st.altair_chart(chart_y, use_container_width=False)
 
             # --- 絵文字の凡例（10段階）の追加 ---
