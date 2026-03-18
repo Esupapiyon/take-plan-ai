@@ -1761,12 +1761,12 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 align='center',
                 baseline='bottom',
                 dy=-10,
-                size=16  # 年間はデータ数が少ないので少しだけ大きめ
+                size=16
             ).encode(
                 text='シンボル:N'
             )
 
-            # エラーの原因だった configure_tooltip を削除！
+            # エラーの原因だった configure_tooltip を排除した安全で正しい形
             chart_y = (area_y + line_y + points_y + text_y).properties(
                 height=250,
                 width=700,
@@ -1774,9 +1774,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             ).configure_view(
                 strokeWidth=0
             )
-            
-            # use_container_width=False にすることで、枠内でスワイプ可能になる
-            st.altair_chart(chart_y, use_container_width=False)      
             
             # use_container_width=False にすることで、枠内でスワイプ可能になる
             st.altair_chart(chart_y, use_container_width=False)
