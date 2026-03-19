@@ -1093,7 +1093,7 @@ def update_mission_clear(line_id):
     except Exception as e:
         return False, f"通信エラー: {e}"
 
-def update_user_focus(line_id, new_focus):
+def update_user_status(line_id, new_profession, new_focus):
     try:
         creds_dict = st.secrets["gcp_service_account"]
         from oauth2client.service_account import ServiceAccountCredentials
@@ -1106,13 +1106,14 @@ def update_user_focus(line_id, new_focus):
         
         for i in range(len(all_data)-1, 0, -1):
             if len(all_data[i]) > 0 and all_data[i][0] == line_id:
-                # 76列目（インデックス75）が「Pains（悩み）」の列
+                # 75列目(Job)と76列目(Pains)の両方を更新
+                sheet.update_cell(i + 1, 75, new_profession)
                 sheet.update_cell(i + 1, 76, new_focus)
-                return True, "フォーカスを変更しました！明日のミッションから反映されます。"
+                return True, "状況をアップデートしました！"
         return False, "ユーザーが見つかりません"
     except Exception as e:
         return False, f"エラー: {e}"
-        
+      
 def get_user_status(line_id):
     try:
         creds_dict = st.secrets["gcp_service_account"]
@@ -1345,24 +1346,33 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         </div>
         """, unsafe_allow_html=True)
 
-        # --- 新規追加：フォーカス変更UI ---
-        st.markdown("### 🎯 現在のフォーカス（目標）設定")
-        current_pain = user_data_for_ai.get("Pains", "未設定")
-        focus_options = ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"]
-        default_index = focus_options.index(current_pain) if current_pain in focus_options else 0
+        # --- 現在の状況（職業と悩み）アップデート機能 ---
+        st.markdown("### 現在の状況をアップデート")
+        st.write("環境や目標が変わりましたか？状況を更新すると、AIの戦略が最新化されます。")
         
-        new_pain = st.selectbox("AIが重点的にアドバイスするテーマを選択してください", focus_options, index=default_index)
-        if new_pain != current_pain:
-            if st.button("このテーマに変更する", type="primary"):
-                with st.spinner("設定を保存中..."):
-                    success, msg = update_user_focus(st.session_state.line_id, new_pain)
-                    if success:
-                        st.success(msg)
-                        import time
-                        time.sleep(1)
-                        st.rerun()
+        with st.expander("職業と現在の悩みを変更する", expanded=False):
+            with st.form("update_status_form"):
+                current_profession = user_data_for_ai.get("Job", "未設定")
+                current_focus = user_data_for_ai.get("Pains", "未設定")
+                
+                new_profession = st.text_input("現在の職業・ポジション", value=current_profession, placeholder="例：IT企業の営業マネージャー 等")
+                new_focus = st.text_area("現在フォーカスしている悩み・目標", value=current_focus, placeholder="例：新規プロジェクトを成功させたい 等")
+                
+                submit_status = st.form_submit_button("状況を更新してAI戦略を再構築")
+                
+                if submit_status:
+                    if new_profession and new_focus:
+                        with st.spinner("設定を保存中..."):
+                            success, msg = update_user_status(st.session_state.line_id, new_profession, new_focus)
+                            if success:
+                                st.success(msg)
+                                import time
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(msg)
                     else:
-                        st.error(msg)
+                        st.error("職業と悩みの両方を入力してください。")
 
     with tab2:
             
@@ -1631,10 +1641,15 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             
             with st.spinner("AIが各月の固有テーマを分析中..."):
                 @st.cache_data(ttl=86400)
-                def get_cached_monthly_advices(year_str, _months_data):
+                def get_cached_monthly_advices(year_str, _months_data, profession, focus, big5):
                     prompt = "あなたは日本一の戦略的ライフ・コンサルタントです。\n"
-                    prompt += "以下の15ヶ月分のデータをもとに、各月の「総合解説（2〜3文）」を作成してください。\n"
-                    prompt += "【重要】同じスコアの月でも、環境と精神のテーマに合わせて全く違う切り口で具体的な解説を書いてください。専門用語は使わず現代語に翻訳してください。\n\n"
+                    prompt += f"【ユーザー情報】\n職業: {profession}\n現在の悩み: {focus}\nBig5性格特性: {big5}\n\n"
+                    prompt += "以下の15ヶ月分のデータをもとに、各月の「マインドセットと戦術」を2〜3文で作成してください。\n"
+                    prompt += "【絶対遵守のルール】\n"
+                    prompt += "1. 専門用語は絶対に使わず現代語に翻訳すること。\n"
+                    prompt += "2. 具体的な行動タスク（To-Do）や「〜してください」といった指示は一切書かないこと。\n"
+                    prompt += "3. あくまで「その月はどういうスタンス・心構えで仕事や悩みに向き合うべきか」というマインドセットに留めること。\n"
+                    prompt += "4. 同じスコアの月でも、環境と精神のテーマに合わせて全く違う切り口で具体的な解説を書くこと。\n\n"
                     prompt += "# データ\n"
                     for d in _months_data:
                         prompt += f"- {d['年月']}: スコア{d['スコア']}, 環境({d['環境理由']}), 精神({d['精神理由']})\n"
@@ -1651,7 +1666,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     except:
                         return ""
                 
-                raw_ai_text = get_cached_monthly_advices(str(current_year), months_data)
+                big5_str = f"O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
+                raw_ai_text = get_cached_monthly_advices(str(current_year), months_data, user_data_for_ai.get('Job', '不明'), user_data_for_ai.get('Pains', '特になし'), big5_str)
                 ai_dict = {}
                 if raw_ai_text:
                     parts = raw_ai_text.split("■")
@@ -1778,37 +1794,27 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
             with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
                 @st.cache_data(ttl=86400)
-                def get_cached_yearly_advice(year_str, _res):
+                def get_cached_yearly_advice(year_str, _res, profession, focus, big5):
                     prompt = f"""
-                    あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間アドバイス】を作成してください。
+                    あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間ロードマップ】を作成してください。
                     [今年のスコア: {_res['score']}点, シンボル: {_res['symbol']}, 環境: {_res['env_reason']}, 精神: {_res['mind_reason']}]
+                    [ユーザーの職業: {profession}]
+                    [現在の悩み・フォーカス: {focus}]
+                    [Big5性格特性: {big5}]
 
                     # 【絶対遵守の出力ルール】
                     1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
-                    2. 1年間の長期的な視点で、ワクワクする力強いトーンで書くこと。
-                    3. 【重要】星評価（★☆☆など）は絶対に出力しないでください。文章のみで解説してください。
-                    4. 各項目に「具体的なアクション」を必ず入れること。
-                    5. 【重要】同じスコアや記号であっても、背景にある「環境」と「精神」のテーマ（例：今年は学びの年、今年は行動の年など）を反映し、その年ならではの独自の解説にしてください。
+                    2. 【重要】具体的な行動タスク（To-Do）や「〜しましょう」といった指示は【一切書かない】こと。
+                    3. 1年間の長期的な視点で、人生の戦略やフォーカスすべき領域の提示に特化すること。
+                    4. 星評価（★☆☆など）は絶対に出力しないでください。
 
                     # 出力構成
-                    ## 今年の運命の波（総合解説）
-                    今年のスコアとシンボルの意味を解説するとともに、「あなたにとって今年全体がどのような意味を持つ1年なのか（例：成長の年、手放しの年、飛躍の年など）」を追加して総括してください。
-
-                    ## 7つの指針と詳細解説（※星評価は書かない）
-                    ### 1. 総合運
-                    [解説]
-                    ### 2. 人間関係運
-                    [解説]
-                    ### 3. 仕事運
-                    [解説]
-                    ### 4. 恋愛＆結婚運
-                    [解説]
-                    ### 5. 金運（契約・買い物）
-                    [解説]
-                    ### 6. 健康運
-                    [解説]
-                    ### 7. 家族・親子運
-                    [解説]
+                    ## 🗻 今年の絶対テーマ（年間戦略大枠）
+                    スコアとシンボルが示す、今年1年がユーザーの人生においてどのような意味を持つのかを総括してください。
+                    ## ⚖️ 強みと弱みの年間マネジメント（リスク管理）
+                    ユーザーの「Big5の性格特性」が、今年の波の中で「どう活きるか（強力な武器）」と「どう邪魔をするか（警戒すべきリスク）」を解説してください。
+                    ## 🎯 今年注力すべき3つの柱（選択と集中）
+                    ユーザーの「職業」と「悩み」から、今年絶対にフォーカスすべき3つの領域（例：仕事、人間関係、自己投資など）をAIが厳選し、なぜそこに注力すべきか（方針）を解説してください。
                     """
                     try:
                         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -1819,7 +1825,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     except:
                         return "エラーが発生しました。"
 
-                yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res)
+                big5_str = f"O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
+                yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res, user_data_for_ai.get('Job', '不明'), user_data_for_ai.get('Pains', '特になし'), big5_str)
                 
                 # --- 月間グラフと同じゴールドフレームのCSSを注入 ---
                 st.markdown("""
