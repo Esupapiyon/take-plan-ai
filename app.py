@@ -575,6 +575,33 @@ def get_rule_based_stars(score, mind_reason):
 
 import datetime
 
+def get_calendar_keywords(score, mind_reason):
+    """
+    カレンダー用に「動詞を排除」したキーワード（天気予報）を自動生成する関数。
+    APIコスト0円で瞬間生成される。
+    """
+    if mind_reason is None: mind_reason = ""
+    
+    # 運勢スコアによるベースのキーワード
+    if score >= 8:
+        tailwind = "新規開拓 / 重要な契約・決断 / スピード勝負"
+        warning = "勢い余っての凡ミス / 相手のペース無視"
+    elif score >= 5:
+        tailwind = "基礎固め / 人脈作り / 丁寧な対話・調整"
+        warning = "優柔不断 / チャンスの先延ばし / 八方美人"
+    else:
+        tailwind = "心身の完全休養 / タスクの断捨離 / 情報の整理"
+        warning = "感情的な衝突 / 大きな買い物・契約 / 無理なスケジュール"
+        
+    # 算命学の精神テーマによるフレーバー（個性の追加）
+    if any(x in mind_reason for x in ["貫索", "石門"]): tailwind += " / 単独行動・自己主張"
+    elif any(x in mind_reason for x in ["鳳閣", "調舒"]): tailwind += " / クリエイティブな表現"
+    elif any(x in mind_reason for x in ["禄存", "司禄"]): tailwind += " / 人助け・気配り"
+    elif any(x in mind_reason for x in ["車騎", "牽牛"]): tailwind += " / 責任あるタスク"
+    elif any(x in mind_reason for x in ["龍高", "玉堂"]): tailwind += " / 新しい学び・研究"
+        
+    return {"tailwind": tailwind, "warning": warning}
+
 def get_daily_science_weapon(mind_reason, user_id):
     """
     ハイブリッド算命学の五行属性に合わせて、100個の武器庫から
@@ -1458,7 +1485,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.subheader("📅 運命の波乗りダッシュボード")
 
         current_year = today.year
-        t_day, t_month, t_year = st.tabs(["🌊 今日の波とミッション", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
+        # ▼ タブを4つに増やし、スマホでも見やすいように文字数を調整
+        t_day, t_calendar, t_month, t_year = st.tabs(["🌊 今日", "📅 カレンダー", "🗓 月間", "🗻 年間"])
         
         with t_day:
             st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
@@ -1587,6 +1615,85 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.session_state[f"bonus_{today_str}"] = True
                             st.toast("ボーナスEXPを獲得しました！")
                             st.rerun()
+
+        with t_calendar:
+            st.markdown("### 📅 今月の運命のカレンダー")
+            st.write(f"**{current_year}年{today.month}月**の環境の波です。")
+            
+            # --- 1. スマホで崩れないHTMLカレンダーの生成 ---
+            import calendar
+            cal_matrix = calendar.monthcalendar(current_year, today.month)
+            
+            html_cal = "<table style='width:100%; border-collapse: collapse; text-align:center; font-size:0.9rem; table-layout: fixed; margin-bottom: 25px;'>"
+            html_cal += "<tr style='background-color:#F5F5F5; color:#555;'><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th style='color:#1976D2;'>土</th><th style='color:#D32F2F;'>日</th></tr>"
+            
+            for week in cal_matrix:
+                html_cal += "<tr>"
+                for i, day in enumerate(week):
+                    if day == 0:
+                        html_cal += "<td style='padding:10px 5px; border:1px solid #EEEEEE;'></td>"
+                    else:
+                        target_d = datetime.date(current_year, today.month, day)
+                        res = calculate_period_score(user_nikkanshi, target_d, period_type="day")
+                        sym = res['symbol']
+                        
+                        # 今日の日付は背景色を黄色にして目立たせる
+                        bg_color = "#FFF9C4" if target_d == today else "#FFFFFF"
+                        # 土日は色を変える
+                        if i == 5: day_color = "#1976D2"
+                        elif i == 6: day_color = "#D32F2F"
+                        else: day_color = "#333333"
+                        
+                        html_cal += f"<td style='padding:10px 5px; border:1px solid #EEEEEE; background-color:{bg_color};'>"
+                        html_cal += f"<strong style='color:{day_color}; font-size:0.95rem;'>{day}</strong><br>"
+                        html_cal += f"<span style='font-size:1.4rem;'>{sym}</span>"
+                        html_cal += "</td>"
+                html_cal += "</tr>"
+            html_cal += "</table>"
+            
+            # 画面に出力
+            st.markdown(html_cal, unsafe_allow_html=True)
+            
+            # --- 2. 日付を選択して詳細を見るUI ---
+            st.markdown("### 🔍 日付を選んで詳細をチェック")
+            st.write("気になる日付を選択すると、その日の「環境の天気」が表示されます。")
+            
+            selected_date = st.date_input("確認したい日付を選択", value=today)
+            
+            # 選択された日付のデータを瞬時に計算（APIコスト0円）
+            sel_res = calculate_period_score(user_nikkanshi, selected_date, period_type="day")
+            sel_stars = get_rule_based_stars(sel_res['score'], sel_res['mind_reason'])
+            sel_keys = get_calendar_keywords(sel_res['score'], sel_res['mind_reason'])
+            
+            # 詳細カードの出力（デイリーと同じゴールドフレーム）
+            st.markdown(f"""
+            <div class='daily-frame'>
+                <h2 class='h2-style' style='margin-top:0;'>{selected_date.strftime('%Y年%m月%d日')} の天気予報</h2>
+                
+                <div style='text-align:center; margin-bottom: 25px;'>
+                    <span style='font-size:4.5rem; line-height:1;'>{sel_res['symbol']}</span><br>
+                    <span style='font-size:1.2rem; font-weight:bold; color:#333;'>（{sel_res['title']}）</span>
+                </div>
+                
+                <div style='background-color:#E8F5E9; padding:15px; border-radius:8px; margin-bottom:15px; border-left: 5px solid #4CAF50;'>
+                    <div style='color:#2E7D32; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>💨 追い風キーワード</div>
+                    <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['tailwind']}</div>
+                </div>
+                
+                <div style='background-color:#FFEBEE; padding:15px; border-radius:8px; margin-bottom:25px; border-left: 5px solid #F44336;'>
+                    <div style='color:#C62828; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>⚠️ 注意・警戒キーワード</div>
+                    <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['warning']}</div>
+                </div>
+                
+                <h3 class='h2-style' style='font-size:1.2rem; margin-top:0;'>6つの星の導き</h3>
+                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>人間関係運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('人間関係')}</span></div><hr class='fortune-hr'>
+                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>仕事運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('仕事運')}</span></div><hr class='fortune-hr'>
+                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>恋愛＆結婚運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('恋愛結婚')}</span></div><hr class='fortune-hr'>
+                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>金運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('金運')}</span></div><hr class='fortune-hr'>
+                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>健康運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('健康運')}</span></div><hr class='fortune-hr'>
+                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>家族・親子運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('家族親子')}</span></div>
+            </div>
+            """, unsafe_allow_html=True)
 
         with t_month:
             st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
