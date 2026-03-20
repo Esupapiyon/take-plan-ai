@@ -1460,7 +1460,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         current_year = today.year
         t_day, t_month, t_year = st.tabs(["🌊 今日の波とミッション", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
         
-            with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
+        with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
                 d_date_idx = headers.index('Daily_Date')
                 d_text_idx = headers.index('Daily_Text')
                 
