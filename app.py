@@ -1702,13 +1702,16 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             st.markdown("### 🔍 日付を選んで詳細をチェック")
             st.write("気になる日付を選択すると、その日の「環境の天気」が表示されます。")
             
-            # スマホでの操作性を劇的に高めるため、カレンダーUIを廃止しセレクトボックスに変更
-            # 今日を基準に「過去30日〜未来60日」のリストを自動生成
-            date_list = [today + datetime.timedelta(days=x) for x in range(-30, 61)]
+            # スマホ操作に最適なセレクトボックスで「今月分（1日〜末日）」の日付リストを自動生成
+            import calendar
+            _, last_day = calendar.monthrange(current_year, today.month)
+            date_list = [datetime.date(current_year, today.month, d) for d in range(1, last_day + 1)]
             date_options = [d.strftime("%Y年%m月%d日") for d in date_list]
-            default_idx = 30 # 「今日」が初期選択されるようにインデックスを指定
             
-            selected_date_str = st.selectbox("確認したい日付を選択（前後約3ヶ月から選べます）", date_options, index=default_idx)
+            # 「今日」が初期選択されるようにインデックスを指定（日付 - 1）
+            default_idx = today.day - 1
+            
+            selected_date_str = st.selectbox("確認したい日付を選択", date_options, index=default_idx)
             
             # 選択された文字列から日付オブジェクトを復元
             import re
