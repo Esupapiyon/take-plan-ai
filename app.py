@@ -1460,7 +1460,12 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         current_year = today.year
         t_day, t_month, t_year = st.tabs(["🌊 今日の波とミッション", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
         
-        with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
+        with t_day:
+            st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
+            
+            with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
                 d_date_idx = headers.index('Daily_Date')
                 d_text_idx = headers.index('Daily_Text')
                 
@@ -1482,7 +1487,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         sheet.update_cell(user_row_idx, d_date_idx + 1, today_str)
                         sheet.update_cell(user_row_idx, d_text_idx + 1, json.dumps(data, ensure_ascii=False))
                     except Exception as e: print(f"Daily DB Save Error: {e}")
-                
+
                 # UIのスタイル定義（一つの大きなフレームに統合）
                 st.markdown("""
                 <style>
@@ -1566,7 +1571,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             # ==========================================
             # 📖 追加スキル：賢者の書（ボーナスEXP）アコーディオン
             # ==========================================
-            # エラーの原因だった「JSONからの抽出漏れ」を修正
             bonus_advice = data.get("bonus_advice", "")
             if bonus_advice:
                 st.markdown("<br>", unsafe_allow_html=True)
