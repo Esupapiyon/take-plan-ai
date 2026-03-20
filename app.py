@@ -1639,7 +1639,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             html_cal = "<table style='width:100%; border-collapse: collapse; text-align:center; font-size:0.9rem; table-layout: fixed; margin-bottom: 25px;'>"
             html_cal += "<tr style='background-color:#F5F5F5; color:#555;'><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th style='color:#1976D2;'>土</th><th style='color:#D32F2F;'>日</th></tr>"
             
-           for week in cal_matrix:
+            for week in cal_matrix:
                 html_cal += "<tr>"
                 for i, day in enumerate(week):
                     if day == 0:
