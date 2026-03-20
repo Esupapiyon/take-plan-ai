@@ -1433,7 +1433,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     else:
                         st.error("職業と悩みの両方を入力してください。")
 
-with tab2:
+    with tab2:
         # --- スマホの横揺れをOSレベルで殺し、グラフだけを滑らせる最終CSS ---
         st.markdown("""
         <style>
