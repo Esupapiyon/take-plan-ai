@@ -1639,11 +1639,12 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             html_cal = "<table style='width:100%; border-collapse: collapse; text-align:center; font-size:0.9rem; table-layout: fixed; margin-bottom: 25px;'>"
             html_cal += "<tr style='background-color:#F5F5F5; color:#555;'><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th style='color:#1976D2;'>土</th><th style='color:#D32F2F;'>日</th></tr>"
             
-            for week in cal_matrix:
+           for week in cal_matrix:
                 html_cal += "<tr>"
                 for i, day in enumerate(week):
                     if day == 0:
-                        html_cal += "<td style='padding:10px 5px; border:1px solid #EEEEEE;'></td>"
+                        # ▼ 修正：空欄のマスも強制的に白で塗りつぶす
+                        html_cal += "<td style='padding:10px 5px; border:1px solid #EEEEEE; background-color:#FFFFFF;'></td>"
                     else:
                         target_d = datetime.date(current_year, today.month, day)
                         res = calculate_period_score(user_nikkanshi, target_d, period_type="day")
@@ -1678,35 +1679,36 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             sel_keys = get_calendar_keywords(sel_res['score'], sel_res['mind_reason'])
             
             # 詳細カードの出力（デイリーと同じゴールドフレーム）
-            # 【重要】Markdownの仕様上、左側にスペースを入れるとコードブロック（黒背景）になるため、必ず左詰めで書くこと
-            st.markdown(f"""
-<div class='daily-frame'>
-    <h2 class='h2-style' style='margin-top:0;'>{selected_date.strftime('%Y年%m月%d日')} の天気予報</h2>
-    
-    <div style='text-align:center; margin-bottom: 25px;'>
-        <span style='font-size:4.5rem; line-height:1;'>{sel_res['symbol']}</span><br>
-        <span style='font-size:1.2rem; font-weight:bold; color:#333;'>（{sel_res['title']}）</span>
-    </div>
-    
-    <div style='background-color:#E8F5E9; padding:15px; border-radius:8px; margin-bottom:15px; border-left: 5px solid #4CAF50;'>
-        <div style='color:#2E7D32; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>💨 追い風キーワード</div>
-        <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['tailwind']}</div>
-    </div>
-    
-    <div style='background-color:#FFEBEE; padding:15px; border-radius:8px; margin-bottom:25px; border-left: 5px solid #F44336;'>
-        <div style='color:#C62828; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>⚠️ 注意・警戒キーワード</div>
-        <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['warning']}</div>
-    </div>
-    
-    <h3 class='h2-style' style='font-size:1.2rem; margin-top:0;'>6つの星の導き</h3>
-    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>人間関係運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('人間関係')}</span></div><hr class='fortune-hr'>
-    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>仕事運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('仕事運')}</span></div><hr class='fortune-hr'>
-    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>恋愛＆結婚運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('恋愛結婚')}</span></div><hr class='fortune-hr'>
-    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>金運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('金運')}</span></div><hr class='fortune-hr'>
-    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>健康運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('健康運')}</span></div><hr class='fortune-hr'>
-    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>家族・親子運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('家族親子')}</span></div>
-</div>
-""", unsafe_allow_html=True)
+            # 【完全解決策】Markdownの空白バグを100%回避するため、文字列の足し算(+=)でHTMLを構築する
+            html_card = "<div class='daily-frame'>"
+            html_card += f"<h2 class='h2-style' style='margin-top:0;'>{selected_date.strftime('%Y年%m月%d日')} の天気予報</h2>"
+            
+            html_card += "<div style='text-align:center; margin-bottom: 25px;'>"
+            html_card += f"<span style='font-size:4.5rem; line-height:1;'>{sel_res['symbol']}</span><br>"
+            html_card += f"<span style='font-size:1.2rem; font-weight:bold; color:#333;'>（{sel_res['title']}）</span>"
+            html_card += "</div>"
+            
+            html_card += "<div style='background-color:#E8F5E9; padding:15px; border-radius:8px; margin-bottom:15px; border-left: 5px solid #4CAF50;'>"
+            html_card += "<div style='color:#2E7D32; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>💨 追い風キーワード</div>"
+            html_card += f"<div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['tailwind']}</div>"
+            html_card += "</div>"
+            
+            html_card += "<div style='background-color:#FFEBEE; padding:15px; border-radius:8px; margin-bottom:25px; border-left: 5px solid #F44336;'>"
+            html_card += "<div style='color:#C62828; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>⚠️ 注意・警戒キーワード</div>"
+            html_card += f"<div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['warning']}</div>"
+            html_card += "</div>"
+            
+            html_card += "<h3 class='h2-style' style='font-size:1.2rem; margin-top:0;'>6つの星の導き</h3>"
+            html_card += f"<div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>人間関係運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('人間関係')}</span></div><hr class='fortune-hr'>"
+            html_card += f"<div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>仕事運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('仕事運')}</span></div><hr class='fortune-hr'>"
+            html_card += f"<div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>恋愛＆結婚運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('恋愛結婚')}</span></div><hr class='fortune-hr'>"
+            html_card += f"<div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>金運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('金運')}</span></div><hr class='fortune-hr'>"
+            html_card += f"<div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>健康運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('健康運')}</span></div><hr class='fortune-hr'>"
+            html_card += f"<div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>家族・親子運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('家族親子')}</span></div>"
+            html_card += "</div>"
+
+            # 生成したHTMLを一度に出力
+            st.markdown(html_card, unsafe_allow_html=True)
 
         with t_month:
             st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
