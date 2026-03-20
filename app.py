@@ -1433,25 +1433,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     else:
                         st.error("職業と悩みの両方を入力してください。")
 
-    with tab2:
-
-            /* 5. ツールチップ（吹き出し）の視認性改善（白背景に黒文字） */
-              #vg-tooltip-element {
-                background-color: #FFFFFF !important;
-                color: #111111 !important;
-                border: 2px solid #b8860b !important; /* ゴールドの枠線で高級感を出す */
-                border-radius: 8px !important;
-                font-weight: bold !important;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
-            }
-            .daily-frame { border: 2px solid #b8860b; border-radius: 12px; padding: 25px; background-color: #FFFFFF !important; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222 !important; line-height: 1.7; font-size: 1.05rem; }
-            .h2-style { color: #b8860b !important; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 900; }
-            .h2-style:first-child { margin-top: 0; }
-            .fortune-item { margin-bottom: 10px; color: #222222 !important; }
-            .fortune-title { font-weight: 900; color: #222222 !important; }
-            .fortune-desc { font-size: 0.95rem; color: #333333 !important; }
-            .fortune-hr { margin: 12px 0; border: 0; border-top: 1px dashed #DDDDDD; }
-            
+with tab2:
         # --- スマホの横揺れをOSレベルで殺し、グラフだけを滑らせる最終CSS ---
         st.markdown("""
         <style>
@@ -1494,6 +1476,15 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 font-weight: bold !important;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
             }
+
+            /* --- 追加：全タブ共通のフレームデザイン --- */
+            .daily-frame { border: 2px solid #b8860b; border-radius: 12px; padding: 25px; background-color: #FFFFFF !important; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222 !important; line-height: 1.7; font-size: 1.05rem; }
+            .h2-style { color: #b8860b !important; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 900; }
+            .h2-style:first-child { margin-top: 0; }
+            .fortune-item { margin-bottom: 10px; color: #222222 !important; }
+            .fortune-title { font-weight: 900; color: #222222 !important; }
+            .fortune-desc { font-size: 0.95rem; color: #333333 !important; }
+            .fortune-hr { margin: 12px 0; border: 0; border-top: 1px dashed #DDDDDD; }
 
         </style>
         """, unsafe_allow_html=True)
