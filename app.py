@@ -28,7 +28,7 @@ SYSTEM_PROMPT_TEMPLATE = """
 
 【🚨絶対遵守のルール🚨】
 1. 出力は必ずJSON形式のみ。マークダウンや余計な挨拶は一切含めない。
-2. 【NGワードと専門用語の禁止】「カフェ」「深呼吸」「散歩」は使用禁止。「Big5」「開放性」等の数値は書かず自然な褒め言葉に翻訳する。
+2. 【NGワードと専門用語の完全禁止】「カフェ」「深呼吸」「散歩」「オンラインミーティングでの何気ない会話」といった陳腐な表現や、「Big5」「O」「C」「E」「A」「N」「開放性」「誠実性」「外向性」「協調性」「神経症的傾向」といった専門用語・アルファベットは【絶対に使用禁止】。中学生でもわかる自然な言葉（例：新しいアイデアを好む性格、など）に完全に翻訳すること。
 3. 【見出しの禁止】actionやbenefitの文章内に見出し文字は絶対に書かない。
 4. 【トーン＆マナー】「〜してください」というティーチングを減らし、「〜してみませんか？」というコーチングのトーンに統一する。
 
@@ -1103,13 +1103,32 @@ def update_user_status(line_id, new_profession, new_focus):
         client = gspread.authorize(creds)
         sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
         all_data = sheet.get_all_values()
+        headers = all_data[0]
+        
+        # ヘッダーにキャッシュ用列がなければ追加（安全装置）
+        required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text']
+        missing_cols = [c for c in required_cols if c not in headers]
+        if missing_cols:
+            for c in missing_cols:
+                sheet.update_cell(1, len(headers) + 1, c)
+                headers.append(c)
+                
+        d_date_col = headers.index('Daily_Date') + 1
+        m_date_col = headers.index('Monthly_Date') + 1
+        y_date_col = headers.index('Yearly_Date') + 1
         
         for i in range(len(all_data)-1, 0, -1):
             if len(all_data[i]) > 0 and all_data[i][0] == line_id:
-                # 75列目(Job)と76列目(Pains)の両方を更新
-                sheet.update_cell(i + 1, 75, new_profession)
-                sheet.update_cell(i + 1, 76, new_focus)
-                return True, "状況をアップデートしました！"
+                row_num = i + 1
+                sheet.update_cell(row_num, 75, new_profession) # Job
+                sheet.update_cell(row_num, 76, new_focus)      # Pains
+                
+                # 職業・悩みが変わったので、AIキャッシュを空にして再生成させる
+                sheet.update_cell(row_num, d_date_col, "")
+                sheet.update_cell(row_num, m_date_col, "")
+                sheet.update_cell(row_num, y_date_col, "")
+                
+                return True, "状況をアップデートしました！最新の戦略を再構築します。"
         return False, "ユーザーが見つかりません"
     except Exception as e:
         return False, f"エラー: {e}"
@@ -1257,10 +1276,23 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             all_data = sheet.get_all_values()
             headers = all_data[0]
             
+            # ▼▼ 新規：DBキャッシュ用列の自動追加 ▼▼
+            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text']
+            missing_cols = [c for c in required_cols if c not in headers]
+            if missing_cols:
+                for c in missing_cols:
+                    sheet.update_cell(1, len(headers) + 1, c)
+                    headers.append(c)
+            # ▲▲ 新規：DBキャッシュ用列の自動追加 ▲▲
+            
             user_row = None
-            for row in reversed(all_data[1:]):
+            user_row_idx = -1
+            for i, row in enumerate(reversed(all_data[1:])):
                 if len(row) > 0 and row[0] == st.session_state.line_id:
-                    user_row = row
+                    user_row = list(row) # リスト化して拡張可能にする
+                    while len(user_row) < len(headers):
+                        user_row.append("") # ヘッダーが増えた分、長さを揃える
+                    user_row_idx = len(all_data) - i # 書き込み用の行番号を取得
                     break
         except Exception as e:
             st.error(f"データベース通信エラー（数秒待ってリロードしてください）: {e}")
@@ -1346,7 +1378,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         </div>
         """, unsafe_allow_html=True)
 
-        # --- 現在の状況（職業と悩み）アップデート機能 ---
+        # --- 🔄 現在の状況（職業と悩み）アップデート機能 ---
         st.markdown("### 現在の状況をアップデート")
         st.write("環境や目標が変わりましたか？状況を更新すると、AIの戦略が最新化されます。")
         
@@ -1428,22 +1460,28 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         current_year = today.year
         t_day, t_month, t_year = st.tabs(["🌊 今日の波とミッション", "🗓 月間グラフ (15ヶ月)", "🗻 年間グラフ (8年)"])
         
-        with t_day:
-            st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
-            st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
-            
             with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
-            # キャッシュを使ってAPIを呼び出す（無駄な課金を防ぐため）
-                @st.cache_data(ttl=86400) # 記憶時間を1時間(3600)から24時間(86400)に延長
-                def get_cached_daily_json(user_traits, daily_data, mind_reason, user_id, today_date_str):
-                    return get_daily_fortune_json(user_traits, daily_data, mind_reason, user_id)
+                d_date_idx = headers.index('Daily_Date')
+                d_text_idx = headers.index('Daily_Text')
                 
-                user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
-                daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
+                data = None
+                # DBに今日のキャッシュがあればAPIを叩かずに即読み込み（コスト0円）
+                if len(user_row) > d_text_idx and user_row[d_date_idx] == today_str and user_row[d_text_idx].strip() != "":
+                    try:
+                        data = json.loads(user_row[d_text_idx])
+                    except: pass
                 
-                # ▼ 本番稼働時はこちら（引数の最後に today_str を追加し、日付が変わった時だけ強制リセットさせる）
-                data = get_cached_daily_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), st.session_state.line_id, today_str)
+                # キャッシュがない、または読み込み失敗した時だけAIを起動
+                if not data:
+                    user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
+                    daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
+                    data = get_daily_fortune_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), st.session_state.line_id)
+                    
+                    # 生成した文章をスプレッドシートに物理保存
+                    try:
+                        sheet.update_cell(user_row_idx, d_date_idx + 1, today_str)
+                        sheet.update_cell(user_row_idx, d_text_idx + 1, json.dumps(data, ensure_ascii=False))
+                    except Exception as e: print(f"Daily DB Save Error: {e}")
                 
                 # UIのスタイル定義（一つの大きなフレームに統合）
                 st.markdown("""
@@ -1640,43 +1678,51 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             st.markdown("### 📝 各月の総合解説と7つの指針")
             
             with st.spinner("AIが各月の固有テーマを分析中..."):
-                @st.cache_data(ttl=86400)
-                def get_cached_monthly_advices(year_str, _months_data, profession, focus, big5):
+                m_date_idx = headers.index('Monthly_Date')
+                m_text_idx = headers.index('Monthly_Text')
+                cache_key_m = str(current_year) # 年が変わる（1月1日）まで同じ文章を保持
+                
+                ai_dict = None
+                if len(user_row) > m_text_idx and user_row[m_date_idx] == cache_key_m and user_row[m_text_idx].strip() != "":
+                    try: ai_dict = json.loads(user_row[m_text_idx])
+                    except: pass
+                    
+                if not ai_dict:
+                    # NGワードを仕込んだ新プロンプト
                     prompt = "あなたは日本一の戦略的ライフ・コンサルタントです。\n"
-                    prompt += f"【ユーザー情報】\n職業: {profession}\n現在の悩み: {focus}\nBig5性格特性: {big5}\n\n"
+                    prompt += f"【ユーザー情報】\n職業: {user_data_for_ai.get('Job')}\n現在の悩み: {user_data_for_ai.get('Pains')}\nBig5性格特性(参考用): O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}\n\n"
                     prompt += "以下の15ヶ月分のデータをもとに、各月の「マインドセットと戦術」を2〜3文で作成してください。\n"
                     prompt += "【絶対遵守のルール】\n"
-                    prompt += "1. 専門用語は絶対に使わず現代語に翻訳すること。\n"
+                    prompt += "1. 専門用語やアルファベット（算命学の星の名前や、Big5、O、C、E、A、N、開放性、誠実性など）は【絶対に】使わず、中学生でもわかる日常の言葉に完全に翻訳すること。\n"
                     prompt += "2. 具体的な行動タスク（To-Do）や「〜してください」といった指示は一切書かないこと。\n"
                     prompt += "3. あくまで「その月はどういうスタンス・心構えで仕事や悩みに向き合うべきか」というマインドセットに留めること。\n"
                     prompt += "4. 同じスコアの月でも、環境と精神のテーマに合わせて全く違う切り口で具体的な解説を書くこと。\n\n"
                     prompt += "# データ\n"
-                    for d in _months_data:
-                        prompt += f"- {d['年月']}: スコア{d['スコア']}, 環境({d['環境理由']}), 精神({d['精神理由']})\n"
+                    for d in months_data: prompt += f"- {d['年月']}: スコア{d['スコア']}, 環境({d['環境理由']}), 精神({d['精神理由']})\n"
                     prompt += "\n# 出力形式（以下のフォーマットを厳守）\n"
-                    for d in _months_data:
-                        prompt += f"■{d['年月']}\n[ここに独自の解説]\n"
+                    for d in months_data: prompt += f"■{d['年月']}\n[ここに独自の解説]\n"
                         
+                    raw_ai_text = ""
                     try:
                         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                         response = openai_client.chat.completions.create(
                             model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.7
                         )
-                        return response.choices[0].message.content
-                    except:
-                        return ""
-                
-                big5_str = f"O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
-                raw_ai_text = get_cached_monthly_advices(str(current_year), months_data, user_data_for_ai.get('Job', '不明'), user_data_for_ai.get('Pains', '特になし'), big5_str)
-                ai_dict = {}
-                if raw_ai_text:
-                    parts = raw_ai_text.split("■")
-                    for part in parts:
-                        if "\n" in part:
-                            lines = part.strip().split("\n", 1)
-                            ym = lines[0].strip()
-                            desc = lines[1].strip() if len(lines) > 1 else ""
-                            ai_dict[ym] = desc
+                        raw_ai_text = response.choices[0].message.content
+                    except: pass
+                    
+                    ai_dict = {}
+                    if raw_ai_text:
+                        for part in raw_ai_text.split("■"):
+                            if "\n" in part:
+                                lines = part.strip().split("\n", 1)
+                                ym, desc = lines[0].strip(), lines[1].strip() if len(lines) > 1 else ""
+                                ai_dict[ym] = desc
+                                
+                    try:
+                        sheet.update_cell(user_row_idx, m_date_idx + 1, cache_key_m)
+                        sheet.update_cell(user_row_idx, m_text_idx + 1, json.dumps(ai_dict, ensure_ascii=False))
+                    except Exception as e: print(f"Monthly DB Save Error: {e}")
             
             # 1. デイリーと同じCSSスタイルを月間リストにも適用（追加のスタイル調整が必要な場合はここに記述）
             st.markdown("""
@@ -1792,18 +1838,26 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             st.markdown(legend_html, unsafe_allow_html=True)
             
             st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
+          
             with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
-                @st.cache_data(ttl=86400)
-                def get_cached_yearly_advice(year_str, _res, profession, focus, big5):
+                y_date_idx = headers.index('Yearly_Date')
+                y_text_idx = headers.index('Yearly_Text')
+                cache_key_y = str(current_year)
+                
+                yearly_advice = ""
+                if len(user_row) > y_text_idx and user_row[y_date_idx] == cache_key_y and user_row[y_text_idx].strip() != "":
+                    yearly_advice = user_row[y_text_idx]
+                
+                if not yearly_advice:
                     prompt = f"""
                     あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間ロードマップ】を作成してください。
-                    [今年のスコア: {_res['score']}点, シンボル: {_res['symbol']}, 環境: {_res['env_reason']}, 精神: {_res['mind_reason']}]
-                    [ユーザーの職業: {profession}]
-                    [現在の悩み・フォーカス: {focus}]
-                    [Big5性格特性: {big5}]
+                    [今年のスコア: {this_year_res['score']}点, シンボル: {this_year_res['symbol']}, 環境: {this_year_res['env_reason']}, 精神: {this_year_res['mind_reason']}]
+                    [ユーザーの職業: {user_data_for_ai.get('Job')}]
+                    [現在の悩み・フォーカス: {user_data_for_ai.get('Pains')}]
+                    [Big5性格特性: O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}]
 
                     # 【絶対遵守の出力ルール】
-                    1. 算命学・四柱推命の専門用語は【絶対に】出力せず、現代の言葉に翻訳すること。
+                    1. 算命学・四柱推命の専門用語や、性格診断の専門用語・アルファベット（Big5、O、C、E、A、N、開放性、誠実性など）は【絶対に】出力せず、中学生でもわかる現代の日常語に完全に翻訳すること。
                     2. 【重要】具体的な行動タスク（To-Do）や「〜しましょう」といった指示は【一切書かない】こと。
                     3. 1年間の長期的な視点で、人生の戦略やフォーカスすべき領域の提示に特化すること。
                     4. 星評価（★☆☆など）は絶対に出力しないでください。
@@ -1812,7 +1866,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     ## 🗻 今年の絶対テーマ（年間戦略大枠）
                     スコアとシンボルが示す、今年1年がユーザーの人生においてどのような意味を持つのかを総括してください。
                     ## ⚖️ 強みと弱みの年間マネジメント（リスク管理）
-                    ユーザーの「Big5の性格特性」が、今年の波の中で「どう活きるか（強力な武器）」と「どう邪魔をするか（警戒すべきリスク）」を解説してください。
+                    ユーザーの性格特性が、今年の波の中で「どう活きるか（強力な武器）」と「どう邪魔をするか（警戒すべきリスク）」を解説してください。
                     ## 🎯 今年注力すべき3つの柱（選択と集中）
                     ユーザーの「職業」と「悩み」から、今年絶対にフォーカスすべき3つの領域（例：仕事、人間関係、自己投資など）をAIが厳選し、なぜそこに注力すべきか（方針）を解説してください。
                     """
@@ -1821,12 +1875,13 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         response = openai_client.chat.completions.create(
                             model="gpt-4o-mini", messages=[{"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"}, {"role": "user", "content": prompt}], temperature=0.7
                         )
-                        return response.choices[0].message.content
-                    except:
-                        return "エラーが発生しました。"
-
-                big5_str = f"O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
-                yearly_advice = get_cached_yearly_advice(str(current_year), this_year_res, user_data_for_ai.get('Job', '不明'), user_data_for_ai.get('Pains', '特になし'), big5_str)
+                        yearly_advice = response.choices[0].message.content
+                        
+                        sheet.update_cell(user_row_idx, y_date_idx + 1, cache_key_y)
+                        sheet.update_cell(user_row_idx, y_text_idx + 1, yearly_advice)
+                    except Exception as e:
+                        yearly_advice = "エラーが発生しました。"
+                        print(f"Yearly DB Save Error: {e}")
                 
                 # --- 月間グラフと同じゴールドフレームのCSSを注入 ---
                 st.markdown("""
