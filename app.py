@@ -582,20 +582,40 @@ import datetime
 def get_calendar_keywords(score, mind_reason):
     """
     カレンダー用に「動詞を排除」したキーワード（天気予報）を自動生成する関数。
-    APIコスト0円で瞬間生成される。
+    スコア1〜10の10段階に合わせ、完全に個別のキーワードを出力する。
     """
     if mind_reason is None: mind_reason = ""
     
-    # 運勢スコアによるベースのキーワード
-    if score >= 8:
-        tailwind = "新規開拓 / 重要な契約・決断 / スピード勝負"
-        warning = "勢い余っての凡ミス / 相手のペース無視"
-    elif score >= 5:
-        tailwind = "基礎固め / 人脈作り / 丁寧な対話・調整"
-        warning = "優柔不断 / チャンスの先延ばし / 八方美人"
-    else:
-        tailwind = "心身の完全休養 / タスクの断捨離 / 情報の整理"
-        warning = "感情的な衝突 / 大きな買い物・契約 / 無理なスケジュール"
+    if score == 10:
+        tailwind = "限界突破の挑戦 / 大規模な計画の実行 / リーダーシップ"
+        warning = "傲慢な態度 / リスクの完全無視 / 独りよがり"
+    elif score == 9:
+        tailwind = "直感に従う決断 / アイデアの発信 / 積極的なアピール"
+        warning = "チャンスの先延ばし / 過度な遠慮 / 妥協"
+    elif score == 8:
+        tailwind = "スピーディーな行動 / 新規開拓 / 情熱的な提案"
+        warning = "勢い余っての凡ミス / 相手のペース無視 / 焦り"
+    elif score == 7:
+        tailwind = "悪習慣の断捨離 / 重要な取捨選択 / ステージアップ"
+        warning = "過去への執着 / 曖昧な返事 / 決断からの逃避"
+    elif score == 6:
+        tailwind = "タスクの丁寧な処理 / 資産や計画の見直し / 感謝の表現"
+        warning = "新しいことへの手出し / 雑な作業 / 確認不足"
+    elif score == 5:
+        tailwind = "人脈作り / チームワーク / コミュニケーション"
+        warning = "八方美人 / 自分の意見を殺す / 依存"
+    elif score == 4:
+        tailwind = "知識のインプット / 一人の時間の確保 / 内省"
+        warning = "外向きの無駄なアピール / 情報過多による混乱 / 浅い思考"
+    elif score == 3:
+        tailwind = "スケジュールの余白作り / サポート役への徹し / 柔軟な対応"
+        warning = "無理なスケジュール / 意見の対立 / ストレスの放置"
+    elif score == 2:
+        tailwind = "物理的な掃除 / デジタルデータの整理 / 執着の手放し"
+        warning = "過去の栄光への固執 / 感情的な衝突 / 変化への抵抗"
+    else: # score == 1
+        tailwind = "心身の完全休養 / 睡眠の確保 / 無条件の休息"
+        warning = "大きな決断・契約 / 徹夜や過労 / 無理な約束"
         
     # 算命学の精神テーマによるフレーバー（個性の追加）
     if any(x in mind_reason for x in ["貫索", "石門"]): tailwind += " / 単独行動・自己主張"
@@ -1671,12 +1691,21 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             st.markdown("### 🔍 日付を選んで詳細をチェック")
             st.write("気になる日付を選択すると、その日の「環境の天気」が表示されます。")
             
-            selected_date = st.date_input("確認したい日付を選択", value=today)
+            # スマホでの操作性を劇的に高めるため、カレンダーUIを廃止しセレクトボックスに変更
+            # 今日を基準に「過去30日〜未来60日」のリストを自動生成
+            date_list = [today + datetime.timedelta(days=x) for x in range(-30, 61)]
+            date_options = [d.strftime("%Y年%m月%d日") for d in date_list]
+            default_idx = 30 # 「今日」が初期選択されるようにインデックスを指定
+            
+            selected_date_str = st.selectbox("確認したい日付を選択（前後約3ヶ月から選べます）", date_options, index=default_idx)
+            
+            # 選択された文字列から日付オブジェクトを復元
+            import re
+            m = re.match(r"(\d+)年(\d+)月(\d+)日", selected_date_str)
+            selected_date = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
             
             # 選択された日付のデータを瞬時に計算（APIコスト0円）
             sel_res = calculate_period_score(user_nikkanshi, selected_date, period_type="day")
-            sel_stars = get_rule_based_stars(sel_res['score'], sel_res['mind_reason'])
-            sel_keys = get_calendar_keywords(sel_res['score'], sel_res['mind_reason'])
             
             # 詳細カードの出力（デイリーと同じゴールドフレーム）
             # 【完全解決策】Markdownの空白バグを100%回避するため、文字列の足し算(+=)でHTMLを構築する
