@@ -112,7 +112,11 @@ st.markdown("""
     button[kind="secondary"]:active { background-color: #E0E0E0 !important; transform: translateY(2px) !important; box-shadow: 0px 0px 0px rgba(0,0,0,0) !important; }
     button[kind="primary"] { background-color: #b8860b !important; color: #FFFFFF !important; width: 100% !important; height: 60px !important; font-size: 18px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important; }
     button[kind="primary"]:active { transform: translateY(2px) !important; box-shadow: 0px 0px 0px rgba(0,0,0,0) !important; }
-    div[data-baseweb="calendar"], div[data-baseweb="calendar"] * { background-color: #FFFFFF !important; color: #000000 !important; }
+    div[data-baseweb="calendar"], div[data-baseweb="calendar"] *,
+    div[data-baseweb="popover"], div[data-baseweb="popover"] * { 
+        background-color: #FFFFFF !important; 
+        color: #000000 !important; 
+    }
     div[data-baseweb="calendar"] div:hover { background-color: #F0F0F0 !important; }
     .question-title { font-size: 1.4rem; font-weight: 900; text-align: center; margin-top: 1rem !important; margin-bottom: 1rem !important; line-height: 1.6; color: #000000 !important; }
     .stSelectbox label, .stTextInput label, .stRadio label { font-weight: 900 !important; font-size: 1.1rem !important; color: #000000 !important; }
@@ -1674,34 +1678,35 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             sel_keys = get_calendar_keywords(sel_res['score'], sel_res['mind_reason'])
             
             # 詳細カードの出力（デイリーと同じゴールドフレーム）
+            # 【重要】Markdownの仕様上、左側にスペースを入れるとコードブロック（黒背景）になるため、必ず左詰めで書くこと
             st.markdown(f"""
-            <div class='daily-frame'>
-                <h2 class='h2-style' style='margin-top:0;'>{selected_date.strftime('%Y年%m月%d日')} の天気予報</h2>
-                
-                <div style='text-align:center; margin-bottom: 25px;'>
-                    <span style='font-size:4.5rem; line-height:1;'>{sel_res['symbol']}</span><br>
-                    <span style='font-size:1.2rem; font-weight:bold; color:#333;'>（{sel_res['title']}）</span>
-                </div>
-                
-                <div style='background-color:#E8F5E9; padding:15px; border-radius:8px; margin-bottom:15px; border-left: 5px solid #4CAF50;'>
-                    <div style='color:#2E7D32; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>💨 追い風キーワード</div>
-                    <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['tailwind']}</div>
-                </div>
-                
-                <div style='background-color:#FFEBEE; padding:15px; border-radius:8px; margin-bottom:25px; border-left: 5px solid #F44336;'>
-                    <div style='color:#C62828; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>⚠️ 注意・警戒キーワード</div>
-                    <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['warning']}</div>
-                </div>
-                
-                <h3 class='h2-style' style='font-size:1.2rem; margin-top:0;'>6つの星の導き</h3>
-                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>人間関係運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('人間関係')}</span></div><hr class='fortune-hr'>
-                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>仕事運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('仕事運')}</span></div><hr class='fortune-hr'>
-                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>恋愛＆結婚運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('恋愛結婚')}</span></div><hr class='fortune-hr'>
-                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>金運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('金運')}</span></div><hr class='fortune-hr'>
-                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>健康運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('健康運')}</span></div><hr class='fortune-hr'>
-                <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>家族・親子運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('家族親子')}</span></div>
-            </div>
-            """, unsafe_allow_html=True)
+<div class='daily-frame'>
+    <h2 class='h2-style' style='margin-top:0;'>{selected_date.strftime('%Y年%m月%d日')} の天気予報</h2>
+    
+    <div style='text-align:center; margin-bottom: 25px;'>
+        <span style='font-size:4.5rem; line-height:1;'>{sel_res['symbol']}</span><br>
+        <span style='font-size:1.2rem; font-weight:bold; color:#333;'>（{sel_res['title']}）</span>
+    </div>
+    
+    <div style='background-color:#E8F5E9; padding:15px; border-radius:8px; margin-bottom:15px; border-left: 5px solid #4CAF50;'>
+        <div style='color:#2E7D32; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>💨 追い風キーワード</div>
+        <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['tailwind']}</div>
+    </div>
+    
+    <div style='background-color:#FFEBEE; padding:15px; border-radius:8px; margin-bottom:25px; border-left: 5px solid #F44336;'>
+        <div style='color:#C62828; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>⚠️ 注意・警戒キーワード</div>
+        <div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['warning']}</div>
+    </div>
+    
+    <h3 class='h2-style' style='font-size:1.2rem; margin-top:0;'>6つの星の導き</h3>
+    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>人間関係運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('人間関係')}</span></div><hr class='fortune-hr'>
+    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>仕事運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('仕事運')}</span></div><hr class='fortune-hr'>
+    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>恋愛＆結婚運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('恋愛結婚')}</span></div><hr class='fortune-hr'>
+    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>金運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('金運')}</span></div><hr class='fortune-hr'>
+    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>健康運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('健康運')}</span></div><hr class='fortune-hr'>
+    <div class='fortune-item' style='display:flex; justify-content:space-between;'><span class='fortune-title'>家族・親子運</span><span style='color:#D32F2F; font-size:1.1rem;'>{sel_stars.get('家族親子')}</span></div>
+</div>
+""", unsafe_allow_html=True)
 
         with t_month:
             st.markdown(f"### 🗓 月間・運命の波（{current_year}年の計画）")
