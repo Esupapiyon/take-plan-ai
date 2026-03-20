@@ -110,10 +110,10 @@ st.markdown("""
     button[kind="secondary"] { width: 100% !important; height: 65px !important; font-size: 18px !important; font-weight: 900 !important; color: #000000 !important; background-color: #FFFFFF !important; border: 3px solid #444444 !important; border-radius: 12px !important; margin-bottom: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.05) !important; }
     button[kind="secondary"]:hover { background-color: #F5F5F5 !important; border-color: #111111 !important; }
     button[kind="secondary"]:active { background-color: #E0E0E0 !important; transform: translateY(2px) !important; box-shadow: 0px 0px 0px rgba(0,0,0,0) !important; }
-    button[kind="primary"] { width: 100% !important; height: 60px !important; font-size: 18px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important; }
+    button[kind="primary"] { background-color: #b8860b !important; color: #FFFFFF !important; width: 100% !important; height: 60px !important; font-size: 18px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; transition: all 0.2s ease-in-out !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important; }
     button[kind="primary"]:active { transform: translateY(2px) !important; box-shadow: 0px 0px 0px rgba(0,0,0,0) !important; }
-    div[data-testid="stLinkButton"] > a { background-color: #06C755 !important; color: white !important; border: none !important; font-weight: bold !important; width: 100% !important; height: 60px !important; display: flex !important; align-items: center !important; justify-content: center !important; border-radius: 12px !important; font-size: 18px !important; text-decoration: none !important; box-shadow: 0px 4px 6px rgba(0,0,0,0.1) !important; transition: all 0.2s ease-in-out !important; }
-    div[data-testid="stLinkButton"] > a:hover { background-color: #05b34c !important; }
+    div[data-baseweb="calendar"], div[data-baseweb="calendar"] * { background-color: #FFFFFF !important; color: #000000 !important; }
+    div[data-baseweb="calendar"] div:hover { background-color: #F0F0F0 !important; }
     .question-title { font-size: 1.4rem; font-weight: 900; text-align: center; margin-top: 1rem !important; margin-bottom: 1rem !important; line-height: 1.6; color: #000000 !important; }
     .stSelectbox label, .stTextInput label, .stRadio label { font-weight: 900 !important; font-size: 1.1rem !important; color: #000000 !important; }
     .stRadio div[role="radiogroup"] label span { color: #000000 !important; font-weight: bold !important; }
@@ -1417,7 +1417,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 new_profession = st.text_input("現在の職業・ポジション", value=current_profession, placeholder="例：IT企業の営業マネージャー 等")
                 new_focus = st.text_area("現在フォーカスしている悩み・目標", value=current_focus, placeholder="例：新規プロジェクトを成功させたい 等")
                 
-                submit_status = st.form_submit_button("状況を更新してAI戦略を再構築")
+                submit_status = st.form_submit_button("状況を更新してAI戦略を再構築", type="primary")
                 
                 if submit_status:
                     if new_profession and new_focus:
@@ -1434,6 +1434,23 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error("職業と悩みの両方を入力してください。")
 
     with tab2:
+
+            /* 5. ツールチップ（吹き出し）の視認性改善（白背景に黒文字） */
+              #vg-tooltip-element {
+                background-color: #FFFFFF !important;
+                color: #111111 !important;
+                border: 2px solid #b8860b !important; /* ゴールドの枠線で高級感を出す */
+                border-radius: 8px !important;
+                font-weight: bold !important;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+            }
+            .daily-frame { border: 2px solid #b8860b; border-radius: 12px; padding: 25px; background-color: #FFFFFF !important; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222 !important; line-height: 1.7; font-size: 1.05rem; }
+            .h2-style { color: #b8860b !important; font-size: 1.4rem; border-bottom: 2px solid #E0E0E0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 900; }
+            .h2-style:first-child { margin-top: 0; }
+            .fortune-item { margin-bottom: 10px; color: #222222 !important; }
+            .fortune-title { font-weight: 900; color: #222222 !important; }
+            .fortune-desc { font-size: 0.95rem; color: #333333 !important; }
+            .fortune-hr { margin: 12px 0; border: 0; border-top: 1px dashed #DDDDDD; }
             
         # --- スマホの横揺れをOSレベルで殺し、グラフだけを滑らせる最終CSS ---
         st.markdown("""
