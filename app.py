@@ -1532,28 +1532,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         """, unsafe_allow_html=True)
         # ------------------------------------------------------------------------
 
-        st.subheader("📅 運命の波乗りダッシュボード")
+        st.subheader(" 運命の波乗りダッシュボード")
 
         current_year = today.year
         # ▼ タブを4つに増やし、スマホでも見やすいように文字数を調整
-        t_day, t_calendar, t_month, t_year = st.tabs(["🌊 今日", "📅 カレンダー", "🗓 月間", "🗻 年間"])
+        t_day, t_calendar, t_month, t_year = st.tabs([" 今日", " カレンダー", " 月間", " 年間"])
         
-        with t_day:
+with t_day:
             st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
             st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
             
-            with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
-                d_date_idx = headers.index('Daily_Date')
-                d_text_idx = headers.index('Daily_Text')
-                
-                data = None
-                # DBに今日のキャッシュがあればAPIを叩かずに即読み込み（コスト0円）
-                if len(user_row) > d_text_idx and user_row[d_date_idx] == today_str and user_row[d_text_idx].strip() != "":
-                    try:
-                        data = json.loads(user_row[d_text_idx])
-                    except: pass
-                
             # ▼ 追加：防衛戦（ハードモード）の判定
             is_defense_mode = today_res['score'] <= 3
             
@@ -1577,7 +1566,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 if not data:
                     user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
                     
-                    # ▼ 修正：社長の「やり方次第で好転させられる」という完璧な指示をプロンプトに注入
+                    # ▼ 修正：好転させられる含みを持たせる
                     defense_prompt = ""
                     if is_defense_mode:
                         defense_prompt = "【特殊条件: 防衛戦】今日は運勢（環境負荷）が悪いですが、やり方次第で運勢を好転させられるという含みを持たせてください。無理に攻めず、自分を守る防御的なミッション（ノイズ遮断、休息、内省、ダメージコントロール等）を提案すること。"
@@ -1586,12 +1575,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     
                     data = get_daily_fortune_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), st.session_state.line_id)
                     
-                    try:
-                        sheet.update_cell(user_row_idx, d_date_idx + 1, today_str)
-                        sheet.update_cell(user_row_idx, d_text_idx + 1, json.dumps(data, ensure_ascii=False))
-                    except Exception as e: print(f"Daily DB Save Error: {e}")
-                    
-                    # 生成した文章をスプレッドシートに物理保存
                     try:
                         sheet.update_cell(user_row_idx, d_date_idx + 1, today_str)
                         sheet.update_cell(user_row_idx, d_text_idx + 1, json.dumps(data, ensure_ascii=False))
@@ -1623,7 +1606,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 calculated_stars = get_rule_based_stars(today_res['score'], today_res['mind_reason'])
                 
                 def get_fortune_html(title, fortune_data, star_string):
-                    # 【防弾処理】AIが辞書(dict)で返してきても、文字列(str)で返してきても対応する
                     if isinstance(fortune_data, dict):
                         ai_text = fortune_data.get('text', '')
                     else:
