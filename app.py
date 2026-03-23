@@ -1538,7 +1538,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         # ▼ タブを4つに増やし、スマホでも見やすいように文字数を調整
         t_day, t_calendar, t_month, t_year = st.tabs([" 今日", " カレンダー", " 月間", " 年間"])
         
-with t_day:
+        with t_day:
             st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
             st.markdown(f"<h1 style='text-align: center; font-size: 4.5rem; margin: 0;'>{today_res['symbol']}</h1>", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align: center; font-size: 1.3rem; font-weight: bold; margin-top: -10px;'>（{today_res['title']}）</p>", unsafe_allow_html=True)
