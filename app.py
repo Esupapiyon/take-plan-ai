@@ -1087,7 +1087,7 @@ def save_to_spreadsheet():
         st.error(f"【開発者向けエラー(System)】: {e}")
         return False
 
-def update_mission_clear(line_id):
+def update_mission_clear(line_id, earned_exp=10):
     try:
         creds_dict = st.secrets["gcp_service_account"]
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -1100,8 +1100,6 @@ def update_mission_clear(line_id):
         all_data = sheet.get_all_values()
         
         headers = all_data[0]
-        
-        # スプレッドシートにEXP列がない場合は自動で作成する安全装置
         if 'EXP' not in headers:
             sheet.update_cell(1, len(headers) + 1, 'EXP')
             headers.append('EXP')
@@ -1134,12 +1132,12 @@ def update_mission_clear(line_id):
         if last_date == today_str:
             return False, "本日のミッションは既にクリア済みです！明日も挑戦しましょう。"
             
-        # 経験値の加算と日付の更新
-        new_exp = current_exp + 10 # 1回のクリアで10EXP獲得
+        # ▼ 修正：通常の10EXPか、防衛戦の20EXPかを動的に加算
+        new_exp = current_exp + earned_exp
         sheet.update_cell(target_row_idx, exp_col, new_exp)
         sheet.update_cell(target_row_idx, date_col, today_str)
         
-        return True, "ミッション達成！HPが100%に回復し、10 EXPを獲得しました！"
+        return True, f"ミッション達成！HPが100%に回復し、{earned_exp} EXPを獲得しました！"
         
     except Exception as e:
         return False, f"通信エラー: {e}"
@@ -1445,14 +1443,23 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
                 if submit_status:
                     if new_profession and new_focus:
-                        with st.spinner("設定を保存中..."):
+                        # ▼ 修正：「自分で手綱を握る」自己決定の儀式演出
+                        with st.status(" あなたの決断を受信しました。全戦略を再構築中...", expanded=True) as status:
+                            import time
+                            st.write("✔️ 現在の環境・課題データを更新中...")
+                            time.sleep(0.5)
+                            st.write("✔️ 過去の戦略キャッシュをクリア中...")
+                            time.sleep(0.5)
+                            st.write(" 最新のパラメーターでAI戦略を再計算しています...")
+                            
                             success, msg = update_user_status(st.session_state.line_id, new_profession, new_focus)
                             if success:
+                                status.update(label="再構築完了！", state="complete", expanded=False)
                                 st.success(msg)
-                                import time
                                 time.sleep(1)
                                 st.rerun()
                             else:
+                                status.update(label="エラーが発生しました", state="error", expanded=False)
                                 st.error(msg)
                     else:
                         st.error("職業と悩みの両方を入力してください。")
@@ -1547,11 +1554,42 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         data = json.loads(user_row[d_text_idx])
                     except: pass
                 
-                # キャッシュがない、または読み込み失敗した時だけAIを起動
+            # ▼ 追加：防衛戦（ハードモード）の判定
+            is_defense_mode = today_res['score'] <= 3
+            
+            if is_defense_mode:
+                st.markdown("""
+                <div style='background-color:#FFEBEE; padding:15px; border-radius:8px; border-left: 5px solid #D32F2F; margin-bottom: 20px;'>
+                    <div style='color:#C62828; font-weight:900; font-size:1.1rem; margin-bottom:5px;'>🚨 本日はハードモード（防衛戦）です</div>
+                    <div style='color:#333333; font-size:0.95rem; font-weight:bold;'>運勢の波が乱れていますが、ピンチはチャンスです。今日のミッションをクリアして被害を最小限に抑えれば、獲得EXPが【2倍 (20 EXP)】になります！</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with st.spinner("専属コンサルタントが本日の戦略を執筆中..."):
+                d_date_idx = headers.index('Daily_Date')
+                d_text_idx = headers.index('Daily_Text')
+                
+                data = None
+                if len(user_row) > d_text_idx and user_row[d_date_idx] == today_str and user_row[d_text_idx].strip() != "":
+                    try: data = json.loads(user_row[d_text_idx])
+                    except: pass
+                
                 if not data:
                     user_traits_str = f"職業:{user_data_for_ai.get('Job')}, 悩み:{user_data_for_ai.get('Pains')}, O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}"
-                    daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']}"
+                    
+                    # ▼ 修正：社長の「やり方次第で好転させられる」という完璧な指示をプロンプトに注入
+                    defense_prompt = ""
+                    if is_defense_mode:
+                        defense_prompt = "【特殊条件: 防衛戦】今日は運勢（環境負荷）が悪いですが、やり方次第で運勢を好転させられるという含みを持たせてください。無理に攻めず、自分を守る防御的なミッション（ノイズ遮断、休息、内省、ダメージコントロール等）を提案すること。"
+                        
+                    daily_data_str = f"今日の波:{today_res['title']}, 環境:{today_res['env_reason']}, 精神:{today_res['mind_reason']} {defense_prompt}"
+                    
                     data = get_daily_fortune_json(user_traits_str, daily_data_str, today_res.get('mind_reason', ''), st.session_state.line_id)
+                    
+                    try:
+                        sheet.update_cell(user_row_idx, d_date_idx + 1, today_str)
+                        sheet.update_cell(user_row_idx, d_text_idx + 1, json.dumps(data, ensure_ascii=False))
+                    except Exception as e: print(f"Daily DB Save Error: {e}")
                     
                     # 生成した文章をスプレッドシートに物理保存
                     try:
@@ -1626,10 +1664,12 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             if is_cleared_today:
                 st.success("✨ 本日のミッションは既にクリア済みです！HPは満タンです！")
             else:
-                if st.button("🌟 今日のミッションをクリアした！", type="primary"):
+                btn_text = "🌟 ミッションクリア！【EXP 2倍】を獲得する" if is_defense_mode else "🌟 今日のミッションをクリアした！"
+                if st.button(btn_text, type="primary"):
                     with st.spinner("データベースに経験値を記録中..."):
                         import time
-                        success, msg = update_mission_clear(st.session_state.line_id)
+                        earned_exp = 20 if is_defense_mode else 10 # ▼ 修正：防衛戦なら20EXP
+                        success, msg = update_mission_clear(st.session_state.line_id, earned_exp)
                         if success:
                             st.balloons()
                             st.success(msg)
@@ -2303,10 +2343,28 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 success = consume_radar_limit(st.session_state.line_id)
                                 if not success:
                                     st.error("データベースの更新に失敗しました。")
+                        else:
+                            # ▼ 修正：プロファイラー風の緻密なローディング演出
+                            with st.status(" ターゲットの深層心理を解析中...", expanded=True) as status:
+                                import time
+                                st.write("✔️ 行動観察データ（SJT）を抽出中...")
+                                time.sleep(1)
+                                st.write("✔️ 相手の算命学データ（本性と地雷）と照合中...")
+                                time.sleep(1)
+                                st.write("✔️ あなたとの相性・力関係を計算中...")
+                                time.sleep(1)
+                                st.write(" プロファイリング実行。ターゲットの完全攻略法を生成しています（約20〜30秒）...")
+                                
+                                success = consume_radar_limit(st.session_state.line_id)
+                                if not success:
+                                    status.update(label="エラーが発生しました", state="error", expanded=False)
+                                    st.error("データベースの更新に失敗しました。")
                                 else:
                                     try:
                                         creds_dict = st.secrets["gcp_service_account"]
                                         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                                        from oauth2client.service_account import ServiceAccountCredentials
+                                        import gspread
                                         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
                                         client = gspread.authorize(creds)
                                         sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
@@ -2324,6 +2382,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                             free_text, target_san, user_main_star
                                         )
                                         
+                                        import openai
                                         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                                         response = openai_client.chat.completions.create(
                                             model="gpt-4o-mini", 
@@ -2335,9 +2394,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                         )
                                         st.session_state.target_name = target_name
                                         st.session_state.radar_result = response.choices[0].message.content
+                                        status.update(label="解析完了！", state="complete", expanded=False)
                                         st.rerun() 
                                         
                                     except Exception as e:
+                                        status.update(label="エラーが発生しました", state="error", expanded=False)
                                         st.error(f"AI解析中にエラーが発生しました: {e}")
 
     st.stop()
@@ -2427,8 +2488,21 @@ elif st.session_state.step == "test":
     st.button("強くそう思う", on_click=handle_answer, args=(current_q_num, 5), key=f"btn_5_{current_q_num}", type="secondary")
 
 elif st.session_state.step == "processing":
-    with st.spinner("AIがあなた専用の極秘レポートを執筆しています...（約10〜20秒）"):
+    # ▼ 修正：ハッキング風の段階的なローディング演出（労働の錯覚）
+    with st.status("⏳ あなた専用の極秘レポートを構築中...", expanded=True) as status:
+        import time
+        st.write("✔️ 50問の深層心理データを解析中...")
+        time.sleep(1)
+        st.write("✔️ 算命学の宿命パラメーターと照合中...")
+        time.sleep(1)
+        st.write("✔️ 理想と現実の『摩擦係数』を計算中...")
+        time.sleep(1)
+        st.write(" あなたの完全版の取扱説明書を生成しています（約30〜50秒）...")
+        
         success = save_to_spreadsheet()
+        if success:
+            status.update(label="解析完了！", state="complete", expanded=False)
+            
     if success:
         st.session_state.step = "done"
         st.rerun()
