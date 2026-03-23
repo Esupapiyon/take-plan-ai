@@ -2325,7 +2325,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 success = consume_radar_limit(st.session_state.line_id)
                                 if not success:
                                     st.error("データベースの更新に失敗しました。")
-                      else:
+                        else:
                             # ▼ 修正：プロファイラー風の緻密なローディング演出
                             with st.status(" ターゲットの深層心理を解析中...", expanded=True) as status:
                                 import time
