@@ -1436,21 +1436,33 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 current_profession = user_data_for_ai.get("Job", "未設定")
                 current_focus = user_data_for_ai.get("Pains", "未設定")
                 
-                new_profession = st.text_input("現在の職業・ポジション", value=current_profession, placeholder="例：IT企業の営業マネージャー 等")
-                new_focus = st.text_area("現在フォーカスしている悩み・目標", value=current_focus, placeholder="例：新規プロジェクトを成功させたい 等")
+                # 初回テストと同じ選択肢を用意
+                job_options = ["会社員（一般）", "会社員（管理職・マネージャー）", "経営者・役員", "フリーランス・個人事業主", "公務員", "学生", "主婦・主夫", "その他"]
+                pain_options = ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"]
+                
+                # 現在のデータと照合し、初期選択位置（index）を特定する
+                try: job_idx = job_options.index(current_profession)
+                except ValueError: job_idx = 0
+                
+                try: pain_idx = pain_options.index(current_focus)
+                except ValueError: pain_idx = 0
+                
+                # ▼ 自由記述からセレクトボックス（ドラムロール式）に変更
+                new_profession = st.selectbox("現在の職業・ポジション", options=job_options, index=job_idx)
+                new_focus = st.selectbox("現在フォーカスしている悩み・目標", options=pain_options, index=pain_idx)
                 
                 submit_status = st.form_submit_button("状況を更新してAI戦略を再構築", type="primary")
                 
                 if submit_status:
                     if new_profession and new_focus:
-                        # ▼ 修正：「自分で手綱を握る」自己決定の儀式演出
-                        with st.status(" あなたの決断を受信しました。全戦略を再構築中...", expanded=True) as status:
+                        # 「自分で手綱を握る」自己決定の儀式演出
+                        with st.status("🔄 あなたの決断を受信しました。全戦略を再構築中...", expanded=True) as status:
                             import time
                             st.write("✔️ 現在の環境・課題データを更新中...")
                             time.sleep(0.5)
                             st.write("✔️ 過去の戦略キャッシュをクリア中...")
                             time.sleep(0.5)
-                            st.write(" 最新のパラメーターでAI戦略を再計算しています...")
+                            st.write("🧠 最新のパラメーターでAI戦略を再計算しています...")
                             
                             success, msg = update_user_status(st.session_state.line_id, new_profession, new_focus)
                             if success:
