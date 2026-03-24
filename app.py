@@ -1396,7 +1396,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.warning(" ユーザーデータが見つかりません。先に診断を完了してください。")
         st.stop()
         
-    tab1, tab2, tab3, tab4 = st.tabs(["◯マイページ", "◯波乗りダッシュボード", "◯極秘レポート", "◯対人レーダー"])
+    tab1, tab2, tab3, tab4 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー"])
     
     with tab1:
         level = math.floor(exp / 50) + 1
@@ -1551,11 +1551,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         """, unsafe_allow_html=True)
         # ------------------------------------------------------------------------
 
-        st.subheader("◉ 運命の波乗りダッシュボード")
+        st.subheader("● 運命の波乗りダッシュボード")
 
         current_year = today.year
         # ▼ タブを4つに増やし、スマホでも見やすいように文字数を調整
-        t_day, t_calendar, t_month, t_year = st.tabs([" ●今日", " ●カレンダー", " ●月間", " ●年間"])
+        t_day, t_calendar, t_month, t_year = st.tabs([" ◎今日", " ◎カレンダー", " ◎月間", " ◎年間"])
         
         with t_day:
             st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
@@ -2145,7 +2145,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # 【タブ3】極秘レポート完全版
     # ==========================================
     with tab3:
-        st.subheader("◉ 極秘レポート完全版")
+        st.subheader("● 極秘レポート完全版")
         with st.spinner("データベースからレポートを検索しています..."):
             try:
                 creds_dict = st.secrets["gcp_service_account"]
@@ -2255,7 +2255,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # 【タブ4】対人関係レーダー（SJT12問 ＋ AIプロファイリング）
     # ==========================================
     with tab4:
-        st.subheader("◉ 対人関係レーダー")
+        st.subheader("● 対人関係レーダー")
         
         st.markdown("""
         <style>
@@ -2341,7 +2341,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         if not target_san: st.error("存在しない日付、または生年月日の計算に失敗しました。")
                         else:
                             # ▼ 修正：古い st.spinner を削除し、新しい st.status に統合完了
-                            with st.status("🎯 ターゲットの深層心理を解析中...", expanded=True) as status:
+                            with st.status(" ターゲットの深層心理を解析中...", expanded=True) as status:
                                 import time
                                 st.write("✔️ 行動観察データ（SJT）を抽出中...")
                                 time.sleep(1)
@@ -2349,7 +2349,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 time.sleep(1)
                                 st.write("✔️ あなたとの相性・力関係を計算中...")
                                 time.sleep(1)
-                                st.write("🧠 プロファイリング実行。ターゲットの完全攻略法を生成しています（約20〜30秒）...")
+                                st.write(" プロファイリング実行。ターゲットの完全攻略法を生成しています（約20〜30秒）...")
                                 
                                 success = consume_radar_limit(st.session_state.line_id)
                                 if not success:
