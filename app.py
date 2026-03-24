@@ -121,8 +121,13 @@ st.markdown("""
     .question-title { font-size: 1.4rem; font-weight: 900; text-align: center; margin-top: 1rem !important; margin-bottom: 1rem !important; line-height: 1.6; color: #000000 !important; }
     .stSelectbox label, .stTextInput label, .stRadio label { font-weight: 900 !important; font-size: 1.1rem !important; color: #000000 !important; }
     .stRadio div[role="radiogroup"] label span { color: #000000 !important; font-weight: bold !important; }
+    div[data-testid="stAlert"] { background-color: #FAFAFA !important; border: 1px solid #DDDDDD !important; border-radius: 8px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; }
+    div[data-testid="stAlert"] * { color: #111111 !important; }
+    div[data-testid="stExpander"], div[data-testid="stExpander"] * { background-color: #FFFFFF !important; color: #111111 !important; }
+    div[data-testid="stStatusWidget"], div[data-testid="stStatusWidget"] * { background-color: #FFFFFF !important; color: #111111 !important; }
+
     </style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)    
 
 # ==========================================
 # 本番用 Big5 質問データ (50問)
@@ -1455,23 +1460,25 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 
                 if submit_status:
                     if new_profession and new_focus:
-                        # 「自分で手綱を握る」自己決定の儀式演出
-                        with st.status("🔄 あなたの決断を受信しました。全戦略を再構築中...", expanded=True) as status:
+                        # ▼ 修正：Expanderエラーを回避しつつ、ハッキング風の儀式演出を再現
+                        loading_placeholder = st.empty()
+                        with st.spinner(" あなたの決断を受信し、全戦略を再構築しています..."):
                             import time
-                            st.write("✔️ 現在の環境・課題データを更新中...")
+                            loading_placeholder.info("✔️ 現在の環境・課題データを更新中...")
                             time.sleep(0.5)
-                            st.write("✔️ 過去の戦略キャッシュをクリア中...")
+                            loading_placeholder.info("✔️ 過去の戦略キャッシュをクリア中...")
                             time.sleep(0.5)
-                            st.write("🧠 最新のパラメーターでAI戦略を再計算しています...")
+                            loading_placeholder.info(" 最新のパラメーターでAI戦略を再計算しています...")
                             
                             success, msg = update_user_status(st.session_state.line_id, new_profession, new_focus)
+                            
                             if success:
-                                status.update(label="再構築完了！", state="complete", expanded=False)
+                                loading_placeholder.success("✨ 再構築完了！")
                                 st.success(msg)
                                 time.sleep(1)
                                 st.rerun()
                             else:
-                                status.update(label="エラーが発生しました", state="error", expanded=False)
+                                loading_placeholder.error(" エラーが発生しました")
                                 st.error(msg)
                     else:
                         st.error("職業と悩みの両方を入力してください。")
