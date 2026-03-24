@@ -1987,7 +1987,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 st.markdown(html_content, unsafe_allow_html=True)
 
         with t_year:
-            st.markdown("### 📈 年間・運命の波（8年推移）")
+            st.markdown("### ◎ 年間・運命の波（8年推移）")
             years_data = []
             for i in range(-2, 6):
                 y_date = datetime.date(current_year + i, 6, 1)
@@ -2094,6 +2094,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     }}
                     """
                     try:
+                        import openai
                         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                         response = openai_client.chat.completions.create(
                             model="gpt-4o-mini", 
