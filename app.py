@@ -2321,13 +2321,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         target_san = calculate_target_sanmeigaku(target_dob)
                         if not target_san: st.error("存在しない日付、または生年月日の計算に失敗しました。")
                         else:
-                            with st.spinner("AIが相手の深層心理と攻略法を解析中...（約20秒）"):
-                                success = consume_radar_limit(st.session_state.line_id)
-                                if not success:
-                                    st.error("データベースの更新に失敗しました。")
-                        else:
-                            # ▼ 修正：プロファイラー風の緻密なローディング演出
-                            with st.status(" ターゲットの深層心理を解析中...", expanded=True) as status:
+                            # ▼ 修正：古い st.spinner を削除し、新しい st.status に統合完了
+                            with st.status("🎯 ターゲットの深層心理を解析中...", expanded=True) as status:
                                 import time
                                 st.write("✔️ 行動観察データ（SJT）を抽出中...")
                                 time.sleep(1)
@@ -2335,7 +2330,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 time.sleep(1)
                                 st.write("✔️ あなたとの相性・力関係を計算中...")
                                 time.sleep(1)
-                                st.write(" プロファイリング実行。ターゲットの完全攻略法を生成しています（約20〜30秒）...")
+                                st.write("🧠 プロファイリング実行。ターゲットの完全攻略法を生成しています（約20〜30秒）...")
                                 
                                 success = consume_radar_limit(st.session_state.line_id)
                                 if not success:
