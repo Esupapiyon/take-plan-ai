@@ -2156,21 +2156,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 # ▼ 修正：システム側で固定の見出しを用意し、AIのテキストを流し込む
                 if "legacy" in yearly_data:
                     # 過去に生成済みのテキストデータ表示用
-                    yearly_html = f"<div class='year-wrapper'>\n\n{yearly_data['legacy']}\n\n</div>"
+                    yearly_html = "<div class='year-wrapper'>\n" + str(yearly_data['legacy']) + "\n</div>"
                 else:
-                    # 新規生成のJSONデータ表示用
-                    yearly_html = f"""
-                    <div class='year-wrapper'>
-                        <h2 style='margin-top:0;'>○ 今年の絶対テーマ（年間戦略大枠）</h2>
-                        <p>{yearly_data.get('theme', '')}</p>
-                        
-                        <h2>○ 強みと弱みの年間マネジメント（リスク管理）</h2>
-                        <p>{yearly_data.get('risk', '')}</p>
-                        
-                        <h2>○ 今年注力すべき3つの柱（選択と集中）</h2>
-                        <p>{yearly_data.get('focus', '')}</p>
-                    </div>
-                    """
+                    # 【重要】Markdownの空白バグ（黒画面化）を防ぐため、左詰めの足し算でHTMLを構築
+                    yearly_html = "<div class='year-wrapper'>"
+                    yearly_html += f"<h2 style='margin-top:0;'>○ 今年の絶対テーマ（年間戦略大枠）</h2>"
+                    yearly_html += f"<p>{yearly_data.get('theme', '')}</p>"
+                    yearly_html += f"<h2>○ 強みと弱みの年間マネジメント（リスク管理）</h2>"
+                    yearly_html += f"<p>{yearly_data.get('risk', '')}</p>"
+                    yearly_html += f"<h2>○ 今年注力すべき3つの柱（選択と集中）</h2>"
+                    yearly_html += f"<p>{yearly_data.get('focus', '')}</p>"
+                    yearly_html += "</div>"
 
                 st.markdown(yearly_html, unsafe_allow_html=True)
                     
