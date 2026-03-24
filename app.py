@@ -1217,21 +1217,21 @@ def get_user_status(line_id):
 
 def start_test(line_name, line_id, dob_str, btime, gender, job_status, pain_points, free_goal):
     if not dob_str.isdigit() or len(dob_str) != 8:
-        st.error("⚠️ 生年月日は8桁の半角数字で入力してください")
+        st.error(" 生年月日は8桁の半角数字で入力してください")
         return
     if not pain_points:
-        st.error("⚠️ フォーカスしたいテーマを少なくとも1つ選択してください")
+        st.error(" フォーカスしたいテーマを少なくとも1つ選択してください")
         return
         
     try:
         valid_date = datetime.datetime.strptime(dob_str, "%Y%m%d")
         current_year = datetime.date.today().year
         if not (1900 <= valid_date.year <= current_year):
-            st.error(f"⚠️ 正しい年代の生年月日を入力してください")
+            st.error(f" 正しい年代の生年月日を入力してください")
             return
         formatted_dob = valid_date.strftime("%Y/%m/%d")
     except ValueError:
-        st.error("⚠️ 存在しない日付です。")
+        st.error(" 存在しない日付です。")
         return
 
     st.session_state.user_data = {
@@ -1308,7 +1308,7 @@ if p_line_id and p_line_id != "不明":
     elif not st.session_state.line_name:
         st.session_state.line_name = "ゲスト"
 elif not st.session_state.line_id:
-    st.warning("⚠️ このページは専用リンクからアクセスしてください。")
+    st.warning(" このページは専用リンクからアクセスしてください。")
     st.info("LINE公式アカウントのメニューから再度アクセスをお願いします。")
     st.stop()
 
@@ -1393,10 +1393,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         hp_color = "#4CAF50" if current_hp >= 70 else ("#FF9800" if current_hp >= 40 else "#F44336")
         
     else:
-        st.warning("⚠️ ユーザーデータが見つかりません。先に診断を完了してください。")
+        st.warning(" ユーザーデータが見つかりません。先に診断を完了してください。")
         st.stop()
         
-    tab1, tab2, tab3, tab4 = st.tabs(["マイページ", "波乗りダッシュボード", "極秘レポート", "対人レーダー"])
+    tab1, tab2, tab3, tab4 = st.tabs(["◯マイページ", "◯波乗りダッシュボード", "◯極秘レポート", "◯対人レーダー"])
     
     with tab1:
         level = math.floor(exp / 50) + 1
@@ -1432,7 +1432,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         </div>
         """, unsafe_allow_html=True)
 
-        # --- 🔄 現在の状況（職業と悩み）アップデート機能 ---
+        # ---  現在の状況（職業と悩み）アップデート機能 ---
         st.markdown("### 現在の状況をアップデート")
         st.write("環境や目標が変わりましたか？状況を更新すると、AIの戦略が最新化されます。")
         
@@ -1551,11 +1551,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         """, unsafe_allow_html=True)
         # ------------------------------------------------------------------------
 
-        st.subheader(" 運命の波乗りダッシュボード")
+        st.subheader("◉ 運命の波乗りダッシュボード")
 
         current_year = today.year
         # ▼ タブを4つに増やし、スマホでも見やすいように文字数を調整
-        t_day, t_calendar, t_month, t_year = st.tabs([" 今日", " カレンダー", " 月間", " 年間"])
+        t_day, t_calendar, t_month, t_year = st.tabs([" ●今日", " ●カレンダー", " ●月間", " ●年間"])
         
         with t_day:
             st.markdown(f"<p style='text-align: center; font-size: 1.2rem; font-weight: bold;'>{today.strftime('%Y年%m月%d日')}</p>", unsafe_allow_html=True)
@@ -1648,7 +1648,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 html_content += f"""
                 <div>
                     <p style='font-size:1.15rem; font-weight:bold; color:#333333; margin-top:0; margin-bottom:20px; line-height:1.5;'>
-                        🎯 {data['mission'].get('summary', '')}
+                          {data['mission'].get('summary', '')}
                     </p>
                     <b style='color:#D32F2F;'>【クエスト内容】</b><br>{data['mission'].get('action', '')}<br><br>
                     <b style='color:#D32F2F;'>【この魔法を使うとどうなる？】</b><br>{data['mission'].get('benefit', '')}<br><br>
@@ -1686,7 +1686,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             bonus_advice = data.get("bonus_advice", "")
             if bonus_advice:
                 st.markdown("<br>", unsafe_allow_html=True)
-                with st.expander("📖 【追加スキル】深い科学の知識を学ぶ（ボーナスEXPあり）"):
+                with st.expander(" 【追加スキル】深い科学の知識を学ぶ（ボーナスEXPあり）"):
                     st.markdown(f"<div style='padding: 15px; background-color: #E3F2FD; border-radius: 8px; color: #1565C0; line-height: 1.7;'>{bonus_advice}</div>", unsafe_allow_html=True)
                     
                     if f"bonus_{today_str}" not in st.session_state:
@@ -1701,7 +1701,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.rerun()
 
         with t_calendar:
-            st.markdown("### 📅 今月の運命のカレンダー")
+            st.markdown("### 📆 今月の運命のカレンダー")
             st.write(f"**{current_year}年{today.month}月**の環境の波です。")
             
             # --- 1. スマホで崩れないHTMLカレンダーの生成 ---
@@ -1987,7 +1987,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 st.markdown(html_content, unsafe_allow_html=True)
 
         with t_year:
-            st.markdown("### 🗻 年間・運命の波（8年推移）")
+            st.markdown("### 📈 年間・運命の波（8年推移）")
             years_data = []
             for i in range(-2, 6):
                 y_date = datetime.date(current_year + i, 6, 1)
@@ -2053,7 +2053,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             # --- 絵文字の凡例（10段階）の追加 ---
             st.markdown(legend_html, unsafe_allow_html=True)
             
-            st.markdown(f"### 🎯 {current_year}年の年間テーマと詳細戦略")
+            st.markdown(f"### ▼ {current_year}年の年間テーマと詳細戦略")
           
             with st.spinner(f"AIが{current_year}年の年間戦略を執筆中..."):
                 y_date_idx = headers.index('Yearly_Date')
@@ -2079,11 +2079,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     4. 星評価（★☆☆など）は絶対に出力しないでください。
 
                     # 出力構成
-                    ## 🗻 今年の絶対テーマ（年間戦略大枠）
+                    ## ○ 今年の絶対テーマ（年間戦略大枠）
                     スコアとシンボルが示す、今年1年がユーザーの人生においてどのような意味を持つのかを総括してください。
-                    ## ⚖️ 強みと弱みの年間マネジメント（リスク管理）
+                    ## ○ 強みと弱みの年間マネジメント（リスク管理）
                     ユーザーの性格特性が、今年の波の中で「どう活きるか（強力な武器）」と「どう邪魔をするか（警戒すべきリスク）」を解説してください。
-                    ## 🎯 今年注力すべき3つの柱（選択と集中）
+                    ## ○ 今年注力すべき3つの柱（選択と集中）
                     ユーザーの「職業」と「悩み」から、今年絶対にフォーカスすべき3つの領域（例：仕事、人間関係、自己投資など）をAIが厳選し、なぜそこに注力すべきか（方針）を解説してください。
                     """
                     try:
@@ -2145,7 +2145,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # 【タブ3】極秘レポート完全版
     # ==========================================
     with tab3:
-        st.subheader("📜 極秘レポート完全版")
+        st.subheader("◉ 極秘レポート完全版")
         with st.spinner("データベースからレポートを検索しています..."):
             try:
                 creds_dict = st.secrets["gcp_service_account"]
@@ -2255,7 +2255,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
     # 【タブ4】対人関係レーダー（SJT12問 ＋ AIプロファイリング）
     # ==========================================
     with tab4:
-        st.subheader("対人関係レーダー")
+        st.subheader("◉ 対人関係レーダー")
         
         st.markdown("""
         <style>
