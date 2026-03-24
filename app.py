@@ -2072,7 +2072,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         yearly_data = {"legacy": user_row[y_text_idx]}
                 
                 if not yearly_data:
-                    # ▼ 修正：AIには「中身の文章」だけをJSON形式で出させるプロンプトに変更
+                    # ▼ 修正：AIに「3つの柱」を別々のデータ（focus_1, 2, 3）として出力させる
                     prompt = f"""
                     あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間ロードマップ】を作成してください。
                     [今年のスコア: {this_year_res['score']}点, シンボル: {this_year_res['symbol']}, 環境: {this_year_res['env_reason']}, 精神: {this_year_res['mind_reason']}]
@@ -2090,7 +2090,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     {{
                       "theme": "今年の絶対テーマの解説文。スコアとシンボルが示す、今年1年がユーザーの人生においてどのような意味を持つのか。",
                       "risk": "強みと弱みのマネジメントの解説文。性格特性が今年の波の中でどう活きるか、どう邪魔をするか。",
-                      "focus": "今年注力すべき3つの柱の解説文。職業と悩みから、今年絶対にフォーカスすべき領域と方針。"
+                      "focus_1": "1つ目の注力すべき柱と、その具体的な方針や理由",
+                      "focus_2": "2つ目の注力すべき柱と、その具体的な方針や理由",
+                      "focus_3": "3つ目の注力すべき柱と、その具体的な方針や理由"
                     }}
                     """
                     try:
@@ -2098,7 +2100,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                         response = openai_client.chat.completions.create(
                             model="gpt-4o-mini", 
-                            response_format={ "type": "json_object" }, # ▼ 追加：確実なJSON出力を強制
+                            response_format={ "type": "json_object" }, 
                             messages=[
                                 {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスし、必ずJSONで出力します。"}, 
                                 {"role": "user", "content": prompt}
@@ -2108,7 +2110,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         yearly_data = json.loads(response.choices[0].message.content)
                         
                         sheet.update_cell(user_row_idx, y_date_idx + 1, cache_key_y)
-                        # JSON文字列として保存
                         sheet.update_cell(user_row_idx, y_text_idx + 1, json.dumps(yearly_data, ensure_ascii=False))
                     except Exception as e:
                         yearly_data = {"legacy": "エラーが発生しました。"}
@@ -2153,19 +2154,29 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 </style>
                 """, unsafe_allow_html=True)
 
-                # ▼ 修正：システム側で固定の見出しを用意し、AIのテキストを流し込む
+                # ▼ 修正：システム側で固定の見出しと、美しい箇条書き（①②③）を用意し、AIのテキストを流し込む
                 if "legacy" in yearly_data:
                     # 過去に生成済みのテキストデータ表示用
                     yearly_html = "<div class='year-wrapper'>\n" + str(yearly_data['legacy']) + "\n</div>"
                 else:
-                    # 【重要】Markdownの空白バグ（黒画面化）を防ぐため、左詰めの足し算でHTMLを構築
+                    # 古いJSON形式(focus単体)と新しい形式(focus_1,2,3)の両方に対応する安全装置
+                    focus_html = ""
+                    if "focus_1" in yearly_data:
+                        # システム側で強制的に左詰め＆改行の美しい箇条書きデザインを作る
+                        focus_html += f"<div style='display:flex; align-items:flex-start; margin-bottom:12px;'><span style='color:#D32F2F; font-weight:900; margin-right:8px; font-size:1.1rem;'>①</span><span style='line-height:1.6;'>{yearly_data.get('focus_1', '')}</span></div>"
+                        focus_html += f"<div style='display:flex; align-items:flex-start; margin-bottom:12px;'><span style='color:#D32F2F; font-weight:900; margin-right:8px; font-size:1.1rem;'>②</span><span style='line-height:1.6;'>{yearly_data.get('focus_2', '')}</span></div>"
+                        focus_html += f"<div style='display:flex; align-items:flex-start;'><span style='color:#D32F2F; font-weight:900; margin-right:8px; font-size:1.1rem;'>③</span><span style='line-height:1.6;'>{yearly_data.get('focus_3', '')}</span></div>"
+                    else:
+                        focus_html += f"<p>{yearly_data.get('focus', '')}</p>"
+
+                    # Markdownの空白バグ（黒画面化）を防ぐため、左詰めの足し算でHTMLを構築
                     yearly_html = "<div class='year-wrapper'>"
                     yearly_html += f"<h2 style='margin-top:0;'>○ 今年の絶対テーマ（年間戦略大枠）</h2>"
                     yearly_html += f"<p>{yearly_data.get('theme', '')}</p>"
                     yearly_html += f"<h2>○ 強みと弱みの年間マネジメント（リスク管理）</h2>"
                     yearly_html += f"<p>{yearly_data.get('risk', '')}</p>"
                     yearly_html += f"<h2>○ 今年注力すべき3つの柱（選択と集中）</h2>"
-                    yearly_html += f"<p>{yearly_data.get('focus', '')}</p>"
+                    yearly_html += focus_html
                     yearly_html += "</div>"
 
                 st.markdown(yearly_html, unsafe_allow_html=True)
