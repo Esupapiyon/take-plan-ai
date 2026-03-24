@@ -1779,12 +1779,12 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             html_card += "</div>"
             
             html_card += "<div style='background-color:#E8F5E9; padding:15px; border-radius:8px; margin-bottom:15px; border-left: 5px solid #4CAF50;'>"
-            html_card += "<div style='color:#2E7D32; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>💨 追い風キーワード</div>"
+            html_card += "<div style='color:#2E7D32; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>○ 追い風キーワード</div>"
             html_card += f"<div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['tailwind']}</div>"
             html_card += "</div>"
             
             html_card += "<div style='background-color:#FFEBEE; padding:15px; border-radius:8px; margin-bottom:25px; border-left: 5px solid #F44336;'>"
-            html_card += "<div style='color:#C62828; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>⚠️ 注意・警戒キーワード</div>"
+            html_card += "<div style='color:#C62828; font-weight:900; margin-bottom:5px; font-size:1.05rem;'> ○注意・警戒キーワード</div>"
             html_card += f"<div style='font-size:1rem; color:#111; font-weight:bold;'>{sel_keys['warning']}</div>"
             html_card += "</div>"
             
@@ -2060,11 +2060,19 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 y_text_idx = headers.index('Yearly_Text')
                 cache_key_y = str(current_year)
                 
-                yearly_advice = ""
-                if len(user_row) > y_text_idx and user_row[y_date_idx] == cache_key_y and user_row[y_text_idx].strip() != "":
-                    yearly_advice = user_row[y_text_idx]
+                yearly_data = None
                 
-                if not yearly_advice:
+                # DBにデータがあるか確認
+                if len(user_row) > y_text_idx and user_row[y_date_idx] == cache_key_y and user_row[y_text_idx].strip() != "":
+                    try:
+                        # 新しいJSON形式として読み込みを試みる
+                        yearly_data = json.loads(user_row[y_text_idx])
+                    except:
+                        # 過去に生成された「テキスト形式」のデータだった場合の安全装置
+                        yearly_data = {"legacy": user_row[y_text_idx]}
+                
+                if not yearly_data:
+                    # ▼ 修正：AIには「中身の文章」だけをJSON形式で出させるプロンプトに変更
                     prompt = f"""
                     あなたは日本一の戦略的ライフ・コンサルタントです。以下のデータをもとに、【今年のユーザーへの年間ロードマップ】を作成してください。
                     [今年のスコア: {this_year_res['score']}点, シンボル: {this_year_res['symbol']}, 環境: {this_year_res['env_reason']}, 精神: {this_year_res['mind_reason']}]
@@ -2073,30 +2081,36 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     [Big5性格特性: O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}]
 
                     # 【絶対遵守の出力ルール】
-                    1. 算命学・四柱推命の専門用語や、性格診断の専門用語・アルファベット（Big5、O、C、E、A、N、開放性、誠実性など）は【絶対に】出力せず、中学生でもわかる現代の日常語に完全に翻訳すること。
-                    2. 【重要】具体的な行動タスク（To-Do）や「〜しましょう」といった指示は【一切書かない】こと。
+                    1. 算命学・四柱推命の専門用語や、性格診断の専門用語・アルファベットは【絶対に】出力せず、現代の日常語に完全に翻訳すること。
+                    2. 具体的な行動タスク（To-Do）や「〜しましょう」といった指示は【一切書かない】こと。
                     3. 1年間の長期的な視点で、人生の戦略やフォーカスすべき領域の提示に特化すること。
-                    4. 星評価（★☆☆など）は絶対に出力しないでください。
+                    4. 【重要】出力は必ず以下のJSONフォーマットのみとし、Markdownの見出しなどは一切含めないこと。
 
-                    # 出力構成
-                    ## ○ 今年の絶対テーマ（年間戦略大枠）
-                    スコアとシンボルが示す、今年1年がユーザーの人生においてどのような意味を持つのかを総括してください。
-                    ## ○ 強みと弱みの年間マネジメント（リスク管理）
-                    ユーザーの性格特性が、今年の波の中で「どう活きるか（強力な武器）」と「どう邪魔をするか（警戒すべきリスク）」を解説してください。
-                    ## ○ 今年注力すべき3つの柱（選択と集中）
-                    ユーザーの「職業」と「悩み」から、今年絶対にフォーカスすべき3つの領域（例：仕事、人間関係、自己投資など）をAIが厳選し、なぜそこに注力すべきか（方針）を解説してください。
+                    # JSONフォーマット
+                    {{
+                      "theme": "今年の絶対テーマの解説文。スコアとシンボルが示す、今年1年がユーザーの人生においてどのような意味を持つのか。",
+                      "risk": "強みと弱みのマネジメントの解説文。性格特性が今年の波の中でどう活きるか、どう邪魔をするか。",
+                      "focus": "今年注力すべき3つの柱の解説文。職業と悩みから、今年絶対にフォーカスすべき領域と方針。"
+                    }}
                     """
                     try:
                         openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                         response = openai_client.chat.completions.create(
-                            model="gpt-4o-mini", messages=[{"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスします。"}, {"role": "user", "content": prompt}], temperature=0.7
+                            model="gpt-4o-mini", 
+                            response_format={ "type": "json_object" }, # ▼ 追加：確実なJSON出力を強制
+                            messages=[
+                                {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、現代の言葉でアドバイスし、必ずJSONで出力します。"}, 
+                                {"role": "user", "content": prompt}
+                            ], 
+                            temperature=0.7
                         )
-                        yearly_advice = response.choices[0].message.content
+                        yearly_data = json.loads(response.choices[0].message.content)
                         
                         sheet.update_cell(user_row_idx, y_date_idx + 1, cache_key_y)
-                        sheet.update_cell(user_row_idx, y_text_idx + 1, yearly_advice)
+                        # JSON文字列として保存
+                        sheet.update_cell(user_row_idx, y_text_idx + 1, json.dumps(yearly_data, ensure_ascii=False))
                     except Exception as e:
-                        yearly_advice = "エラーが発生しました。"
+                        yearly_data = {"legacy": "エラーが発生しました。"}
                         print(f"Yearly DB Save Error: {e}")
                 
                 # --- 月間グラフと同じゴールドフレームのCSSを注入 ---
@@ -2138,8 +2152,26 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 </style>
                 """, unsafe_allow_html=True)
 
-                # HTMLのdivタグの中でMarkdownを正常に処理させるため、\n\nで囲んで出力
-                st.markdown(f"<div class='year-wrapper'>\n\n{yearly_advice}\n\n</div>", unsafe_allow_html=True)
+                # ▼ 修正：システム側で固定の見出しを用意し、AIのテキストを流し込む
+                if "legacy" in yearly_data:
+                    # 過去に生成済みのテキストデータ表示用
+                    yearly_html = f"<div class='year-wrapper'>\n\n{yearly_data['legacy']}\n\n</div>"
+                else:
+                    # 新規生成のJSONデータ表示用
+                    yearly_html = f"""
+                    <div class='year-wrapper'>
+                        <h2 style='margin-top:0;'>○ 今年の絶対テーマ（年間戦略大枠）</h2>
+                        <p>{yearly_data.get('theme', '')}</p>
+                        
+                        <h2>○ 強みと弱みの年間マネジメント（リスク管理）</h2>
+                        <p>{yearly_data.get('risk', '')}</p>
+                        
+                        <h2>○ 今年注力すべき3つの柱（選択と集中）</h2>
+                        <p>{yearly_data.get('focus', '')}</p>
+                    </div>
+                    """
+
+                st.markdown(yearly_html, unsafe_allow_html=True)
                     
     # ==========================================
     # 【タブ3】極秘レポート完全版
