@@ -1501,7 +1501,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             </div>
             """, unsafe_allow_html=True)
 
-        with st.popover("🖋️ 北極星（理想の未来）を書き換える"):
+        # ▼ 修正：st.popoverが使えない環境のため、100%動くst.expanderに変更
+        with st.expander("🖋️ 北極星（理想の未来）を書き換える", expanded=False):
             st.write("※北極星の更新はAI全体を再構築しないため、いつでも何度でも変更可能です。")
             new_north_star = st.text_area("あなたが実現したい理想の未来", value=current_north_star if current_north_star != "なし" else "", height=120)
             if st.button("北極星を保存する", type="primary", key="btn_update_star"):
