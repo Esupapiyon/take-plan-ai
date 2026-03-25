@@ -1467,7 +1467,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         # ==========================================
         # 2 & 3. 北極星（理想の未来）と現在のフォーカスの表示
         # ==========================================
-        st.markdown("### ▶︎ あなたの北極星（実現したい理想）")
+        st.markdown("### ▶︎ あなたの北極星")
         current_north_star = user_data_for_ai.get("Free_Text", "").strip()
         current_focus = user_data_for_ai.get("Pains", "未設定")
 
