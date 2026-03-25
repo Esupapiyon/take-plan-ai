@@ -1186,8 +1186,7 @@ def update_user_status(line_id, new_profession, new_focus):
         all_data = sheet.get_all_values()
         headers = all_data[0]
         
-            # ▼▼ 新規：DBキャッシュ用列の自動追加 ▼▼
-            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count']
+        required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count']
         missing_cols = [c for c in required_cols if c not in headers]
         if missing_cols:
             for c in missing_cols:
@@ -1373,14 +1372,13 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             all_data = sheet.get_all_values()
             headers = all_data[0]
             
-            # ▼▼ 新規：DBキャッシュ用列の自動追加 ▼▼
-            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text']
+            # ▼▼ 修正：Status_Update_Month, Status_Update_Count を追加 ▼▼
+            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count']
             missing_cols = [c for c in required_cols if c not in headers]
             if missing_cols:
                 for c in missing_cols:
                     sheet.update_cell(1, len(headers) + 1, c)
                     headers.append(c)
-            # ▲▲ 新規：DBキャッシュ用列の自動追加 ▲▲
             
             user_row = None
             user_row_idx = -1
