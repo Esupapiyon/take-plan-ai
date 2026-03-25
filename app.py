@@ -1446,6 +1446,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.stop()
         
     tab1, tab2, tab3, tab4 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー"])
+  
     with tab1:
         level = math.floor(exp / 50) + 1
         next_exp = level * 50
@@ -1460,30 +1461,15 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         
         st.progress(progress, text=f"次のレベルまで あと {next_exp - exp} EXP")
         
-        # ▼ 修正：装備中を廃止し、EXPのみを中央配置で美しく強調表示
+        # 1. 獲得累計 EXPを強調表示
         st.markdown(f"<h3 style='text-align:center; color:#333; margin-top:20px; margin-bottom:20px;'>獲得累計 EXP: <span style='color:#b8860b; font-size:1.8rem; font-weight:900;'>{exp} ✨</span></h3>", unsafe_allow_html=True)
-        st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
-
-        # 🔋 タブ1のHPメーター
-        st.markdown(f"""
-        <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-top: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-            <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
-            <div style='background-color: #E0E0E0; border-radius: 20px; width: 100%; height: 35px; overflow: hidden; margin-top: 15px;'>
-                <div style='background-color: {hp_color}; width: {current_hp}%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.1rem; transition: width 1s ease-in-out;'>
-                    {current_hp}%
-                </div>
-            </div>
-            <p style='text-align: center; font-size: 0.9rem; color: #777; margin-top: 15px; margin-bottom:0; line-height: 1.6;'>
-                ※環境の負荷（運勢）により朝のHPは変動します。<br><b>ミッションをクリアするとHPが100%に回復します！</b>
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
 
         # ==========================================
-        # 🧭 新機能：北極星（理想の未来）の表示と単独ポップアップ更新
+        # 2 & 3. 北極星（理想の未来）と現在のフォーカスの表示
         # ==========================================
         st.markdown("### ▶︎ あなたの北極星（実現したい理想）")
         current_north_star = user_data_for_ai.get("Free_Text", "").strip()
+        current_focus = user_data_for_ai.get("Pains", "未設定")
 
         if current_north_star and current_north_star != "なし":
             st.markdown(f"""
@@ -1491,17 +1477,22 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 <div style='font-size:1.15rem; font-weight:bold; color:#1565C0; line-height:1.6;'>
                     {current_north_star}
                 </div>
+                <div style='margin-top: 12px; padding-top: 10px; border-top: 1px dashed #90CAF9; font-size: 0.9rem; color: #1565C0; font-weight: bold;'>
+                    ▶︎ 現在の攻略フォーカス: <span style='color:#333333;'>{current_focus}</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.markdown("""
+            st.markdown(f"""
             <div style='background-color:#FAFAFA; padding:20px; border-radius:10px; border:2px dashed #CCCCCC; margin-bottom:15px;'>
                 <span style='color:gray; font-weight:bold;'>未設定</span><br>
                 <span style='font-size:0.85rem; color:gray;'>※「3年後に独立したい」「心から安心できるパートナーに出会いたい」など、あなたが本当に実現したい未来を記入し、日々のコンパスにしましょう。</span>
+                <div style='margin-top: 12px; padding-top: 10px; border-top: 1px dashed #DDDDDD; font-size: 0.9rem; color: #777777; font-weight: bold;'>
+                    ▶︎ 現在の攻略フォーカス: <span style='color:#333333;'>{current_focus}</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
-        # ▼ 修正：st.popoverが使えない環境のため、100%動くst.expanderに変更
         with st.expander("🖋️ 北極星（理想の未来）を書き換える", expanded=False):
             st.write("※北極星の更新はAI全体を再構築しないため、いつでも何度でも変更可能です。")
             new_north_star = st.text_area("あなたが実現したい理想の未来", value=current_north_star if current_north_star != "なし" else "", height=120)
@@ -1519,8 +1510,26 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 else:
                     st.error("入力してください。")
 
+        # 4. インフォメーション
+        st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
+
+        # 5. 🔋 タブ1のHPメーター
+        st.markdown(f"""
+        <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-top: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+            <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
+            <div style='background-color: #E0E0E0; border-radius: 20px; width: 100%; height: 35px; overflow: hidden; margin-top: 15px;'>
+                <div style='background-color: {hp_color}; width: {current_hp}%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.1rem; transition: width 1s ease-in-out;'>
+                    {current_hp}%
+                </div>
+            </div>
+            <p style='text-align: center; font-size: 0.9rem; color: #777; margin-top: 15px; margin-bottom:0; line-height: 1.6;'>
+                ※環境の負荷（運勢）により朝のHPは変動します。<br><b>ミッションをクリアするとHPが100%に回復します！</b>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
         # ==========================================
-        # 🔄 現在の状況アップデート機能（月2回の回数制限付き）
+        # 6. 🔄 現在の状況アップデート機能（月2回の回数制限付き）
         # ==========================================
         st.markdown("---")
         st.markdown("###  現在の状況をアップデート")
