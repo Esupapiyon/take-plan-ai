@@ -1147,7 +1147,10 @@ def update_mission_clear(line_id, earned_exp=10):
     except Exception as e:
         return False, f"通信エラー: {e}"
 
-def update_user_status(line_id, new_profession, new_focus):
+# ==========================================
+# 🧭 北極星（理想の未来）の単独更新関数（API消費ゼロ）
+# ==========================================
+def update_north_star(line_id, new_text):
     try:
         creds_dict = st.secrets["gcp_service_account"]
         from oauth2client.service_account import ServiceAccountCredentials
@@ -1157,10 +1160,34 @@ def update_user_status(line_id, new_profession, new_focus):
         client = gspread.authorize(creds)
         sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
         all_data = sheet.get_all_values()
+
+        for i in range(len(all_data)-1, 0, -1):
+            if len(all_data[i]) > 0 and all_data[i][0] == line_id:
+                row_num = i + 1
+                sheet.update_cell(row_num, 77, new_text) # Free_Text (北極星の列)
+                return True, "北極星を更新しました！"
+        return False, "ユーザーが見つかりません"
+    except Exception as e:
+        return False, f"通信エラー: {e}"
+
+# ==========================================
+# 🔄 状況アップデート関数（月2回の回数制限を追加）
+# ==========================================
+def update_user_status(line_id, new_profession, new_focus):
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        from oauth2client.service_account import ServiceAccountCredentials
+        import gspread
+        import datetime
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+        all_data = sheet.get_all_values()
         headers = all_data[0]
         
-        # ヘッダーにキャッシュ用列がなければ追加（安全装置）
-        required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text']
+            # ▼▼ 新規：DBキャッシュ用列の自動追加 ▼▼
+            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count']
         missing_cols = [c for c in required_cols if c not in headers]
         if missing_cols:
             for c in missing_cols:
@@ -1170,12 +1197,28 @@ def update_user_status(line_id, new_profession, new_focus):
         d_date_col = headers.index('Daily_Date') + 1
         m_date_col = headers.index('Monthly_Date') + 1
         y_date_col = headers.index('Yearly_Date') + 1
+        month_col = headers.index('Status_Update_Month') + 1
+        count_col = headers.index('Status_Update_Count') + 1
+        
+        current_month_str = datetime.date.today().strftime("%Y-%m")
         
         for i in range(len(all_data)-1, 0, -1):
             if len(all_data[i]) > 0 and all_data[i][0] == line_id:
                 row_num = i + 1
+                row_data = all_data[i]
+                
+                # 職業と悩みの更新
                 sheet.update_cell(row_num, 75, new_profession) # Job
                 sheet.update_cell(row_num, 76, new_focus)      # Pains
+                
+                # 回数制限のカウントアップ
+                current_count = 0
+                if len(row_data) >= month_col and row_data[month_col-1] == current_month_str:
+                    try: current_count = int(row_data[count_col-1])
+                    except: current_count = 0
+                
+                sheet.update_cell(row_num, month_col, current_month_str)
+                sheet.update_cell(row_num, count_col, current_count + 1)
                 
                 # 職業・悩みが変わったので、AIキャッシュを空にして再生成させる
                 sheet.update_cell(row_num, d_date_col, "")
@@ -1397,7 +1440,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.stop()
         
     tab1, tab2, tab3, tab4 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー"])
-    
     with tab1:
         level = math.floor(exp / 50) + 1
         next_exp = level * 50
@@ -1412,12 +1454,11 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         
         st.progress(progress, text=f"次のレベルまで あと {next_exp - exp} EXP")
         
-        col1, col2 = st.columns(2)
-        col1.metric(label="獲得累計 EXP", value=f"{exp} ✨")
-        col2.metric(label="現在装備中のスキル", value="装備中", delta=theme, delta_color="normal")
+        # ▼ 修正：装備中を廃止し、EXPのみを中央配置で美しく強調表示
+        st.markdown(f"<h3 style='text-align:center; color:#333; margin-top:20px; margin-bottom:20px;'>獲得累計 EXP: <span style='color:#b8860b; font-size:1.8rem; font-weight:900;'>{exp} ✨</span></h3>", unsafe_allow_html=True)
         st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
 
-        # 🔋 タブ1に移動してきたHPメーター
+        # 🔋 タブ1のHPメーター
         st.markdown(f"""
         <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-top: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
             <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
@@ -1432,56 +1473,110 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         </div>
         """, unsafe_allow_html=True)
 
-        # ---  現在の状況（職業と悩み）アップデート機能 ---
-        st.markdown("### 現在の状況をアップデート")
+        # ==========================================
+        # 🧭 新機能：北極星（理想の未来）の表示と単独ポップアップ更新
+        # ==========================================
+        st.markdown("### ▶︎ あなたの北極星（実現したい理想）")
+        current_north_star = user_data_for_ai.get("Free_Text", "").strip()
+
+        if current_north_star and current_north_star != "なし":
+            st.markdown(f"""
+            <div style='background-color:#E3F2FD; padding:20px; border-radius:10px; border-left:5px solid #2196F3; margin-bottom:15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>
+                <div style='font-size:1.15rem; font-weight:bold; color:#1565C0; line-height:1.6;'>
+                    {current_north_star}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style='background-color:#FAFAFA; padding:20px; border-radius:10px; border:2px dashed #CCCCCC; margin-bottom:15px;'>
+                <span style='color:gray; font-weight:bold;'>未設定</span><br>
+                <span style='font-size:0.85rem; color:gray;'>※「3年後に独立したい」「心から安心できるパートナーに出会いたい」など、あなたが本当に実現したい未来を記入し、日々のコンパスにしましょう。</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with st.popover("🖋️ 北極星（理想の未来）を書き換える"):
+            st.write("※北極星の更新はAI全体を再構築しないため、いつでも何度でも変更可能です。")
+            new_north_star = st.text_area("あなたが実現したい理想の未来", value=current_north_star if current_north_star != "なし" else "", height=120)
+            if st.button("北極星を保存する", type="primary", key="btn_update_star"):
+                if new_north_star.strip():
+                    with st.spinner("保存中..."):
+                        import time
+                        success, msg = update_north_star(st.session_state.line_id, new_north_star)
+                        if success:
+                            st.success(msg)
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+                else:
+                    st.error("入力してください。")
+
+        # ==========================================
+        # 🔄 現在の状況アップデート機能（月2回の回数制限付き）
+        # ==========================================
+        st.markdown("---")
+        st.markdown("###  現在の状況をアップデート")
         st.write("環境や目標が変わりましたか？状況を更新すると、AIの戦略が最新化されます。")
         
-        with st.expander("職業と現在の悩みを変更する", expanded=False):
-            with st.form("update_status_form"):
-                current_profession = user_data_for_ai.get("Job", "未設定")
-                current_focus = user_data_for_ai.get("Pains", "未設定")
+        # ▼ 回数制限の計算
+        current_month_str = datetime.date.today().strftime("%Y-%m")
+        month_idx = headers.index('Status_Update_Month') if 'Status_Update_Month' in headers else -1
+        count_idx = headers.index('Status_Update_Count') if 'Status_Update_Count' in headers else -1
+        
+        current_count = 0
+        if month_idx != -1 and count_idx != -1 and len(user_row) > count_idx:
+            if user_row[month_idx] == current_month_str:
+                try: current_count = int(user_row[count_idx])
+                except: current_count = 0
                 
-                # 初回テストと同じ選択肢を用意
-                job_options = ["会社員（一般）", "会社員（管理職・マネージャー）", "経営者・役員", "フリーランス・個人事業主", "公務員", "学生", "主婦・主夫", "その他"]
-                pain_options = ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"]
-                
-                # 現在のデータと照合し、初期選択位置（index）を特定する
-                try: job_idx = job_options.index(current_profession)
-                except ValueError: job_idx = 0
-                
-                try: pain_idx = pain_options.index(current_focus)
-                except ValueError: pain_idx = 0
-                
-                # ▼ 自由記述からセレクトボックス（ドラムロール式）に変更
-                new_profession = st.selectbox("現在の職業・ポジション", options=job_options, index=job_idx)
-                new_focus = st.selectbox("現在フォーカスしている悩み・目標", options=pain_options, index=pain_idx)
-                
-                submit_status = st.form_submit_button("状況を更新してAI戦略を再構築", type="primary")
-                
-                if submit_status:
-                    if new_profession and new_focus:
-                        # ▼ 修正：Expanderエラーを回避しつつ、ハッキング風の儀式演出を再現
-                        loading_placeholder = st.empty()
-                        with st.spinner(" あなたの決断を受信し、全戦略を再構築しています..."):
-                            import time
-                            loading_placeholder.info("✔️ 現在の環境・課題データを更新中...")
-                            time.sleep(0.5)
-                            loading_placeholder.info("✔️ 過去の戦略キャッシュをクリア中...")
-                            time.sleep(0.5)
-                            loading_placeholder.info(" 最新のパラメーターでAI戦略を再計算しています...")
-                            
-                            success, msg = update_user_status(st.session_state.line_id, new_profession, new_focus)
-                            
-                            if success:
-                                loading_placeholder.success("✨ 再構築完了！")
-                                st.success(msg)
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                loading_placeholder.error(" エラーが発生しました")
-                                st.error(msg)
-                    else:
-                        st.error("職業と悩みの両方を入力してください。")
+        remaining_updates = max(0, 2 - current_count)
+        
+        with st.expander(f"職業と現在の悩みを変更する（今月の残り回数: {remaining_updates}回）", expanded=False):
+            if remaining_updates <= 0:
+                st.error(" 今月の変更可能回数（2回）を使い切りました。来月1日にリセットされるまでお待ちください。")
+            else:
+                with st.form("update_status_form"):
+                    current_profession = user_data_for_ai.get("Job", "未設定")
+                    current_focus = user_data_for_ai.get("Pains", "未設定")
+                    
+                    job_options = ["会社員（一般）", "会社員（管理職・マネージャー）", "経営者・役員", "フリーランス・個人事業主", "公務員", "学生", "主婦・主夫", "その他"]
+                    pain_options = ["仕事での評価・キャリアアップ", "転職・独立・起業", "職場の人間関係", "恋愛関係・パートナー探し", "夫婦・家族関係", "お金・収入の不安", "自分自身の性格・メンタルの悩み", "人生の目標ややりがい探し"]
+                    
+                    try: job_idx = job_options.index(current_profession)
+                    except ValueError: job_idx = 0
+                    
+                    try: pain_idx = pain_options.index(current_focus)
+                    except ValueError: pain_idx = 0
+                    
+                    new_profession = st.selectbox("現在の職業・ポジション", options=job_options, index=job_idx)
+                    new_focus = st.selectbox("現在フォーカスしている悩み・目標", options=pain_options, index=pain_idx)
+                    
+                    submit_status = st.form_submit_button("状況を更新してAI戦略を再構築", type="primary")
+                    
+                    if submit_status:
+                        if new_profession and new_focus:
+                            loading_placeholder = st.empty()
+                            with st.spinner(" あなたの決断を受信し、全戦略を再構築しています..."):
+                                import time
+                                loading_placeholder.info("✔️ 現在の環境・課題データを更新中...")
+                                time.sleep(0.5)
+                                loading_placeholder.info("✔️ 過去の戦略キャッシュをクリア中...")
+                                time.sleep(0.5)
+                                loading_placeholder.info(" 最新のパラメーターでAI戦略を再計算しています...")
+                                
+                                success, msg = update_user_status(st.session_state.line_id, new_profession, new_focus)
+                                
+                                if success:
+                                    loading_placeholder.success(" 再構築完了！")
+                                    st.success(msg)
+                                    time.sleep(1)
+                                    st.rerun()
+                                else:
+                                    loading_placeholder.error(" エラーが発生しました")
+                                    st.error(msg)
+                        else:
+                            st.error("職業と悩みの両方を入力してください。")
 
     with tab2:
         # --- スマホの横揺れをOSレベルで殺し、グラフだけを滑らせる最終CSS ---
