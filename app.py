@@ -1189,6 +1189,10 @@ def update_user_status(line_id, new_profession, new_focus):
         required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count']
         missing_cols = [c for c in required_cols if c not in headers]
         if missing_cols:
+            try:
+                sheet.add_cols(len(missing_cols)) # シートの右側に足りない分の列を物理的に追加
+            except Exception as e:
+                pass
             for c in missing_cols:
                 sheet.update_cell(1, len(headers) + 1, c)
                 headers.append(c)
@@ -1372,10 +1376,14 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             all_data = sheet.get_all_values()
             headers = all_data[0]
             
-            # ▼▼ 修正：Status_Update_Month, Status_Update_Count を追加 ▼▼
+            # ▼▼ 修正：スプレッドシートの物理的な枠（列）を拡張する処理を追加 ▼▼
             required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count']
             missing_cols = [c for c in required_cols if c not in headers]
             if missing_cols:
+                try:
+                    sheet.add_cols(len(missing_cols)) # シートの右側に足りない分の列を物理的に追加
+                except Exception as e:
+                    print(f"列の追加に失敗しました: {e}")
                 for c in missing_cols:
                     sheet.update_cell(1, len(headers) + 1, c)
                     headers.append(c)
