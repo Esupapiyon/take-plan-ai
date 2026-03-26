@@ -2548,8 +2548,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                         status.update(label="エラーが発生しました", state="error", expanded=False)
                                         st.error(f"AI解析中にエラーが発生しました: {e}")
 
-    st.stop()
-
     # ==========================================
     # 【タブ5】月次戦略会議室（引き算のコンサルティング）
     # ==========================================
@@ -2671,6 +2669,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
                             except Exception as e:
                                 loading_placeholder.error(f"AI解析中にエラーが発生しました: {e}")
+
+    st.stop()
 
 # ==========================================
 # 診断テストの描画 (初回のテストモード)
