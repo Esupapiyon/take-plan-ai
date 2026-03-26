@@ -2555,22 +2555,21 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.subheader("● 月次・戦略会議室")
         st.info("月に1回だけ開かれる特別な戦略会議です。今のあなたのリアルな悩みに対し、科学と占いを駆使した『引き算の決断』を下します。")
         
-        # UIデザイン（ゴールドとディープブルーのプレミアム感）
+        # UIデザイン（メインと極秘ライブラリの分離）
         st.markdown("""
         <style>
             .strategy-box { background-color: #FAFAFA; border: 2px solid #1565C0; border-radius: 12px; padding: 30px; margin-top: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222; line-height: 1.8; font-size: 1.05rem; }
-            .strategy-box h2 { color: #1565C0 !important; font-size: 1.5rem !important; border-bottom: 2px solid #BBDEFB; padding-bottom: 10px; margin-top: 35px; margin-bottom: 20px; font-weight: 900; }
-            .strategy-box h2:first-of-type { margin-top: 0; }
-            .strategy-box p { color: #333333; }
+            .strategy-box p { color: #333333; margin-bottom: 15px; }
         </style>
         """, unsafe_allow_html=True)
 
-        ms_date_idx = headers.index('Monthly_Strategy_Date')
-        ms_text_idx = headers.index('Monthly_Strategy_Text')
+        # 列が見つからなくてもクラッシュしない安全装置（フェイルセーフ）
+        ms_date_idx = headers.index('Monthly_Strategy_Date') if 'Monthly_Strategy_Date' in headers else -1
+        ms_text_idx = headers.index('Monthly_Strategy_Text') if 'Monthly_Strategy_Text' in headers else -1
         
         current_month_str = datetime.date.today().strftime("%Y-%m")
-        saved_strategy_month = user_row[ms_date_idx] if len(user_row) > ms_date_idx else ""
-        saved_strategy_text = user_row[ms_text_idx] if len(user_row) > ms_text_idx else ""
+        saved_strategy_month = user_row[ms_date_idx] if ms_date_idx != -1 and len(user_row) > ms_date_idx else ""
+        saved_strategy_text = user_row[ms_text_idx] if ms_text_idx != -1 and len(user_row) > ms_text_idx else ""
 
         if saved_strategy_month == current_month_str and saved_strategy_text.strip():
             # 今月の戦略が既に生成されている場合は表示
@@ -2580,8 +2579,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             if st.button("来月まで待てない場合（強制再構築）", type="secondary"):
                 with st.spinner("キャッシュをクリア中..."):
                     import time
-                    sheet.update_cell(user_row_idx, ms_date_idx + 1, "")
-                    sheet.update_cell(user_row_idx, ms_text_idx + 1, "")
+                    if ms_date_idx != -1 and ms_text_idx != -1:
+                        sheet.update_cell(user_row_idx, ms_date_idx + 1, "")
+                        sheet.update_cell(user_row_idx, ms_text_idx + 1, "")
                     time.sleep(1)
                     st.rerun()
         else:
@@ -2590,15 +2590,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             st.write("どんな些細なことでも構いません。仕事、人間関係、焦りなど、今あなたの頭のリソースを奪っているものをそのまま書き出してください。")
             
             with st.form("monthly_strategy_form"):
-                current_worry = st.text_area("今月のリアルな悩み・モヤモヤ（数十文字〜箇条書きでOK）", height=150, placeholder="例：来週のプレゼン準備が終わらず焦っている。パートナーの何気ない一言にイライラしてしまい、そんな自分にも自己嫌悪している。等")
+                current_worry = st.text_area("今月のリアルな悩み・モヤモヤ（数十文字〜箇条書きでOK）", height=150, placeholder="例：話し方がうまくならず、商談でいつも焦ってしまう。メンバーに上手く頼れず、一人で仕事を抱え込んで疲弊している。等")
                 submitted = st.form_submit_button("戦略的ブリーフィングを開始する", type="primary")
 
                 if submitted:
-                    if not current_worry.strip():
+                    if ms_date_idx == -1 or ms_text_idx == -1:
+                        st.error(" データベースの準備が完了していません。お手数ですが一度ブラウザをリロード（再読み込み）してください。")
+                    elif not current_worry.strip():
                         st.error("今の悩みやモヤモヤを入力してください。")
                     else:
                         loading_placeholder = st.empty()
-                        with st.spinner(" いただいた情報を元に、あなた専用の月間戦略を構築中...（約20秒）"):
+                        with st.spinner(" いただいた情報を元に、あなた専用の月間戦略を構築中...（約20〜30秒）"):
                             # 今月の運勢を再計算
                             m_date = datetime.date.today().replace(day=15)
                             this_month_res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
@@ -2607,9 +2609,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             user_main_star = user_row[8] if len(user_row) > 8 else "不明"
                             north_star = user_data_for_ai.get("Free_Text", "未設定")
 
-                            # 社長の神ロジックを完全実装した超プロンプト
+                            # 社長と練り上げた【最強のサイレント・プロンプト】
                             prompt = f"""あなたは日本一の戦略的ライフ・コンサルタントです。
-                            以下のユーザーデータと科学的理論に基づき、今月の「戦略的ブリーフィング（計画書）」を作成してください。
+                            以下のユーザーデータと「今月の生々しい悩み」を深く分析し、指定された4つのブロック構成で【月間戦略ブリーフィング】を作成してください。
 
                             【ユーザー情報】
                             ・北極星（理想の未来）: {north_star}
@@ -2619,44 +2621,59 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             ・算命学（主星）: {user_main_star}
 
                             【今月の生々しい悩み（ユーザー入力）】
-                            {current_worry}
+                            「{current_worry}」
 
-                            【絶対遵守の出力ルール】
-                            1. 専門用語（Big5、O、C、算命学の星名など）は一切使用せず、日常語に翻訳すること。
-                            2. Markdownの見出し「## 」を使って以下の3章構成で出力し、指定された科学的理論を必ず裏付けとして組み込むこと。
-                            3. 具体的な「To-Do（何かをやれという足し算）」は絶対に提案しないこと。
-                            4. 回答はHTML形式で出力するため、改行は適宜行い、自然で読みやすい長文にすること。
+                            【🚨絶対遵守の出力ルール🚨】
+                            1. 専門用語（Big5、O、C、算命学の星名、心理学・科学理論名など）は、第1〜第3章の本文では【一切使用禁止】。すべて中学生でもわかる日常語に完全に翻訳しろ。理論の名称は第4章（種明かし）でのみ使用を許可する。
+                            2. 「前を向いて進んでください」「頑張りましょう」などの薄っぺらい応援や同情は【一切禁止】。プロの参謀として、冷徹かつ圧倒的な説得力で事実のみを提示しろ。
+                            3. デイリーのタスク（例：今日〇〇をする、深呼吸する等）は書くな。1ヶ月間継続する「思考のルール（メタ認知の手法）」を提示しろ。
+                            4. 指定された見出し「## 」を必ず使い、Markdown形式で出力しろ。
 
                             # 出力フォーマット
 
-                            ## 第1章：悩みの解体（なぜあなたは今、苦しいのか）
-                            [産業組織心理学の「個人-環境適合（P-E Fit）」理論を用い、ユーザーの素晴らしい性格特性（長所）が、現在の環境や悩みの状況においてどのように「バグ（不適合）」を起こしているかを論理的に解説せよ。「あなたは悪くない、特性と環境のミスマッチである」と外在化（Narrative Therapy）し、深いカタルシスを与えよ]
+                            ## 第1章：痛みの正体（バグの特定）
+                            [ユーザーの悩み「{current_worry}」を主語にし、なぜ今その問題が起きているのかを性格データ（長所）と環境のミスマッチから断言せよ。「あなたが無能なのではなく、あなたの〇〇という優れた性質が、今の環境のルールと衝突してバグ（処理落ち）を起こしているだけだ」と、問題を本人から切り離して外在化させよ]
 
-                            ## 第2章：視座の転換（パラダイムシフト）
-                            [V.フランクルが提唱した「ロゴセラピー（意味への意志）」の理論を用い、現在の苦痛やモヤモヤを、ユーザーが掲げる「北極星（理想の未来）」に到達するための必然的なプロセス・通過儀礼として強引かつ論理的に再定義せよ。苦痛に意味を与え、前を向かせよ]
+                            ## 第2章：北極星への伏線（パラダイムシフト）
+                            [この悩みが、ユーザーの北極星「{north_star}」を達成するために、なぜ【今、避けては通れない必然的なテスト（通過儀礼）】なのかを論理的に紐解け。ネガティブな事象を、未来の成功のための壮大な伏線として再定義し、痛みに意味を与えよ]
 
-                            ## 第3章：今月の「戦略的撤退」の決断
-                            [2021年にNature誌で発表された「引き算の科学（Subtraction Bias）」を引用し、「人間の脳は問題を解決する際、無意識に『足し算（何かを増やす）』をしてしまうバグがある。だからこそ、コンサルタントである私が強制的に『引き算』を命じます」と力強く宣言せよ。その上で、今月の運勢スコアも加味し、ユーザーが今月『絶対に手放すべきこと・サボるべきこと』を具体的に1つ断言し、強力な免罪符を与えよ]
+                            ## 第3章：今月の「引き算」と継続フレームワーク
+                            [人間の脳は足し算でしか解決策を思いつかない構造的なバグを持っていると指摘した上で、「だからこそ私が強制的に引き算を命じます。今月、あなたは〇〇を完全に手放してください」と強力な免罪符を与えろ。その上で、手放すための1ヶ月間有効な「思考のルール（例：60点で完了とするサティスファイシング、他人の感情の責任を負わない境界線等）」を1つだけ処方しろ]
+
+                            ## 極秘ライブラリ：賢者の種明かし
+                            [※この章でのみ専門用語を解禁する。今回の分析に用いた科学的理論（個人-環境適合、ロゴセラピー、引き算の科学など）と算命学のロジックを、コンサルティングの裏側（種明かし）として箇条書きで短く・知的に解説しろ]
                             """
 
                             try:
                                 import openai
                                 openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                                 response = openai_client.chat.completions.create(
-                                    model="gpt-4o", # 複雑な論理展開が必要なためgpt-4oを使用
+                                    model="gpt-4o", # 複雑な論理展開が必要なためgpt-4oを指定
                                     messages=[
                                         {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、ユーザーの心を救う圧倒的な言語化能力を持っています。"},
                                         {"role": "user", "content": prompt}
                                     ],
                                     temperature=0.7,
-                                    max_tokens=2000
+                                    max_tokens=2500
                                 )
                                 strategy_text = response.choices[0].message.content
                                 
-                                # MarkdownをHTMLに変換（デイリーのレポートと同じ装飾ロジック）
+                                # MarkdownをHTMLに変換し、美しいUIに置換
                                 strategy_text = strategy_text.replace("\n", "<br>")
-                                import re
-                                strategy_text = re.sub(r"##\s*(.*?)(?=<br>|$)", r"<h2 style='color:#1565C0; font-size:1.5rem; border-bottom:2px solid #BBDEFB; padding-bottom:10px; margin-top:35px; margin-bottom:20px; font-weight:900;'>\1</h2>", strategy_text)
+                                
+                                # 極秘ライブラリの部分だけ、背景色が違う特別なボックスに切り替えるハック
+                                strategy_text = re.sub(
+                                    r"##\s*極秘ライブラリ：賢者の種明かし", 
+                                    r"</div><div style='background-color:#E8EAF6; border-left:5px solid #3F51B5; padding:25px; border-radius:8px; margin-top:40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color:#303F9F;'><h3 style='color:#1A237E; margin-top:0; font-size:1.3rem; font-weight:900; border-bottom:1px solid #C5CAE9; padding-bottom:10px; margin-bottom:15px;'>🔐 極秘ライブラリ：賢者の種明かし</h3>", 
+                                    strategy_text
+                                )
+                                
+                                # 通常の第1章〜第3章の見出し
+                                strategy_text = re.sub(
+                                    r"##\s*(.*?)(?=<br>|$)", 
+                                    r"<h2 style='color:#1565C0; font-size:1.4rem; border-bottom:2px solid #BBDEFB; padding-bottom:8px; margin-top:35px; margin-bottom:15px; font-weight:900;'>\1</h2>", 
+                                    strategy_text
+                                )
 
                                 # データベースに保存
                                 sheet.update_cell(user_row_idx, ms_date_idx + 1, current_month_str)
@@ -2669,7 +2686,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
                             except Exception as e:
                                 loading_placeholder.error(f"AI解析中にエラーが発生しました: {e}")
-
     st.stop()
 
 # ==========================================
