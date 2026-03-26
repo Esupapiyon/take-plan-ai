@@ -1376,8 +1376,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             all_data = sheet.get_all_values()
             headers = all_data[0]
             
-            # ▼▼ 修正：スプレッドシートの物理的な枠（列）を拡張する処理を追加 ▼▼
-            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count']
+            # ▼▼ 修正：タブ5用の2列（Monthly_Strategy_Date, Monthly_Strategy_Text）をここにも確実に追加 ▼▼
+            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count', 'Monthly_Strategy_Date', 'Monthly_Strategy_Text']
             missing_cols = [c for c in required_cols if c not in headers]
             if missing_cols:
                 try:
