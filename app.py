@@ -2548,18 +2548,22 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                         status.update(label="エラーが発生しました", state="error", expanded=False)
                                         st.error(f"AI解析中にエラーが発生しました: {e}")
 
-    # ==========================================
+# ==========================================
     # 【タブ5】月次戦略会議室（引き算のコンサルティング）
     # ==========================================
     with tab5:
         st.subheader("● 月次・戦略会議室")
         st.info("月に1回だけ開かれる特別な戦略会議です。今のあなたのリアルな悩みに対し、科学と占いを駆使した『引き算の決断』を下します。")
         
-        # UIデザイン（メインと極秘ライブラリの分離）
+        # UIデザイン（メインコンテンツと極秘ライブラリの完全分離）
         st.markdown("""
         <style>
             .strategy-box { background-color: #FAFAFA; border: 2px solid #1565C0; border-radius: 12px; padding: 30px; margin-top: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222; line-height: 1.8; font-size: 1.05rem; }
+            .strategy-box h2 { color: #1565C0 !important; font-size: 1.4rem !important; border-bottom: 2px solid #BBDEFB; padding-bottom: 8px; margin-top: 35px; margin-bottom: 15px; font-weight: 900; }
+            .strategy-box h2:first-of-type { margin-top: 0; }
             .strategy-box p { color: #333333; margin-bottom: 15px; }
+            .secret-library-box { background-color: #E8EAF6; border-left: 5px solid #3F51B5; padding: 25px; border-radius: 8px; margin-top: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color: #303F9F; line-height: 1.7; font-size: 0.95rem; }
+            .secret-library-box h3 { color: #1A237E !important; margin-top: 0 !important; font-size: 1.3rem !important; font-weight: 900 !important; border-bottom: 1px solid #C5CAE9 !important; padding-bottom: 10px !important; margin-bottom: 15px !important; }
         </style>
         """, unsafe_allow_html=True)
 
@@ -2587,10 +2591,10 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         else:
             # 今月の戦略が未生成の場合の入力フォーム
             st.markdown("### ○ 今月の「生々しいモヤモヤ」を教えてください")
-            st.write("どんな些細なことでも構いません。仕事、人間関係、焦りなど、今あなたの頭のリソースを奪っているものをそのまま書き出してください。")
+            st.write("どんな些細なことでも構いません。仕事、人間関係、焦り、お金の不安など、今あなたの頭のリソースを奪っているものをそのまま書き出してください。")
             
             with st.form("monthly_strategy_form"):
-                current_worry = st.text_area("今月のリアルな悩み・モヤモヤ（数十文字〜箇条書きでOK）", height=150, placeholder="例：話し方がうまくならず、商談でいつも焦ってしまう。メンバーに上手く頼れず、一人で仕事を抱え込んで疲弊している。等")
+                current_worry = st.text_area("今月のリアルな悩み・モヤモヤ（数十文字〜箇条書きでOK）", height=150, placeholder="例：話し方がうまくならず、商談でいつも焦ってしまう。恋人の何気ない一言に過剰に反応してしまい、そんな自分にも自己嫌悪している。等")
                 submitted = st.form_submit_button("戦略的ブリーフィングを開始する", type="primary")
 
                 if submitted:
@@ -2600,7 +2604,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error("今の悩みやモヤモヤを入力してください。")
                     else:
                         loading_placeholder = st.empty()
-                        with st.spinner(" いただいた情報を元に、あなた専用の月間戦略を構築中...（約20〜30秒）"):
+                        with st.spinner(" 悩みを自動分類し、最適な極秘メソッドを引き当てています...（約20〜30秒）"):
                             # 今月の運勢を再計算
                             m_date = datetime.date.today().replace(day=15)
                             this_month_res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
@@ -2609,75 +2613,82 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             user_main_star = user_row[8] if len(user_row) > 8 else "不明"
                             north_star = user_data_for_ai.get("Free_Text", "未設定")
 
-                            # 社長と練り上げた【最強のサイレント・プロンプト】
+                            # 社長と構築した【完全版・Intent Routing ＆ メタスキル転用プロンプト】
                             prompt = f"""あなたは日本一の戦略的ライフ・コンサルタントです。
-                            以下のユーザーデータと「今月の生々しい悩み」を深く分析し、指定された4つのブロック構成で【月間戦略ブリーフィング】を作成してください。
+以下のユーザーデータと「今月の悩み」を分析し、最適な戦略を構築して【必ず指定のJSON形式】で出力してください。
 
-                            【ユーザー情報】
-                            ・北極星（理想の未来）: {north_star}
-                            ・職業: {user_data_for_ai.get('Job', '不明')}
-                            ・今月の運勢スコア: {this_month_res['score']}点 (環境:{this_month_res['env_reason']}, 精神:{this_month_res['mind_reason']})
-                            ・Big5性格特性: O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}
-                            ・算命学（主星）: {user_main_star}
+【ユーザー情報】
+・北極星（理想の未来）: {north_star}
+・職業: {user_data_for_ai.get('Job', '不明')}
+・今月の運勢スコア: {this_month_res['score']}点 (環境:{this_month_res['env_reason']}, 精神:{this_month_res['mind_reason']})
+・Big5性格特性: O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}
+・算命学（主星）: {user_main_star}
 
-                            【今月の生々しい悩み（ユーザー入力）】
-                            「{current_worry}」
+【今月の生々しい悩み】
+「{current_worry}」
 
-                            【🚨絶対遵守の出力ルール🚨】
-                            1. 専門用語（Big5、O、C、算命学の星名、心理学・科学理論名など）は、第1〜第3章の本文では【一切使用禁止】。すべて中学生でもわかる日常語に完全に翻訳しろ。理論の名称は第4章（種明かし）でのみ使用を許可する。
-                            2. 「前を向いて進んでください」「頑張りましょう」などの薄っぺらい応援や同情は【一切禁止】。プロの参謀として、冷徹かつ圧倒的な説得力で事実のみを提示しろ。
-                            3. デイリーのタスク（例：今日〇〇をする、深呼吸する等）は書くな。1ヶ月間継続する「思考のルール（メタ認知の手法）」を提示しろ。
-                            4. 指定された見出し「## 」を必ず使い、Markdown形式で出力しろ。
+【STEP1：悩みの自動分類（Intent Routing）】
+まず、この悩みが以下のどれに該当するか判定し、その「原因ロジック」を適用せよ。
+A(対人・通信): 認知的過負荷。他者への配慮(A)がワーキングメモリをパンクさせている。
+B(キャリア・目標): 個人-環境適合(P-E Fit)の不一致。完璧主義(C)がリソース不足の環境でバグを起こしている。
+C(メンタル・自己肯定感): 自己不一致理論。高い理想(O)と現実のギャップが自己批判の認知の歪みを生んでいる。
+D(お金・物理リソース): 欠乏の心理学。脳が「欠乏」のアラートにリソースを奪われ、視野狭窄に陥っている。
+E(愛着・家族・親密な関係): 愛着理論。感受性(N)が生存戦略の防衛機制として過剰アラートを鳴らしている。
 
-                            # 出力フォーマット
+【STEP2：処方する極秘フレームワークの選定】
+以下のリストから、今回の悩みに最も適した【手法】を1つだけ選べ。
+- 対人向け: PREP法, DESC法, ペーシング
+- キャリア向け: サティスファイシング, WOOPの法則, アイゼンハワー・マトリクス
+- メンタル向け: ABCDEモデル, 認知的脱フュージョン
+- お金・リソース向け: ゼロベース思考, パーキンソンの法則の逆利用
+- 愛着向け: アサーティブ・コミュニケーション, 境界線の再設定
 
-                            ## 第1章：痛みの正体（バグの特定）
-                            [ユーザーの悩み「{current_worry}」を主語にし、なぜ今その問題が起きているのかを性格データ（長所）と環境のミスマッチから断言せよ。「あなたが無能なのではなく、あなたの〇〇という優れた性質が、今の環境のルールと衝突してバグ（処理落ち）を起こしているだけだ」と、問題を本人から切り離して外在化させよ]
+【STEP3：絶対遵守の出力ルール】
+1. 本文（chapter1〜3）では専門用語（Big5、算命学、心理学理論名）を【一切使用禁止】。すべて日常語で語れ。
+2. 応援や同情は禁止。プロとして冷徹に事実のみを提示せよ。
+3. Markdown（```json 等）は一切含めず、純粋なJSONテキストのみを出力せよ。
 
-                            ## 第2章：北極星への伏線（パラダイムシフト）
-                            [この悩みが、ユーザーの北極星「{north_star}」を達成するために、なぜ【今、避けては通れない必然的なテスト（通過儀礼）】なのかを論理的に紐解け。ネガティブな事象を、未来の成功のための壮大な伏線として再定義し、痛みに意味を与えよ]
-
-                            ## 第3章：今月の「引き算」と継続フレームワーク
-                            [人間の脳は足し算でしか解決策を思いつかない構造的なバグを持っていると指摘した上で、「だからこそ私が強制的に引き算を命じます。今月、あなたは〇〇を完全に手放してください」と強力な免罪符を与えろ。その上で、手放すための1ヶ月間有効な「思考のルール（例：60点で完了とするサティスファイシング、他人の感情の責任を負わない境界線等）」を1つだけ処方しろ]
-
-                            ## 極秘ライブラリ：賢者の種明かし
-                            [※この章でのみ専門用語を解禁する。今回の分析に用いた科学的理論（個人-環境適合、ロゴセラピー、引き算の科学など）と算命学のロジックを、コンサルティングの裏側（種明かし）として箇条書きで短く・知的に解説しろ]
-                            """
+{{
+  "chapter1": "第1章：痛みの正体（バグの特定）。[STEP1で判定した原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると外在化せよ。専門用語は使うな]",
+  "chapter2": "第2章：北極星への伏線（パラダイムシフト）。[今の痛みを「北極星」への伏線と定義せよ。※超重要: 悩みと北極星のジャンルが違う場合、無理に事象を繋ぐな。「この悩みで得られる感情のコントロール力や境界線を引く力（メタスキル）が北極星達成に不可欠だから起きている」または「脳のリソースを奪うこの問題を今手放す必要があるから起きている」というロジックで美しく抽象化して繋げ]",
+  "chapter3": "第3章：今月の引き算と継続フレームワーク。[まず「これまでよく一人でその脳の過負荷に耐えてきた。今日だけはその真面目な自分を許せ」とセルフ・コンパッションを与えよ。次に、人間の足し算バイアスを指摘し、「だから今月は〇〇を完全に手放せ（引き算）」と強力な免罪符を出せ。最後に、STEP2で選んだ手法のやり方を簡潔に説明し、1ヶ月間継続するルールとして提示せよ]",
+  "secret_library": "極秘ライブラリ：賢者の種明かし。[今回裏側で使った理論（STEP1の理論、引き算の科学、ロゴセラピー、算命学など）を箇条書きで知的に種明かしせよ。専門用語の使用をここでだけ許可する]"
+}}
+"""
 
                             try:
                                 import openai
                                 openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                                 response = openai_client.chat.completions.create(
-                                    model="gpt-4o", # 複雑な論理展開が必要なためgpt-4oを指定
+                                    model="gpt-4o", 
+                                    response_format={ "type": "json_object" },
                                     messages=[
-                                        {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。専門用語は絶対に使わず、ユーザーの心を救う圧倒的な言語化能力を持っています。"},
+                                        {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。必ず指定されたJSONフォーマットで出力してください。"},
                                         {"role": "user", "content": prompt}
                                     ],
-                                    temperature=0.7,
-                                    max_tokens=2500
-                                )
-                                strategy_text = response.choices[0].message.content
-                                
-                                # MarkdownをHTMLに変換し、美しいUIに置換
-                                strategy_text = strategy_text.replace("\n", "<br>")
-                                
-                                # 極秘ライブラリの部分だけ、背景色が違う特別なボックスに切り替えるハック
-                                strategy_text = re.sub(
-                                    r"##\s*極秘ライブラリ：賢者の種明かし", 
-                                    r"</div><div style='background-color:#E8EAF6; border-left:5px solid #3F51B5; padding:25px; border-radius:8px; margin-top:40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color:#303F9F;'><h3 style='color:#1A237E; margin-top:0; font-size:1.3rem; font-weight:900; border-bottom:1px solid #C5CAE9; padding-bottom:10px; margin-bottom:15px;'>🔐 極秘ライブラリ：賢者の種明かし</h3>", 
-                                    strategy_text
+                                    temperature=0.7
                                 )
                                 
-                                # 通常の第1章〜第3章の見出し
-                                strategy_text = re.sub(
-                                    r"##\s*(.*?)(?=<br>|$)", 
-                                    r"<h2 style='color:#1565C0; font-size:1.4rem; border-bottom:2px solid #BBDEFB; padding-bottom:8px; margin-top:35px; margin-bottom:15px; font-weight:900;'>\1</h2>", 
-                                    strategy_text
-                                )
+                                # JSONデータのパース
+                                result_data = json.loads(response.choices[0].message.content)
+                                
+                                # Python側で美しいHTMLに組み上げ（Teaser & Deep Dive の分離）
+                                html_output = ""
+                                html_output += f"<h2>第1章：痛みの正体（バグの特定）</h2><p>{result_data.get('chapter1', '')}</p>"
+                                html_output += f"<h2>第2章：北極星への伏線（パラダイムシフト）</h2><p>{result_data.get('chapter2', '')}</p>"
+                                html_output += f"<h2>第3章：今月の引き算と継続フレームワーク</h2><p>{result_data.get('chapter3', '')}</p>"
+                                
+                                # 極秘ライブラリを専用ボックス化
+                                html_output += f"""
+                                </div>
+                                <div class='secret-library-box'>
+                                    <h3>📜 極秘ライブラリ：賢者の種明かし</h3>
+                                    {result_data.get('secret_library', '').replace(chr(10), '<br>')}
+                                """
 
                                 # データベースに保存
                                 sheet.update_cell(user_row_idx, ms_date_idx + 1, current_month_str)
-                                sheet.update_cell(user_row_idx, ms_text_idx + 1, strategy_text)
+                                sheet.update_cell(user_row_idx, ms_text_idx + 1, html_output)
                                 
                                 loading_placeholder.success("✨ 今月の戦略会議が完了しました！")
                                 import time
