@@ -2723,24 +2723,37 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 
                             skill_data = SECRET_SKILLS[assigned_skill]
 
-                            prompt = f"""あなたは日本一の戦略的ライフ・コンサルタントです。
-以下のシステム判定とユーザーデータを元に、【必ず指定のJSON形式】で月間戦略を出力してください。
+# 社長と構築した【完全版・Intent Routing ＆ メタスキル転用プロンプト】
+                            prompt = f"""あなたは日本一の温かく、かつ論理的な戦略的ライフ・コンサルタントです。
+以下のユーザーデータと「今月の悩み」を分析し、ユーザーへ直接語りかけるトーン（です・ます調）で、指定のJSON形式で出力してください。
 
 【ユーザー情報】
 ・北極星（理想の未来）: {north_star}
-・今月の悩み: 「{current_worry}」
-・システム判定原因: {intent_reason}
-・今回処方する極秘スキル: 【{skill_data['name']}】({skill_data['desc']})
+・職業: {user_data_for_ai.get('Job', '不明')}
+・今月の運勢スコア: {this_month_res['score']}点 (環境:{this_month_res['env_reason']}, 精神:{this_month_res['mind_reason']})
+・Big5性格特性: O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}
+・算命学（主星）: {user_main_star}
+
+【今月の生々しい悩み】
+「{current_worry}」
+
+【STEP1：悩みの自動分類（Intent Routing）】
+原因ロジック: {intent_reason}
+処方スキル: 【{skill_data['name']}】({skill_data['desc']})
 
 【🚨絶対遵守の出力ルール🚨】
-1. 専門用語は一切使用禁止。
-2. 応援や同情は禁止。プロとして冷徹に事実のみを提示せよ。
+1. AIへの指示文（「慈悲を与えよ」「提案せよ」など）をそのまま出力する「オウム返し」は絶対禁止。必ず「コンサルタントからユーザーへの直接の言葉」として自然な文章を書け。
+2. 専門用語（Big5、算命学、心理学理論名）は、chapter1〜3では【一切使用禁止】。
 3. 純粋なJSONテキストのみを出力せよ（Markdownブロックは不要）。
 
 {{
-  "chapter1": "第1章：痛みの正体（バグの特定）。[システム判定原因を用い、悩みが性格と環境のバグであることを外在化させよ。]",
-  "chapter2": "第2章：北極星への伏線（パラダイムシフト）。[今の悩みを乗り越えて得られる『メタスキル（感情のコントロールや境界線を引く力）』が、北極星達成に不可欠だからこそ起きている試練だと抽象化して美しく繋げ。]",
-  "chapter3": "第3章：今月の引き算と継続フレームワーク。[まず『よく一人でその脳の過負荷に耐えてきた、今日だけは自分を許せ』と慈悲を与えよ。次に人間の足し算バイアスを指摘し『今月は〇〇を完全に引き算しろ』と免罪符を出せ。最後に、処方スキル【{skill_data['name']}】を以下の3ステップで現場で使えるレベルで具体的に解説しろ。\\n<br><b>【Lv.1（第1週）】観察と準備</b>：（やり方と注意点）\\n<br><b>【Lv.2（第2〜3週）】微小な接触</b>：（やり方と注意点）\\n<br><b>【Lv.3（第4週）】本格稼働</b>：（※必ずリアルなセリフ「」や現場での具体的なアクション例を2つ以上入れること）]"
+  "chapter1": "第1章：痛みの正体（バグの特定）。[原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると優しく外在化させよ。]",
+  "chapter2": "第2章：北極星への伏線（パラダイムシフト）。[今の痛みを「北極星」への伏線と定義せよ。悩みと北極星のジャンルが違う場合は『この悩みで得られるメタスキル（感情のコントロールや境界線を引く力）が北極星達成に不可欠だ』と美しく抽象化して繋げ。]",
+  "chapter3_intro": "第3章の導入。[まず『よく一人でその悩みに向き合いましたね、今日まで本当によく頑張りました。』と直接ユーザーを労え。次に『悩みについて考えすぎてネガティブになり、「ダメかも」「怒られる」などの自己批判をしてしまう傾向があります。今月はそれをやめるようにすると、気持ちが楽になると思いますよ』と、引き算を【優しい提案】として伝えよ。]",
+  "chapter3_lv1": "【Lv.1（第1週）】観察と準備<br><b>やり方：</b>[処方スキル【{skill_data['name']}】の初期段階のやり方]<br><b>具体例：</b>[日常の違う角度のシチュエーションで、極めてイメージしやすい具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
+  "chapter3_lv2": "【Lv.2（第2〜3週）】微小な接触<br><b>やり方：</b>[中級段階のやり方]<br><b>具体例：</b>[違う角度のシチュエーションでの具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
+  "chapter3_lv3": "【Lv.3（第4週）】本格稼働<br><b>やり方：</b>[最終段階のやり方]<br><b>具体例：</b>[現場での具体的なアクション例や、実際に口に出すリアルなセリフ「」を2つ以上挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
+  "secret_library": "極秘ライブラリ：賢者の種明かし。[今回裏側で使った理論を箇条書きで知的に種明かしせよ。専門用語の使用をここでだけ許可する]"
 }}
 """
 
@@ -2751,20 +2764,45 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                     model="gpt-4o", 
                                     response_format={ "type": "json_object" },
                                     messages=[
-                                        {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。必ずJSONで出力してください。"},
+                                        {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。必ず指定されたJSONフォーマットで出力してください。"},
                                         {"role": "user", "content": prompt}
                                     ],
                                     temperature=0.7
                                 )
                                 
+                                # JSONデータのパース
                                 result_data = json.loads(response.choices[0].message.content)
                                 
+                                # Python側で改行とデザインを完璧にコントロールしてHTMLを組み上げ
                                 html_output = ""
                                 html_output += f"<h2>第1章：痛みの正体（バグの特定）</h2><p>{result_data.get('chapter1', '')}</p>"
                                 html_output += f"<h2>第2章：北極星への伏線（パラダイムシフト）</h2><p>{result_data.get('chapter2', '')}</p>"
-                                html_output += f"<h2>第3章：今月の引き算と継続フレームワーク</h2><p>{result_data.get('chapter3', '')}</p>"
+                                
+                                # 第3章：導入と3ステップをPython側で強制的に改行・ブロック化
+                                html_output += f"<h2>第3章：今月の引き算と継続フレームワーク</h2>"
+                                html_output += f"<p>{result_data.get('chapter3_intro', '')}</p>"
+                                
+                                html_output += f"""
+                                <div style='background-color:#FFFFFF; border-left:4px solid #1565C0; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
+                                    {result_data.get('chapter3_lv1', '')}
+                                </div>
+                                <div style='background-color:#FFFFFF; border-left:4px solid #1565C0; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
+                                    {result_data.get('chapter3_lv2', '')}
+                                </div>
+                                <div style='background-color:#FFFFFF; border-left:4px solid #D32F2F; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
+                                    {result_data.get('chapter3_lv3', '')}
+                                </div>
+                                """
+                                
+                                # 極秘ライブラリを専用ボックス化
+                                html_output += f"""
+                                </div>
+                                <div class='secret-library-box'>
+                                    <h3>🔐 極秘ライブラリ：賢者の種明かし</h3>
+                                    {result_data.get('secret_library', '').replace(chr(10), '<br>')}
+                                """
 
-                                # データベースに保存（HTML文章と、選ばれたスキルID）
+                                # データベースに保存
                                 sheet.update_cell(user_row_idx, ms_date_idx + 1, current_month_str)
                                 sheet.update_cell(user_row_idx, ms_text_idx + 1, html_output)
                                 if ms_skill_idx != -1:
