@@ -2643,6 +2643,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             .strategy-box { background-color: #FAFAFA; border: 2px solid #1565C0; border-radius: 12px; padding: 30px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222; line-height: 1.8; font-size: 1.05rem; }
             .strategy-box h2 { color: #1565C0 !important; font-size: 1.4rem !important; border-bottom: 2px solid #BBDEFB; padding-bottom: 8px; margin-top: 35px; margin-bottom: 15px; font-weight: 900; }
             .strategy-box h2:first-of-type { margin-top: 0; }
+            .secret-library-box { background-color: #E8EAF6; border-left: 5px solid #3F51B5; padding: 25px; border-radius: 8px; margin-top: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color: #303F9F; line-height: 1.7; font-size: 0.95rem; }
+            .secret-library-box h3 { color: #1A237E !important; margin-top: 0 !important; font-size: 1.3rem !important; font-weight: 900 !important; border-bottom: 1px solid #C5CAE9 !important; padding-bottom: 10px !important; margin-bottom: 15px !important; }
         </style>
         """, unsafe_allow_html=True)
 
@@ -2704,9 +2706,12 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     else:
                         loading_placeholder = st.empty()
                         with st.spinner(" 悩みを自動分類し、最適な極秘メソッドを引き当てています...（約20〜30秒）"):
-                            # 今月の運勢
+                            # ==========================================
+                            # ▼ 変数の再定義（エラー回避のため確実に取得）
+                            # ==========================================
                             m_date = datetime.date.today().replace(day=15)
                             this_month_res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
+                            user_main_star = user_row[8] if len(user_row) > 8 else "不明"
                             north_star = user_data_for_ai.get("Free_Text", "未設定")
 
                             # 【システムによるIntent Routing（悩みの自動分類とスキル引き当て）】
@@ -2723,7 +2728,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 
                             skill_data = SECRET_SKILLS[assigned_skill]
 
-# 社長と構築した【完全版・Intent Routing ＆ メタスキル転用プロンプト】
                             prompt = f"""あなたは日本一の温かく、かつ論理的な戦略的ライフ・コンサルタントです。
 以下のユーザーデータと「今月の悩み」を分析し、ユーザーへ直接語りかけるトーン（です・ます調）で、指定のJSON形式で出力してください。
 
@@ -2747,13 +2751,13 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 3. 純粋なJSONテキストのみを出力せよ（Markdownブロックは不要）。
 
 {{
-  "chapter1": "第1章：痛みの正体（バグの特定）。[原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると優しく外在化させよ。]",
-  "chapter2": "第2章：北極星への伏線（パラダイムシフト）。[今の痛みを「北極星」への伏線と定義せよ。悩みと北極星のジャンルが違う場合は『この悩みで得られるメタスキル（感情のコントロールや境界線を引く力）が北極星達成に不可欠だ』と美しく抽象化して繋げ。]",
-  "chapter3_intro": "第3章の導入。[まず『よく一人でその悩みに向き合いましたね、今日まで本当によく頑張りました。』と直接ユーザーを労え。次に『悩みについて考えすぎてネガティブになり、「ダメかも」「怒られる」などの自己批判をしてしまう傾向があります。今月はそれをやめるようにすると、気持ちが楽になると思いますよ』と、引き算を【優しい提案】として伝えよ。]",
+  "chapter1": "第1章の本文。[原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると優しく外在化させよ。専門用語は使うな。]",
+  "chapter2": "第2章の本文。[今の痛みを「北極星」への伏線と定義せよ。悩みと北極星のジャンルが違う場合は『この悩みで得られる感情のコントロール力や境界線を引く力（メタスキル）が北極星達成に不可欠だ』と美しく抽象化して繋げ。]",
+  "chapter3_intro": "第3章の導入。[まず『よく一人でその悩みに向き合いましたね、今日まで本当によく頑張りました。』と直接ユーザーを労え。次に『悩みについて考えすぎてネガティブになり、自己批判をしてしまう傾向があります。今月はそれをやめるようにすると、気持ちが楽になると思いますよ』と、引き算を【優しい提案】として伝えよ。]",
   "chapter3_lv1": "【Lv.1（第1週）】観察と準備<br><b>やり方：</b>[処方スキル【{skill_data['name']}】の初期段階のやり方]<br><b>具体例：</b>[日常の違う角度のシチュエーションで、極めてイメージしやすい具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
   "chapter3_lv2": "【Lv.2（第2〜3週）】微小な接触<br><b>やり方：</b>[中級段階のやり方]<br><b>具体例：</b>[違う角度のシチュエーションでの具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
   "chapter3_lv3": "【Lv.3（第4週）】本格稼働<br><b>やり方：</b>[最終段階のやり方]<br><b>具体例：</b>[現場での具体的なアクション例や、実際に口に出すリアルなセリフ「」を2つ以上挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
-  "secret_library": "極秘ライブラリ：賢者の種明かし。[今回裏側で使った理論を箇条書きで知的に種明かしせよ。専門用語の使用をここでだけ許可する]"
+  "secret_library": "今回裏側で使った理論を箇条書きで知的に種明かしせよ。専門用語の使用をここでだけ許可する。"
 }}
 """
 
