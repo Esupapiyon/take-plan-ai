@@ -1232,6 +1232,57 @@ def update_user_status(line_id, new_profession, new_focus):
         return False, "ユーザーが見つかりません"
     except Exception as e:
         return False, f"エラー: {e}"
+
+# ==========================================
+# 📚 極秘ライブラリ（スキル図鑑）のマスターデータ
+# ==========================================
+SECRET_SKILLS = {
+    "SKILL_01": {"name": "ペーシング", "icon": "🗣️", "desc": "相手の呼吸や声のトーン、話すスピードを意図的に合わせることで、脳のミラーニューロンを刺激し、無意識の安心感とラポール（信頼関係）を強制的に築く心理技術。"},
+    "SKILL_02": {"name": "PREP法", "icon": "📝", "desc": "結論（Point）→理由（Reason）→具体例（Example）→結論（Point）の順序で話すことで、感情のブレを排除し、ワーキングメモリへの負荷を最小限に抑えて論理的説得力を最大化するフレームワーク。"},
+    "SKILL_03": {"name": "サティスファイシング", "icon": "⚖️", "desc": "「100点の最高」を探し続けるマキシマイザー思考を捨て、事前に決めた「60点の基準」を満たした瞬間に意思決定を終える、行動経済学における最適満足化の手法。"},
+    "SKILL_04": {"name": "認知的脱フュージョン", "icon": "🧘", "desc": "「私はダメだ」という思考に対し、「私はダメだ【と思った】」と名札をつけて客観視することで、ネガティブな自動思考と自分自身を切り離すACT（アクセプタンス＆コミットメント・セラピー）の技術。"},
+    "SKILL_05": {"name": "アサーション", "icon": "🤝", "desc": "自分を押し殺す（非主張的）のでもなく、相手を攻撃する（攻撃的）のでもなく、「自分も相手も尊重しながら、具体的な事実と要求を伝える」自他尊重のコミュニケーションスキル。"}
+}
+
+# ==========================================
+# 🔓 スキルアンロック＆EXP加算関数（+30 EXP）
+# ==========================================
+def unlock_monthly_skill(line_id, skill_id):
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        from oauth2client.service_account import ServiceAccountCredentials
+        import gspread
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+        all_data = sheet.get_all_values()
+        headers = all_data[0]
+        
+        exp_col = headers.index('EXP') + 1
+        skills_col = headers.index('Unlocked_Skills') + 1
+        
+        for i in range(len(all_data)-1, 0, -1):
+            if len(all_data[i]) > 0 and all_data[i][0] == line_id:
+                row_num = i + 1
+                row_data = all_data[i]
+                
+                # EXPを30加算
+                try: current_exp = int(row_data[exp_col-1])
+                except: current_exp = 0
+                sheet.update_cell(row_num, exp_col, current_exp + 30)
+                
+                # スキルをカンマ区切りで追加
+                current_skills = row_data[skills_col-1] if len(row_data) >= skills_col else ""
+                skill_list = [s.strip() for s in current_skills.split(",") if s.strip()]
+                if skill_id not in skill_list:
+                    skill_list.append(skill_id)
+                    sheet.update_cell(row_num, skills_col, ",".join(skill_list))
+                
+                return True, f"✨ 極秘スキル【{SECRET_SKILLS[skill_id]['name']}】を習得し、30 EXPを獲得しました！"
+        return False, "ユーザーが見つかりません"
+    except Exception as e:
+        return False, f"通信エラー: {e}"
       
 def get_user_status(line_id):
     try:
@@ -1377,7 +1428,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             headers = all_data[0]
             
             # ▼▼ 修正：タブ5用の2列（Monthly_Strategy_Date, Monthly_Strategy_Text）をここにも確実に追加 ▼▼
-            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count', 'Monthly_Strategy_Date', 'Monthly_Strategy_Text']
+            required_cols = ['Daily_Date', 'Daily_Text', 'Monthly_Date', 'Monthly_Text', 'Yearly_Date', 'Yearly_Text', 'Status_Update_Month', 'Status_Update_Count', 'Monthly_Strategy_Date', 'Monthly_Strategy_Text', 'Unlocked_Skills', 'Current_Monthly_Skill']
             missing_cols = [c for c in required_cols if c not in headers]
             if missing_cols:
                 try:
@@ -1509,6 +1560,38 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                             st.error(msg)
                 else:
                     st.error("入力してください。")
+
+        # ==========================================
+        # 📚 マイページ：極秘スキル図鑑（コレクション）
+        # ==========================================
+        st.markdown("### 📚 あなたの極秘スキル図鑑")
+        
+        # ユーザーがアンロックしたスキルのリストを取得
+        skills_idx = headers.index('Unlocked_Skills') if 'Unlocked_Skills' in headers else -1
+        unlocked_skills_str = user_row[skills_idx] if skills_idx != -1 and len(user_row) > skills_idx else ""
+        unlocked_skills = [s.strip() for s in unlocked_skills_str.split(",") if s.strip()]
+        
+        st.markdown("""
+        <style>
+            .skill-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+            .skill-card-locked { background-color: #EEEEEE; border: 2px dashed #CCCCCC; border-radius: 8px; padding: 15px; width: 100%; color: #999999; text-align: center; font-weight: bold; }
+            .skill-card-unlocked { background-color: #E8EAF6; border: 2px solid #3F51B5; border-radius: 8px; padding: 15px; width: 100%; color: #1A237E; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            .skill-title { font-size: 1.1rem; font-weight: 900; margin-bottom: 5px; }
+            .skill-desc { font-size: 0.85rem; color: #303F9F; line-height: 1.5; }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        html_skills = "<div class='skill-grid'>"
+        for sid, sdata in SECRET_SKILLS.items():
+            if sid in unlocked_skills:
+                # 解放済みスキル
+                html_skills += f"<div class='skill-card-unlocked'><div class='skill-title'>{sdata['icon']} {sdata['name']}</div><div class='skill-desc'>{sdata['desc']}</div></div>"
+            else:
+                # 未解放スキル（シルエット）
+                html_skills += f"<div class='skill-card-locked'>🔒 ？？？（未解放の極秘スキル）</div>"
+        html_skills += "</div>"
+        
+        st.markdown(html_skills, unsafe_allow_html=True)
 
         # 4. インフォメーション
         st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
@@ -2548,38 +2631,56 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                         status.update(label="エラーが発生しました", state="error", expanded=False)
                                         st.error(f"AI解析中にエラーが発生しました: {e}")
 
-# ==========================================
-    # 【タブ5】月次戦略会議室（引き算のコンサルティング）
+    # ==========================================
+    # 【タブ5】月次戦略会議室（引き算とスキル習得）
     # ==========================================
     with tab5:
         st.subheader("● 月次・戦略会議室")
-        st.info("月に1回だけ開かれる特別な戦略会議です。今のあなたのリアルな悩みに対し、科学と占いを駆使した『引き算の決断』を下します。")
+        st.info("月に1回、今の悩みに対し「引き算」の決断を下し、1ヶ月かけて習得する『極秘スキル』を処方します。")
         
-        # UIデザイン（メインコンテンツと極秘ライブラリの完全分離）
         st.markdown("""
         <style>
-            .strategy-box { background-color: #FAFAFA; border: 2px solid #1565C0; border-radius: 12px; padding: 30px; margin-top: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222; line-height: 1.8; font-size: 1.05rem; }
+            .strategy-box { background-color: #FAFAFA; border: 2px solid #1565C0; border-radius: 12px; padding: 30px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #222222; line-height: 1.8; font-size: 1.05rem; }
             .strategy-box h2 { color: #1565C0 !important; font-size: 1.4rem !important; border-bottom: 2px solid #BBDEFB; padding-bottom: 8px; margin-top: 35px; margin-bottom: 15px; font-weight: 900; }
             .strategy-box h2:first-of-type { margin-top: 0; }
-            .strategy-box p { color: #333333; margin-bottom: 15px; }
-            .secret-library-box { background-color: #E8EAF6; border-left: 5px solid #3F51B5; padding: 25px; border-radius: 8px; margin-top: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color: #303F9F; line-height: 1.7; font-size: 0.95rem; }
-            .secret-library-box h3 { color: #1A237E !important; margin-top: 0 !important; font-size: 1.3rem !important; font-weight: 900 !important; border-bottom: 1px solid #C5CAE9 !important; padding-bottom: 10px !important; margin-bottom: 15px !important; }
         </style>
         """, unsafe_allow_html=True)
 
-        # 列が見つからなくてもクラッシュしない安全装置（フェイルセーフ）
         ms_date_idx = headers.index('Monthly_Strategy_Date') if 'Monthly_Strategy_Date' in headers else -1
         ms_text_idx = headers.index('Monthly_Strategy_Text') if 'Monthly_Strategy_Text' in headers else -1
+        ms_skill_idx = headers.index('Current_Monthly_Skill') if 'Current_Monthly_Skill' in headers else -1
+        skills_idx = headers.index('Unlocked_Skills') if 'Unlocked_Skills' in headers else -1
         
         current_month_str = datetime.date.today().strftime("%Y-%m")
         saved_strategy_month = user_row[ms_date_idx] if ms_date_idx != -1 and len(user_row) > ms_date_idx else ""
         saved_strategy_text = user_row[ms_text_idx] if ms_text_idx != -1 and len(user_row) > ms_text_idx else ""
+        current_assigned_skill = user_row[ms_skill_idx] if ms_skill_idx != -1 and len(user_row) > ms_skill_idx else ""
+        unlocked_skills_str = user_row[skills_idx] if skills_idx != -1 and len(user_row) > skills_idx else ""
+        unlocked_skills_list = [s.strip() for s in unlocked_skills_str.split(",") if s.strip()]
 
         if saved_strategy_month == current_month_str and saved_strategy_text.strip():
-            # 今月の戦略が既に生成されている場合は表示
-            st.success("✨ 今月の戦略会議は既に完了しています。いつでも読み返すことができます。")
+            # ▼ 既に今月の戦略がある場合の表示
             st.markdown(f"<div class='strategy-box'>{saved_strategy_text}</div>", unsafe_allow_html=True)
             
+            # ▼ アンロックボタンの表示（未習得の場合のみ）
+            if current_assigned_skill and current_assigned_skill not in unlocked_skills_list:
+                st.markdown("---")
+                st.markdown(f"#### 🏆 今月の極秘スキル【{SECRET_SKILLS.get(current_assigned_skill, {}).get('name', '不明')}】")
+                st.write("1ヶ月間このスキルを意識して実践できましたか？完了報告をして、スキルを図鑑に登録しましょう！")
+                if st.button("実践完了！スキルを習得する（+30 EXP）", type="primary"):
+                    with st.spinner("データベースに記録中..."):
+                        import time
+                        success, msg = unlock_monthly_skill(st.session_state.line_id, current_assigned_skill)
+                        if success:
+                            st.balloons()
+                            st.success(msg)
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+            elif current_assigned_skill in unlocked_skills_list:
+                st.success("🎉 今月の極秘スキルは既に習得済みです！マイページの「スキル図鑑」を確認してください。")
+
             if st.button("来月まで待てない場合（強制再構築）", type="secondary"):
                 with st.spinner("キャッシュをクリア中..."):
                     import time
@@ -2589,70 +2690,57 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     time.sleep(1)
                     st.rerun()
         else:
-            # 今月の戦略が未生成の場合の入力フォーム
+            # ▼ 未生成の場合の入力フォーム
             st.markdown("### ○ 今月の「生々しいモヤモヤ」を教えてください")
-            st.write("どんな些細なことでも構いません。仕事、人間関係、焦り、お金の不安など、今あなたの頭のリソースを奪っているものをそのまま書き出してください。")
-            
             with st.form("monthly_strategy_form"):
-                current_worry = st.text_area("今月のリアルな悩み・モヤモヤ（数十文字〜箇条書きでOK）", height=150, placeholder="例：話し方がうまくならず、商談でいつも焦ってしまう。恋人の何気ない一言に過剰に反応してしまい、そんな自分にも自己嫌悪している。等")
+                current_worry = st.text_area("今月のリアルな悩み・モヤモヤ", height=120, placeholder="例：気になる女性にうまく話しかけられない。等")
                 submitted = st.form_submit_button("戦略的ブリーフィングを開始する", type="primary")
 
                 if submitted:
                     if ms_date_idx == -1 or ms_text_idx == -1:
-                        st.error(" データベースの準備が完了していません。お手数ですが一度ブラウザをリロード（再読み込み）してください。")
+                        st.error(" データベース準備中です。一度リロードしてください。")
                     elif not current_worry.strip():
                         st.error("今の悩みやモヤモヤを入力してください。")
                     else:
                         loading_placeholder = st.empty()
                         with st.spinner(" 悩みを自動分類し、最適な極秘メソッドを引き当てています...（約20〜30秒）"):
-                            # 今月の運勢を再計算
+                            # 今月の運勢
                             m_date = datetime.date.today().replace(day=15)
                             this_month_res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
-                            
-                            # 算命学の主星を取得
-                            user_main_star = user_row[8] if len(user_row) > 8 else "不明"
                             north_star = user_data_for_ai.get("Free_Text", "未設定")
 
-                            # 社長と構築した【完全版・Intent Routing ＆ メタスキル転用プロンプト】
+                            # 【システムによるIntent Routing（悩みの自動分類とスキル引き当て）】
+                            worry_lower = current_worry.lower()
+                            if any(w in worry_lower for w in ["話", "人", "女性", "男性", "恋人", "上司", "部下", "関係", "コミュニケーション"]):
+                                intent_reason = "認知的過負荷。相手への過剰な配慮(A)や嫌われることへの警戒心(N)が生存本能として働き、ワーキングメモリをパンクさせているバグ状態"
+                                assigned_skill = "SKILL_01" if "話" in worry_lower else "SKILL_05"
+                            elif any(w in worry_lower for w in ["仕事", "終わらない", "評価", "独立", "タスク", "完璧", "焦"]):
+                                intent_reason = "個人-環境適合の不一致。完璧主義(C)がリソース不足の環境でバグを起こしている状態"
+                                assigned_skill = "SKILL_03"
+                            else:
+                                intent_reason = "自己不一致理論。高い理想(O)と現実のギャップが過剰な自己批判を生んでいる状態"
+                                assigned_skill = "SKILL_04"
+                                
+                            skill_data = SECRET_SKILLS[assigned_skill]
+
                             prompt = f"""あなたは日本一の戦略的ライフ・コンサルタントです。
-以下のユーザーデータと「今月の悩み」を分析し、最適な戦略を構築して【必ず指定のJSON形式】で出力してください。
+以下のシステム判定とユーザーデータを元に、【必ず指定のJSON形式】で月間戦略を出力してください。
 
 【ユーザー情報】
 ・北極星（理想の未来）: {north_star}
-・職業: {user_data_for_ai.get('Job', '不明')}
-・今月の運勢スコア: {this_month_res['score']}点 (環境:{this_month_res['env_reason']}, 精神:{this_month_res['mind_reason']})
-・Big5性格特性: O:{scores_for_ai['O']}, C:{scores_for_ai['C']}, E:{scores_for_ai['E']}, A:{scores_for_ai['A']}, N:{scores_for_ai['N']}
-・算命学（主星）: {user_main_star}
+・今月の悩み: 「{current_worry}」
+・システム判定原因: {intent_reason}
+・今回処方する極秘スキル: 【{skill_data['name']}】({skill_data['desc']})
 
-【今月の生々しい悩み】
-「{current_worry}」
-
-【STEP1：悩みの自動分類（Intent Routing）】
-まず、この悩みが以下のどれに該当するか判定し、その「原因ロジック」を適用せよ。
-A(対人・通信): 認知的過負荷。他者への配慮(A)がワーキングメモリをパンクさせている。
-B(キャリア・目標): 個人-環境適合(P-E Fit)の不一致。完璧主義(C)がリソース不足の環境でバグを起こしている。
-C(メンタル・自己肯定感): 自己不一致理論。高い理想(O)と現実のギャップが自己批判の認知の歪みを生んでいる。
-D(お金・物理リソース): 欠乏の心理学。脳が「欠乏」のアラートにリソースを奪われ、視野狭窄に陥っている。
-E(愛着・家族・親密な関係): 愛着理論。感受性(N)が生存戦略の防衛機制として過剰アラートを鳴らしている。
-
-【STEP2：処方する極秘フレームワークの選定】
-以下のリストから、今回の悩みに最も適した【手法】を1つだけ選べ。
-- 対人向け: PREP法, DESC法, ペーシング
-- キャリア向け: サティスファイシング, WOOPの法則, アイゼンハワー・マトリクス
-- メンタル向け: ABCDEモデル, 認知的脱フュージョン
-- お金・リソース向け: ゼロベース思考, パーキンソンの法則の逆利用
-- 愛着向け: アサーティブ・コミュニケーション, 境界線の再設定
-
-【STEP3：絶対遵守の出力ルール】
-1. 本文（chapter1〜3）では専門用語（Big5、算命学、心理学理論名）を【一切使用禁止】。すべて日常語で語れ。
+【🚨絶対遵守の出力ルール🚨】
+1. 専門用語は一切使用禁止。
 2. 応援や同情は禁止。プロとして冷徹に事実のみを提示せよ。
-3. Markdown（```json 等）は一切含めず、純粋なJSONテキストのみを出力せよ。
+3. 純粋なJSONテキストのみを出力せよ（Markdownブロックは不要）。
 
 {{
-  "chapter1": "第1章：痛みの正体（バグの特定）。[STEP1で判定した原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると外在化せよ。専門用語は使うな]",
-  "chapter2": "第2章：北極星への伏線（パラダイムシフト）。[今の痛みを「北極星」への伏線と定義せよ。※超重要: 悩みと北極星のジャンルが違う場合、無理に事象を繋ぐな。「この悩みで得られる感情のコントロール力や境界線を引く力（メタスキル）が北極星達成に不可欠だから起きている」または「脳のリソースを奪うこの問題を今手放す必要があるから起きている」というロジックで美しく抽象化して繋げ]",
-  "chapter3": "第3章：今月の引き算と継続フレームワーク。[まず「これまでよく一人でその脳の過負荷に耐えてきた。今日だけはその真面目な自分を許せ」とセルフ・コンパッションを与えよ。次に、人間の足し算バイアスを指摘し、「だから今月は〇〇を完全に手放せ（引き算）」と強力な免罪符を出せ。最後に、STEP2で選んだ手法のやり方を簡潔に説明し、1ヶ月間継続するルールとして提示せよ]",
-  "secret_library": "極秘ライブラリ：賢者の種明かし。[今回裏側で使った理論（STEP1の理論、引き算の科学、ロゴセラピー、算命学など）を箇条書きで知的に種明かしせよ。専門用語の使用をここでだけ許可する]"
+  "chapter1": "第1章：痛みの正体（バグの特定）。[システム判定原因を用い、悩みが性格と環境のバグであることを外在化させよ。]",
+  "chapter2": "第2章：北極星への伏線（パラダイムシフト）。[今の悩みを乗り越えて得られる『メタスキル（感情のコントロールや境界線を引く力）』が、北極星達成に不可欠だからこそ起きている試練だと抽象化して美しく繋げ。]",
+  "chapter3": "第3章：今月の引き算と継続フレームワーク。[まず『よく一人でその脳の過負荷に耐えてきた、今日だけは自分を許せ』と慈悲を与えよ。次に人間の足し算バイアスを指摘し『今月は〇〇を完全に引き算しろ』と免罪符を出せ。最後に、処方スキル【{skill_data['name']}】を以下の3ステップで現場で使えるレベルで具体的に解説しろ。\\n<br><b>【Lv.1（第1週）】観察と準備</b>：（やり方と注意点）\\n<br><b>【Lv.2（第2〜3週）】微小な接触</b>：（やり方と注意点）\\n<br><b>【Lv.3（第4週）】本格稼働</b>：（※必ずリアルなセリフ「」や現場での具体的なアクション例を2つ以上入れること）]"
 }}
 """
 
@@ -2663,32 +2751,24 @@ E(愛着・家族・親密な関係): 愛着理論。感受性(N)が生存戦略
                                     model="gpt-4o", 
                                     response_format={ "type": "json_object" },
                                     messages=[
-                                        {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。必ず指定されたJSONフォーマットで出力してください。"},
+                                        {"role": "system", "content": "あなたは国内唯一の『戦略的ライフ・コンサルタント』です。必ずJSONで出力してください。"},
                                         {"role": "user", "content": prompt}
                                     ],
                                     temperature=0.7
                                 )
                                 
-                                # JSONデータのパース
                                 result_data = json.loads(response.choices[0].message.content)
                                 
-                                # Python側で美しいHTMLに組み上げ（Teaser & Deep Dive の分離）
                                 html_output = ""
                                 html_output += f"<h2>第1章：痛みの正体（バグの特定）</h2><p>{result_data.get('chapter1', '')}</p>"
                                 html_output += f"<h2>第2章：北極星への伏線（パラダイムシフト）</h2><p>{result_data.get('chapter2', '')}</p>"
                                 html_output += f"<h2>第3章：今月の引き算と継続フレームワーク</h2><p>{result_data.get('chapter3', '')}</p>"
-                                
-                                # 極秘ライブラリを専用ボックス化
-                                html_output += f"""
-                                </div>
-                                <div class='secret-library-box'>
-                                    <h3>📜 極秘ライブラリ：賢者の種明かし</h3>
-                                    {result_data.get('secret_library', '').replace(chr(10), '<br>')}
-                                """
 
-                                # データベースに保存
+                                # データベースに保存（HTML文章と、選ばれたスキルID）
                                 sheet.update_cell(user_row_idx, ms_date_idx + 1, current_month_str)
                                 sheet.update_cell(user_row_idx, ms_text_idx + 1, html_output)
+                                if ms_skill_idx != -1:
+                                    sheet.update_cell(user_row_idx, ms_skill_idx + 1, assigned_skill)
                                 
                                 loading_placeholder.success("✨ 今月の戦略会議が完了しました！")
                                 import time
