@@ -2747,17 +2747,16 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
 【🚨絶対遵守の出力ルール🚨】
 1. AIへの指示文（「慈悲を与えよ」「提案せよ」など）をそのまま出力する「オウム返し」は絶対禁止。必ず「コンサルタントからユーザーへの直接の言葉」として自然な文章を書け。
-2. 専門用語（Big5、算命学、心理学理論名）は、chapter1〜3では【一切使用禁止】。
+2. 専門用語（Big5、算命学、心理学理論名）は【一切使用禁止】。
 3. 純粋なJSONテキストのみを出力せよ（Markdownブロックは不要）。
 
 {{
-  "chapter1": "第1章の本文。[原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると優しく外在化させよ。専門用語は使うな。]",
-  "chapter2": "第2章の本文。[今の痛みを「北極星」への伏線と定義せよ。悩みと北極星のジャンルが違う場合は『この悩みで得られる感情のコントロール力や境界線を引く力（メタスキル）が北極星達成に不可欠だ』と美しく抽象化して繋げ。]",
-  "chapter3_intro": "第3章の導入。[まず『よく一人でその悩みに向き合いましたね、今日まで本当によく頑張りました。』と直接ユーザーを労え。次に『悩みについて考えすぎてネガティブになり、自己批判をしてしまう傾向があります。今月はそれをやめるようにすると、気持ちが楽になると思いますよ』と、引き算を【優しい提案】として伝えよ。]",
+  "chapter1": "第1章：痛みの正体（バグの特定）。[原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると優しく外在化させよ。]",
+  "chapter2": "第2章：北極星への伏線（パラダイムシフト）。[今の痛みを「北極星」への伏線と定義せよ。悩みと北極星のジャンルが違う場合は『この悩みで得られるメタスキル（感情のコントロールや境界線を引く力）が北極星達成に不可欠だ』と美しく抽象化して繋げ。]",
+  "chapter3_intro": "第3章の導入。[まず『よく一人でその悩みに向き合いましたね、今日まで本当によく頑張りました。』と直接ユーザーを労え。次に『悩みについて考えすぎてネガティブになり、自己批判をしてしまう傾向があります。今月はそれをやめるようにすると、気持ちが楽になると思いますよ』と、引き算を【優しい提案】として伝えよ。そして最後に、今月から実践する処方スキル【{skill_data['name']}】について、『これはどのような手法か』『どんな効果があるか』『身につけるとどんな未来（ベネフィット）があるか』を2〜3文で端的に説明し、以下のステップへ誘導せよ。]",
   "chapter3_lv1": "【Lv.1（第1週）】観察と準備<br><b>やり方：</b>[処方スキル【{skill_data['name']}】の初期段階のやり方]<br><b>具体例：</b>[日常の違う角度のシチュエーションで、極めてイメージしやすい具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
   "chapter3_lv2": "【Lv.2（第2〜3週）】微小な接触<br><b>やり方：</b>[中級段階のやり方]<br><b>具体例：</b>[違う角度のシチュエーションでの具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
-  "chapter3_lv3": "【Lv.3（第4週）】本格稼働<br><b>やり方：</b>[最終段階のやり方]<br><b>具体例：</b>[現場での具体的なアクション例や、実際に口に出すリアルなセリフ「」を2つ以上挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
-  "secret_library": "今回裏側で使った理論を箇条書きで知的に種明かしせよ。専門用語の使用をここでだけ許可する。"
+  "chapter3_lv3": "【Lv.3（第4週）】本格稼働<br><b>やり方：</b>[最終段階のやり方]<br><b>具体例：</b>[現場での具体的なアクション例や、実際に口に出すリアルなセリフ「」を2つ以上挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]"
 }}
 """
 
@@ -2774,37 +2773,28 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                     temperature=0.7
                                 )
                                 
-                                # JSONデータのパース
                                 result_data = json.loads(response.choices[0].message.content)
                                 
                                 # Python側で改行とデザインを完璧にコントロールしてHTMLを組み上げ
+                                # ※インデントによるMarkdownコードブロック化バグを防ぐため、左詰めで文字列結合
                                 html_output = ""
                                 html_output += f"<h2>第1章：痛みの正体（バグの特定）</h2><p>{result_data.get('chapter1', '')}</p>"
                                 html_output += f"<h2>第2章：北極星への伏線（パラダイムシフト）</h2><p>{result_data.get('chapter2', '')}</p>"
                                 
-                                # 第3章：導入と3ステップをPython側で強制的に改行・ブロック化
                                 html_output += f"<h2>第3章：今月の引き算と継続フレームワーク</h2>"
                                 html_output += f"<p>{result_data.get('chapter3_intro', '')}</p>"
                                 
-                                html_output += f"""
-                                <div style='background-color:#FFFFFF; border-left:4px solid #1565C0; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
-                                    {result_data.get('chapter3_lv1', '')}
-                                </div>
-                                <div style='background-color:#FFFFFF; border-left:4px solid #1565C0; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
-                                    {result_data.get('chapter3_lv2', '')}
-                                </div>
-                                <div style='background-color:#FFFFFF; border-left:4px solid #D32F2F; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
-                                    {result_data.get('chapter3_lv3', '')}
-                                </div>
-                                """
+                                html_output += f"<div style='background-color:#FFFFFF; border-left:4px solid #1565C0; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>"
+                                html_output += f"{result_data.get('chapter3_lv1', '')}"
+                                html_output += f"</div>"
                                 
-                                # 極秘ライブラリを専用ボックス化
-                                html_output += f"""
-                                </div>
-                                <div class='secret-library-box'>
-                                    <h3>🔐 極秘ライブラリ：賢者の種明かし</h3>
-                                    {result_data.get('secret_library', '').replace(chr(10), '<br>')}
-                                """
+                                html_output += f"<div style='background-color:#FFFFFF; border-left:4px solid #1565C0; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>"
+                                html_output += f"{result_data.get('chapter3_lv2', '')}"
+                                html_output += f"</div>"
+                                
+                                html_output += f"<div style='background-color:#FFFFFF; border-left:4px solid #D32F2F; padding:15px; margin-bottom:15px; border-radius:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>"
+                                html_output += f"{result_data.get('chapter3_lv3', '')}"
+                                html_output += f"</div>"
 
                                 # データベースに保存
                                 sheet.update_cell(user_row_idx, ms_date_idx + 1, current_month_str)
