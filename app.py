@@ -2404,14 +2404,14 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         html_skills = "<div class='skill-grid'>"
         for sid, sdata in SECRET_SKILLS.items():
             if sid in unlocked_skills:
-                # 解放済みスキル
-                html_skills += f"<div class='skill-card-unlocked'><div class='skill-title'>{sdata['icon']} {sdata['name']}</div><div class='skill-desc'>{sdata['desc']}</div></div>"
+                # 解放済みスキル（icon呼び出しを削除）
+                html_skills += f"<div class='skill-card-unlocked'><div class='skill-title'>{sdata['name']}</div><div class='skill-desc'>{sdata['desc']}</div></div>"
             else:
                 # 未解放スキル（シルエット）
                 html_skills += f"<div class='skill-card-locked'>🔒 ？？？（未解放の極秘スキル）</div>"
         html_skills += "</div>"
         
-        st.markdown(html_skills, unsafe_allow_html=True)
+        st.markdown(html_skills, unsafe_allow_html=True)    
 
         # 4. インフォメーション
         st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
