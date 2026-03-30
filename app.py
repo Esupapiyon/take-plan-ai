@@ -3532,28 +3532,73 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     else:
                         loading_placeholder = st.empty()
                         with st.spinner(" 悩みを自動分類し、最適な極秘メソッドを引き当てています...（約20〜30秒）"):
+                            import random
+                            import openai
+                            openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
                             # ==========================================
-                            # ▼ 変数の再定義（エラー回避のため確実に取得）
+                            # ▼ 変数の再定義
                             # ==========================================
                             m_date = datetime.date.today().replace(day=15)
                             this_month_res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
                             user_main_star = user_row[8] if len(user_row) > 8 else "不明"
                             north_star = user_data_for_ai.get("Free_Text", "未設定")
 
-                            # 【システムによるIntent Routing（悩みの自動分類とスキル引き当て）】
-                            worry_lower = current_worry.lower()
-                            if any(w in worry_lower for w in ["話", "人", "女性", "男性", "恋人", "上司", "部下", "関係", "コミュニケーション"]):
-                                intent_reason = "認知的過負荷。相手への過剰な配慮(A)や嫌われることへの警戒心(N)が生存本能として働き、ワーキングメモリをパンクさせているバグ状態"
-                                assigned_skill = "SKILL_01" if "話" in worry_lower else "SKILL_05"
-                            elif any(w in worry_lower for w in ["仕事", "終わらない", "評価", "独立", "タスク", "完璧", "焦"]):
-                                intent_reason = "個人-環境適合の不一致。完璧主義(C)がリソース不足の環境でバグを起こしている状態"
-                                assigned_skill = "SKILL_03"
-                            else:
-                                intent_reason = "自己不一致理論。高い理想(O)と現実のギャップが過剰な自己批判を生んでいる状態"
-                                assigned_skill = "SKILL_04"
+                            # ==========================================
+                            # 【STEP 0】AIによる超高精度Intent Routing（30分類判定）
+                            # ==========================================
+                            routing_prompt = f"""
+                            あなたは優秀な心理アナリストです。以下のユーザーの悩みに最も適した「痛みの正体ID（A-1〜F-5のいずれか）」を1つだけ判定し、そのIDのみを出力してください。
+
+                            ユーザーの悩み: 「{current_worry}」
+
+                            【選択肢】
+                            A-1:相手の顔色を伺いすぎる, A-2:感情を抑えて我慢し疲弊, A-3:人前で極度に緊張する, A-4:自分の気持ちを察してほしい, A-5:同調圧力で意見が言えない
+                            B-1:能力と環境のミスマッチ, B-2:自信がない(インポスター), B-3:時間が足りない・計画倒れ, B-4:選択肢が多くて動けない, B-5:評価されずモチベ枯渇
+                            C-1:理想と現実のギャップ(自己嫌悪), C-2:過去や不安が頭から離れない, C-3:他人との比較(嫉妬), C-4:白黒思考(極端な完璧主義), C-5:どうせ無駄だという無力感
+                            D-1:お金・時間の欠乏と焦り, D-2:物欲が止まらない, D-3:目先の誘惑に負ける(浪費), D-4:失敗や損が怖くて動けない, D-5:サンクコスト(損切りできない・未練)
+                            E-1:恋人への不安・見捨てられ不安, E-2:親密になるのが怖くて逃げる, E-3:過去の親などの未解決感情を投影, E-4:共依存・尽くしすぎる自己犠牲, E-5:近づきたいけど傷つけあう
+                            F-1:生きる意味が不明・虚無感, F-2:慢性的なストレス・過労, F-3:原因不明の体調不良・姿勢の悪化, F-4:スマホ依存・デジタル脳疲労, F-5:年齢や立場の変化への戸惑い
+
+                            出力は「C-2」のようなIDの文字列のみ。
+                            """
+                            
+                            try:
+                                response_router = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "user", "content": routing_prompt}],
+                                    temperature=0.0
+                                )
+                                intent_id = response_router.choices[0].message.content.strip().upper()
+                                # 抽出したIDが存在しない場合のフェイルセーフ
+                                if intent_id not in INTENT_ROUTING_DB:
+                                    intent_id = "C-1" 
+                            except Exception:
+                                intent_id = "C-1"
+
+                            # 判定された30分類のデータベースから、原因とメタスキルを引き当てる
+                            intent_data = INTENT_ROUTING_DB[intent_id]
+                            intent_reason = intent_data["logic"]
+                            meta_skill = intent_data["meta_skill"]
+
+                            # ==========================================
+                            # 【STEP 1】該当ルートから「まだ習得していないスキル」を自動選択
+                            # ==========================================
+                            route_char = intent_id[0] # "A" ~ "F"
+                            route_ranges = {"A": (1,15), "B": (16,30), "C": (31,45), "D": (46,60), "E": (61,75), "F": (76,90)}
+                            start_idx, end_idx = route_ranges.get(route_char, (31,45))
+                            
+                            available_skills = [f"SKILL_{i:02d}" for i in range(start_idx, end_idx + 1) if f"SKILL_{i:02d}" not in unlocked_skills_list]
+                            if not available_skills:
+                                # 万が一そのルートの全15スキルをコンプリート済みの場合は被りを許容
+                                available_skills = [f"SKILL_{i:02d}" for i in range(start_idx, end_idx + 1)] 
                                 
+                            assigned_skill = random.choice(available_skills)
                             skill_data = SECRET_SKILLS[assigned_skill]
 
+                            # ==========================================
+                            # 【STEP 2】絶対にブレない、見出し禁止の超具体プロンプト
+                            # ==========================================
                             prompt = f"""あなたは日本一の温かく、かつ論理的な戦略的ライフ・コンサルタントです。
 以下のユーザーデータと「今月の悩み」を分析し、ユーザーへ直接語りかけるトーン（です・ます調）で、指定のJSON形式で出力してください。
 
@@ -3567,8 +3612,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 【今月の生々しい悩み】
 「{current_worry}」
 
-【STEP1：悩みの自動分類（Intent Routing）】
+【STEP1：悩みの自動分類と指定された処方箋】
 原因ロジック: {intent_reason}
+北極星へのメタスキル: {meta_skill}
 処方スキル: 【{skill_data['name']}】
 ・スキルの基本ルール（やり方）: {skill_data['theory']}
 ・スキルのベネフィット（効果）: {skill_data['desc']}
@@ -3581,7 +3627,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
 {{
   "chapter1": "[原因ロジックを用い、問題はあなたの無能さではなく、優れた特性と環境のバグであると優しく外在化させる『本文のみ』を出力せよ。見出しの言葉は絶対に書くな。]",
-  "chapter2": "[今の痛みを「北極星」への伏線と定義する『本文のみ』を出力せよ。悩みと北極星のジャンルが違う場合は『この悩みで得られるメタスキル（感情のコントロールや境界線を引く力）が北極星達成に不可欠だ』と美しく抽象化して繋げ。]",
+  "chapter2": "[今の痛みを「北極星」への伏線と定義する『本文のみ』を出力せよ。必ず、渡された『北極星へのメタスキル』を使って美しく抽象化して繋げること。見出しは書くな。]",
   "chapter3_intro": "[まず『よく一人でその悩みに向き合いましたね、今日まで本当によく頑張りました。』と直接ユーザーを労え。次に引き算を【優しい提案】として伝えよ。そして最後に、今月から実践する処方スキル【{skill_data['name']}】について、渡された『スキルの基本ルール（やり方）』のデータを使って「具体的にどういうルールの手法なのか」を分かりやすく説明し、続けて『スキルのベネフィット（効果）』を伝えてから、以下のステップへ誘導せよ。※ここでも見出しは書くな]",
   "chapter3_lv1": "【Lv.1（第1週）】観察と準備<br><b>やり方：</b>[処方スキル【{skill_data['name']}】の初期段階のやり方]<br><b>具体例：</b>[日常の違う角度のシチュエーションで、極めてイメージしやすい具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
   "chapter3_lv2": "【Lv.2（第2〜3週）】微小な接触<br><b>やり方：</b>[中級段階のやり方]<br><b>具体例：</b>[違う角度のシチュエーションでの具体例を2つ挙げよ]<br><b>注意点：</b>[実践時の具体的な注意点]",
@@ -3590,8 +3636,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 """
 
                             try:
-                                import openai
-                                openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                                 response = openai_client.chat.completions.create(
                                     model="gpt-4o", 
                                     response_format={ "type": "json_object" },
@@ -3604,9 +3648,15 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 
                                 result_data = json.loads(response.choices[0].message.content)
                                 
-                                # Python側で改行とデザインを完璧にコントロールしてHTMLを組み上げ
-                                # ※インデントによるMarkdownコードブロック化バグを防ぐため、左詰めで文字列結合
-                                html_output = ""
+                                # ==========================================
+                                # ▼ ユーザーの悩みをHTMLの冒頭に追加し、美しく組み上げる
+                                # ==========================================
+                                html_output = f"""
+                                <div style='background-color:#F8F9FA; padding:20px; border-radius:10px; border-left:6px solid #b8860b; margin-bottom:25px;'>
+                                    <div style='font-size:0.9rem; color:#777; font-weight:bold; margin-bottom:5px;'>💬 今月のあなたの悩み</div>
+                                    <div style='font-size:1.1rem; color:#333; font-weight:bold;'>{current_worry}</div>
+                                </div>
+                                """
                                 html_output += f"<h2>第1章：痛みの正体（バグの特定）</h2><p>{result_data.get('chapter1', '')}</p>"
                                 html_output += f"<h2>第2章：北極星への伏線（パラダイムシフト）</h2><p>{result_data.get('chapter2', '')}</p>"
                                 
