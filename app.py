@@ -2316,7 +2316,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.warning(" ユーザーデータが見つかりません。先に診断を完了してください。")
         st.stop()
         
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー", "◉月次戦略会議"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー", "◉月次戦略会議", "◉極秘スキル図鑑"])
   
     with tab1:
         level = math.floor(exp / 50) + 1
@@ -2336,7 +2336,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.markdown(f"<h3 style='text-align:center; color:#333; margin-top:20px; margin-bottom:20px;'>獲得累計 EXP: <span style='color:#b8860b; font-size:1.8rem; font-weight:900;'>{exp} ✨</span></h3>", unsafe_allow_html=True)
 
         # ==========================================
-        # 2 & 3. 北極星（理想の未来）と現在のフォーカスの表示
+        # 2. 北極星（理想の未来）と現在のフォーカスの表示
         # ==========================================
         st.markdown("### ▶︎ あなたの北極星")
         current_north_star = user_data_for_ai.get("Free_Text", "").strip()
@@ -2382,41 +2382,8 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     st.error("入力してください。")
 
         # ==========================================
-        # 📚 マイページ：極秘スキル図鑑（コレクション）
+        # 3. 🔋 今日の心のHP（認知資源）をスキルの上に移動
         # ==========================================
-        st.markdown("### 📚 あなたの極秘スキル図鑑")
-        
-        # ユーザーがアンロックしたスキルのリストを取得
-        skills_idx = headers.index('Unlocked_Skills') if 'Unlocked_Skills' in headers else -1
-        unlocked_skills_str = user_row[skills_idx] if skills_idx != -1 and len(user_row) > skills_idx else ""
-        unlocked_skills = [s.strip() for s in unlocked_skills_str.split(",") if s.strip()]
-        
-        st.markdown("""
-        <style>
-            .skill-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-            .skill-card-locked { background-color: #EEEEEE; border: 2px dashed #CCCCCC; border-radius: 8px; padding: 15px; width: 100%; color: #999999; text-align: center; font-weight: bold; }
-            .skill-card-unlocked { background-color: #E8EAF6; border: 2px solid #3F51B5; border-radius: 8px; padding: 15px; width: 100%; color: #1A237E; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-            .skill-title { font-size: 1.1rem; font-weight: 900; margin-bottom: 5px; }
-            .skill-desc { font-size: 0.85rem; color: #303F9F; line-height: 1.5; }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        html_skills = "<div class='skill-grid'>"
-        for sid, sdata in SECRET_SKILLS.items():
-            if sid in unlocked_skills:
-                # 解放済みスキル（icon呼び出しを削除）
-                html_skills += f"<div class='skill-card-unlocked'><div class='skill-title'>{sdata['name']}</div><div class='skill-desc'>{sdata['desc']}</div></div>"
-            else:
-                # 未解放スキル（シルエット）
-                html_skills += f"<div class='skill-card-locked'>🔒 ？？？（未解放の極秘スキル）</div>"
-        html_skills += "</div>"
-        
-        st.markdown(html_skills, unsafe_allow_html=True)    
-
-        # 4. インフォメーション
-        st.info("💡 毎朝LINEに届くクエストを完了させるとEXPが貯まります。継続は最大の魔法です！")
-
-        # 5. 🔋 タブ1のHPメーター
         st.markdown(f"""
         <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-top: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
             <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
@@ -2432,13 +2399,52 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         """, unsafe_allow_html=True)
 
         # ==========================================
-        # 6. 🔄 現在の状況アップデート機能（月2回の回数制限付き）
+        # 4. 📚 最近獲得した極秘スキル（最新3件のみ表示）
+        # ==========================================
+        st.markdown("### 📚 最近獲得した極秘スキル")
+        
+        # ユーザーがアンロックしたスキルのリストを取得
+        skills_idx = headers.index('Unlocked_Skills') if 'Unlocked_Skills' in headers else -1
+        unlocked_skills_str = user_row[skills_idx] if skills_idx != -1 and len(user_row) > skills_idx else ""
+        unlocked_skills = [s.strip() for s in unlocked_skills_str.split(",") if s.strip()]
+        
+        total_skills = len(SECRET_SKILLS)
+        acquired_count = len(unlocked_skills)
+        st.markdown(f"<p style='color: #666666; font-size: 0.95rem; font-weight: bold; margin-top: -10px; margin-bottom: 15px;'>現在のスキル獲得数: {acquired_count} / {total_skills}</p>", unsafe_allow_html=True)
+        
+        st.markdown("""
+        <style>
+            .skill-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+            .skill-card-unlocked { background-color: #E8EAF6; border: 2px solid #3F51B5; border-radius: 8px; padding: 15px; width: 100%; color: #1A237E; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            .skill-title { font-size: 1.1rem; font-weight: 900; margin-bottom: 5px; }
+            .skill-desc { font-size: 0.85rem; color: #303F9F; line-height: 1.5; }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        html_skills = "<div class='skill-grid'>"
+        
+        if acquired_count == 0:
+            html_skills += f"<div class='skill-card-unlocked' style='background-color:#F5F5F5; border-color:#CCCCCC; color:#666666;'>まだ獲得したスキルはありません。月次会議室で悩みを相談してみましょう！</div>"
+        else:
+            # 最新の3件のみを抽出して新しい順に表示
+            recent_skills = unlocked_skills[-3:]
+            for sid in reversed(recent_skills):
+                if sid in SECRET_SKILLS:
+                    sdata = SECRET_SKILLS[sid]
+                    html_skills += f"<div class='skill-card-unlocked'><div class='skill-title'>🔓 {sdata['name']}</div><div class='skill-desc'>{sdata['desc']}</div></div>"
+                    
+        html_skills += "</div>"
+        st.markdown(html_skills, unsafe_allow_html=True)
+        
+        st.info("💡 すべてのスキルと理論的背景（種明かし）は、「極秘スキル図鑑」タブで確認できます。")
+
+        # ==========================================
+        # 5. 🔄 現在の状況アップデート機能（月2回の回数制限付き）
         # ==========================================
         st.markdown("---")
         st.markdown("###  現在の状況をアップデート")
         st.write("環境や目標が変わりましたか？状況を更新すると、AIの戦略が最新化されます。")
         
-        # ▼ 回数制限の計算
         current_month_str = datetime.date.today().strftime("%Y-%m")
         month_idx = headers.index('Status_Update_Month') if 'Status_Update_Month' in headers else -1
         count_idx = headers.index('Status_Update_Count') if 'Status_Update_Count' in headers else -1
@@ -3629,6 +3635,55 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 
                             except Exception as e:
                                 loading_placeholder.error(f"AI解析中にエラーが発生しました: {e}")
+
+    # ==========================================
+    # 【タブ6】極秘スキル図鑑（全90種コレクション）
+    # ==========================================
+    with tab6:
+        st.subheader("📚 極秘スキル図鑑")
+        st.write("あなたが月次戦略会議を乗り越え、実践して獲得した「心の武器」のコレクションです。")
+        
+        skills_idx = headers.index('Unlocked_Skills') if 'Unlocked_Skills' in headers else -1
+        unlocked_skills_str = user_row[skills_idx] if skills_idx != -1 and len(user_row) > skills_idx else ""
+        unlocked_skills = [s.strip() for s in unlocked_skills_str.split(",") if s.strip()]
+        
+        total = len(SECRET_SKILLS)
+        acquired = len(unlocked_skills)
+        progress = acquired / total if total > 0 else 0
+        
+        st.progress(progress)
+        st.markdown(f"**コンプリート率: {acquired} / {total}**")
+        st.markdown("---")
+
+        # 6大ルートのカテゴリー定義
+        categories = [
+            ("🌲 ルートA【対人】", 1, 15),
+            ("⚔️ ルートB【仕事】", 16, 30),
+            ("💧 ルートC【メンタル】", 31, 45),
+            ("⛰️ ルートD【お金】", 46, 60),
+            ("🔥 ルートE【愛着】", 61, 75),
+            ("🪐 ルートF【健康他】", 76, 90)
+        ]
+        
+        # 内側のタブでジャンルを切り替えるUI
+        cat_tabs = st.tabs([c[0] for c in categories])
+        
+        for i, (cat_name, start_idx, end_idx) in enumerate(categories):
+            with cat_tabs[i]:
+                st.markdown(f"#### {cat_name}のスキル")
+                for j in range(start_idx, end_idx + 1):
+                    sid = f"SKILL_{j:02d}"
+                    sdata = SECRET_SKILLS.get(sid)
+                    if sdata:
+                        if sid in unlocked_skills:
+                            # 解放済み（アコーディオンで詳細が読める）
+                            with st.expander(f"🔓 {sdata['name']}"):
+                                st.markdown(f"**【効果】**<br>{sdata['desc']}", unsafe_allow_html=True)
+                                st.markdown(f"**【賢者の種明かし（理論的背景）】**<br><span style='color:#555;'>{sdata['theory']}</span>", unsafe_allow_html=True)
+                        else:
+                            # 未解放（クリックできないグレーアウト）
+                            st.markdown("<div style='padding: 12px; margin-bottom: 5px; background-color: #F0F0F0; border-radius: 8px; color: #999; font-weight: bold;'>🔒 ？？？（未解放の極秘スキル）</div>", unsafe_allow_html=True)
+  
     st.stop()
 
 # ==========================================
