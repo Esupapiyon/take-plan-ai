@@ -3531,82 +3531,81 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         st.error("今の悩みやモヤモヤを入力してください。")
                     else:
                         loading_placeholder = st.empty()
-                        with st.spinner(" 悩みを自動分類し、最適な極秘メソッドを引き当てています...（約20〜30秒）"):
-                            import random
+                        with st.spinner(" 悩みの文脈を解析し、最適な極秘メソッドを選定しています...（約20〜30秒）"):
                             import openai
                             openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-                            # ==========================================
-                            # ▼ 変数の再定義
-                            # ==========================================
                             m_date = datetime.date.today().replace(day=15)
                             this_month_res = calculate_period_score(user_nikkanshi, m_date, period_type="month")
                             user_main_star = user_row[8] if len(user_row) > 8 else "不明"
                             north_star = user_data_for_ai.get("Free_Text", "未設定")
 
                             # ==========================================
-                            # 【STEP 0】AIによる超高精度Intent Routing（30分類判定）
+                            # 【STEP 1】AIによる超高精度Intent Routing（30分類判定）
                             # ==========================================
-                            routing_prompt = f"""
-                            あなたは優秀な心理アナリストです。以下のユーザーの悩みに最も適した「痛みの正体ID（A-1〜F-5のいずれか）」を1つだけ判定し、そのIDのみを出力してください。
-
+                            routing_prompt_1 = f"""
+                            あなたは優秀な心理アナリストです。以下のユーザーの悩みに最も適した「痛みの正体ID（A-1〜F-5）」を1つ判定し、IDのみを出力してください。
                             ユーザーの悩み: 「{current_worry}」
-
                             【選択肢】
-                            A-1:相手の顔色を伺いすぎる, A-2:感情を抑えて我慢し疲弊, A-3:人前で極度に緊張する, A-4:自分の気持ちを察してほしい, A-5:同調圧力で意見が言えない
-                            B-1:能力と環境のミスマッチ, B-2:自信がない(インポスター), B-3:時間が足りない・計画倒れ, B-4:選択肢が多くて動けない, B-5:評価されずモチベ枯渇
-                            C-1:理想と現実のギャップ(自己嫌悪), C-2:過去や不安が頭から離れない, C-3:他人との比較(嫉妬), C-4:白黒思考(極端な完璧主義), C-5:どうせ無駄だという無力感
-                            D-1:お金・時間の欠乏と焦り, D-2:物欲が止まらない, D-3:目先の誘惑に負ける(浪費), D-4:失敗や損が怖くて動けない, D-5:サンクコスト(損切りできない・未練)
-                            E-1:恋人への不安・見捨てられ不安, E-2:親密になるのが怖くて逃げる, E-3:過去の親などの未解決感情を投影, E-4:共依存・尽くしすぎる自己犠牲, E-5:近づきたいけど傷つけあう
-                            F-1:生きる意味が不明・虚無感, F-2:慢性的なストレス・過労, F-3:原因不明の体調不良・姿勢の悪化, F-4:スマホ依存・デジタル脳疲労, F-5:年齢や立場の変化への戸惑い
-
-                            出力は「C-2」のようなIDの文字列のみ。
+                            A-1:相手の顔色を伺いすぎる, A-2:感情労働の疲弊, A-3:人前で極度に緊張する(自意識), A-4:自分の気持ちを察してほしい, A-5:同調圧力
+                            B-1:能力と環境のミスマッチ, B-2:インポスター症候群, B-3:計画錯誤・時間不足, B-4:選択肢過多で動けない, B-5:報酬枯渇
+                            C-1:理想と現実のギャップ, C-2:反芻思考, C-3:上方比較バイアス, C-4:白黒思考, C-5:学習性無力感
+                            D-1:欠乏の心理学(焦り), D-2:ディドロ効果(物欲), D-3:現在バイアス(浪費), D-4:損失回避性, D-5:サンクコストの誤謬
+                            E-1:不安型愛着(見捨てられ不安), E-2:回避型愛着, E-3:投影, E-4:共依存, E-5:ヤマアラシのジレンマ
+                            F-1:実存的空虚, F-2:アロスタティック負荷(過労), F-3:身体化された認知, F-4:デジタル脳疲労, F-5:アイデンティティ・クライシス
+                            出力は「A-3」のようなIDの文字列のみ。
                             """
-                            
                             try:
-                                response_router = openai_client.chat.completions.create(
-                                    model="gpt-4o-mini",
-                                    messages=[{"role": "user", "content": routing_prompt}],
-                                    temperature=0.0
+                                response_r1 = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini", messages=[{"role": "user", "content": routing_prompt_1}], temperature=0.0
                                 )
-                                intent_id = response_router.choices[0].message.content.strip().upper()
-                                # 抽出したIDが存在しない場合のフェイルセーフ
-                                if intent_id not in INTENT_ROUTING_DB:
-                                    intent_id = "C-1" 
+                                intent_id = response_r1.choices[0].message.content.strip().upper()
+                                if intent_id not in INTENT_ROUTING_DB: intent_id = "A-3" 
                             except Exception:
-                                intent_id = "C-1"
+                                intent_id = "A-3"
 
-                            # 判定された30分類のデータベースから、原因とメタスキルを引き当てる
                             intent_data = INTENT_ROUTING_DB[intent_id]
                             intent_reason = intent_data["logic"]
                             meta_skill = intent_data["meta_skill"]
 
                             # ==========================================
-                            # 【STEP 1】該当ルートから「まだ習得していないスキル」を自動選択
+                            # 【STEP 2】文脈に合わせた最強スキルのAI選定（ランダムの完全排除）
                             # ==========================================
-                            route_char = intent_id[0] # "A" ~ "F"
+                            route_char = intent_id[0]
                             route_ranges = {"A": (1,15), "B": (16,30), "C": (31,45), "D": (46,60), "E": (61,75), "F": (76,90)}
-                            start_idx, end_idx = route_ranges.get(route_char, (31,45))
+                            start_idx, end_idx = route_ranges.get(route_char, (1,15))
                             
-                            available_skills = [f"SKILL_{i:02d}" for i in range(start_idx, end_idx + 1) if f"SKILL_{i:02d}" not in unlocked_skills_list]
+                            available_skills = {f"SKILL_{i:02d}": SECRET_SKILLS[f"SKILL_{i:02d}"] for i in range(start_idx, end_idx + 1) if f"SKILL_{i:02d}" not in unlocked_skills_list}
                             if not available_skills:
-                                # 万が一そのルートの全15スキルをコンプリート済みの場合は被りを許容
-                                available_skills = [f"SKILL_{i:02d}" for i in range(start_idx, end_idx + 1)] 
-                                
-                            assigned_skill = random.choice(available_skills)
+                                available_skills = {f"SKILL_{i:02d}": SECRET_SKILLS[f"SKILL_{i:02d}"] for i in range(start_idx, end_idx + 1)}
+
+                            skills_text = ""
+                            for sid, sdata in available_skills.items():
+                                skills_text += f"ID: {sid} | 手法名: {sdata['name']} | 効果: {sdata['desc']}\n"
+
+                            routing_prompt_2 = f"""
+                            あなたは戦略的ライフ・コンサルタントです。以下の「ユーザーの悩み（人数、関係性、場所などの文脈を含む）」を解決するために、リストの中から【最も不自然にならず、成功率の高い最適なスキル】を1つだけ選び、IDを出力してください。
+                            ユーザーの悩み: 「{current_worry}」
+                            【選択可能なスキルリスト】
+                            {skills_text}
+                            出力は「SKILL_01」のようなIDの文字列のみ。
+                            """
+                            try:
+                                response_r2 = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini", messages=[{"role": "user", "content": routing_prompt_2}], temperature=0.0
+                                )
+                                assigned_skill = response_r2.choices[0].message.content.strip().upper()
+                                if assigned_skill not in SECRET_SKILLS: assigned_skill = list(available_skills.keys())[0]
+                            except Exception:
+                                assigned_skill = list(available_skills.keys())[0]
+
                             skill_data = SECRET_SKILLS[assigned_skill]
 
                             # ==========================================
-                            # 【STEP 2】5大絶対制約を組み込んだ完全版プロンプト
+                            # 【STEP 3】5つの絶対制約を組み込んだ完全版プロンプト
                             # ==========================================
                             prompt = f"""あなたは日本一の温かく、かつ論理的な戦略的ライフ・コンサルタントです。
 以下のユーザーデータと「今月の悩み」を分析し、ユーザーへ直接語りかけるトーン（です・ます調）で、指定のJSON形式で出力してください。
-
-【ユーザー情報】
-・北極星（理想の未来）: {north_star}
-・職業: {user_data_for_ai.get('Job', '不明')}
-・今月の運勢スコア: {this_month_res['score']}点 (環境:{this_month_res['env_reason']}, 精神:{this_month_res['mind_reason']})
-・算命学（主星）: {user_main_star}
 
 【今月の生々しい悩み（※環境・文脈の抽出元）】
 「{current_worry}」
@@ -3621,22 +3620,21 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 ・スキルのベネフィット（効果）: {skill_data['desc']}
 
 【🚨システムに組み込むべき5つの絶対制約🚨】
-1. 【科学的根拠の捏造禁止（No Hallucination）】ユーザーへの慰めやお世辞として独自の心理学的解釈を捏造することを固く禁じる。必ず指定された「原因ロジック」の事実ベースで冷徹に出力すること（例：魅力があるから等の非科学的なお世辞は不要）。
-2. 【学術的権威の明示（Citation Mandate）】第1章および第3章では、必ず渡されたデータにある「提唱者（または分野）＋理論名」を崩さずに明示すること（例：T.ギロビッチらが実証した『スポットライト効果』）。
-3. 【環境・文脈の絶対死守（Context Awareness）】ユーザーの悩みにおける「人数（1対1か大人数か）」「関係性（初対面か親しいか）」「場所」などの前提条件を必ず読み取ること。提供するアクションプラン（Lv.1〜3）は、その特定の環境下で【今すぐ・不自然にならずに】実行できる粒度に翻訳して出力すること。
-4. 【「引き算」の具体化と断言（Actionable Subtraction）】第3章の引き算の指示において「自分を少し引き算する」などの抽象的な表現は一切禁止。必ず「今月は、【ユーザーが現在行っている具体的な無駄な努力・思考】を完全に引き算してください」という形式で、捨てるべきものを1つに絞って断言すること。
-5. 【占いと科学のトーン分離（Role Segregation）】第1章と第2章は「圧倒的な共感と運命的な意味づけ」のトーンで記述し、第3章（処方箋）に入った瞬間にトーンを切り替え、「論理的で具体的なコンサルタント」として行動指示を出すこと。見出しの言葉（「第1章：〜」など）や、専門用語（Big5等のアルファベット）は出力しないこと。
+1. 【科学的根拠の捏造禁止】ユーザーへの慰めやお世辞として独自の心理学的解釈を捏造することを固く禁じる。必ず指定された「原因ロジック」の事実ベースで冷徹に出力すること（例：魅力があるから等の非科学的なお世辞は不要）。
+2. 【学術的権威の明示】第1章および第3章では、必ず渡されたデータにある「提唱者（または分野）＋理論名」を崩さずに明示すること（例：T.ギロビッチらが実証した『スポットライト効果』）。
+3. 【環境・文脈の絶対死守】ユーザーの悩みにおける「人数（1対1か大人数か）」「関係性（初対面か親しいか）」「場所」などの前提条件を必ず読み取ること。提供するアクションプラン（Lv.1〜3）は、その特定の環境下で【今すぐ・不自然にならずに】実行できる粒度に翻訳して出力すること。
+4. 【「引き算」の具体化と断言】第3章の引き算の指示において「自分を少し引き算する」などの抽象的な表現は一切禁止。必ず「今月は、【ユーザーが現在行っている具体的な無駄な努力・思考】を完全に引き算してください」という形式で、捨てるべきものを1つに絞って断言すること。
+5. 【占いと科学のトーン分離】第1章と第2章は「圧倒的な共感と運命的な意味づけ」のトーンで記述し、第3章（処方箋）に入った瞬間にトーンを切り替え、「論理的で具体的なコンサルタント」として行動指示を出すこと。JSONの値の中に「第1章：痛みの正体」などの見出しの言葉は絶対に出力しないこと。
 
 {{
-  "chapter1": "[第1章の本文のみ。原因ロジックと学術的権威（提唱者と理論名）を用い、問題は無能さではなく脳や環境のバグであると冷徹に外在化させよ。お世辞や独自の解釈の捏造は禁止。]",
-  "chapter2": "[第2章の本文のみ。今の痛みを北極星への伏線と定義し、渡された『メタスキル』を使って美しく抽象化して繋げ。]",
-  "chapter3_intro": "[第3章の導入の本文のみ。『よく一人でその悩みに向き合いましたね。』と労った後、【制約4】に従い無駄な努力の引き算を1つ断言せよ。その後、処方スキルの提唱者・理論・効果を解説しステップへ誘導しろ。]",
-  "chapter3_lv1": "【Lv.1（第1週）】観察と準備<br><b>やり方：</b>[悩みの文脈（人数・場所等）に合わせた初期段階のアクション]<br><b>具体例：</b>[文脈に完全一致した、不自然にならない具体的な情景・セリフを2つ]<br><b>注意点：</b>[実践時の具体的な注意点]",
-  "chapter3_lv2": "【Lv.2（第2〜3週）】微小な接触<br><b>やり方：</b>[中級段階のやり方]<br><b>具体例：</b>[文脈に完全一致した具体的な情景・セリフを2つ]<br><b>注意点：</b>[実践時の具体的な注意点]",
-  "chapter3_lv3": "【Lv.3（第4週）】本格稼働<br><b>やり方：</b>[最終段階のやり方]<br><b>具体例：</b>[大人数など、指定された環境下で実際に口に出すリアルで不自然でないセリフ「」を2つ以上]<br><b>注意点：</b>[実践時の具体的な注意点]"
+  "chapter1": "[第1章の本文のみ。原因ロジックと学術的権威（提唱者と理論名）を用い、問題は無能さではなく脳や環境のバグであると冷徹に外在化させよ。お世辞や独自の解釈の捏造は禁止。見出しは書くな。]",
+  "chapter2": "[第2章の本文のみ。今の痛みを北極星への伏線と定義し、渡された『メタスキル』を使って美しく抽象化して繋げ。見出しは書くな。]",
+  "chapter3_intro": "[第3章の導入の本文のみ。『よく一人でその悩みに向き合いましたね。』と労った後、【制約4】に従い無駄な努力の引き算を1つ断言せよ。その後、処方スキルの提唱者・理論・効果を解説しステップへ誘導しろ。見出しは書くな。]",
+  "chapter3_lv1": "【Lv.1（第1週）】観察と準備<br><b>やり方：</b>[悩みの文脈に合わせた初期段階のアクション]<br><b>具体例：</b>[文脈に完全一致した、不自然にならない具体的な情景・行動を2つ]<br><b>注意点：</b>[実践時の具体的な注意点]",
+  "chapter3_lv2": "【Lv.2（第2〜3週）】微小な接触<br><b>やり方：</b>[中級段階のやり方]<br><b>具体例：</b>[文脈に完全一致した具体的な情景・行動を2つ]<br><b>注意点：</b>[実践時の具体的な注意点]",
+  "chapter3_lv3": "【Lv.3（第4週）】本格稼働<br><b>やり方：</b>[最終段階のやり方]<br><b>具体例：</b>[指定された環境下で実際に口に出すリアルで不自然でないセリフや行動を2つ以上]<br><b>注意点：</b>[実践時の具体的な注意点]"
 }}
 """
-
                             try:
                                 response = openai_client.chat.completions.create(
                                     model="gpt-4o", 
@@ -3650,9 +3648,6 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 
                                 result_data = json.loads(response.choices[0].message.content)
                                 
-                                # ==========================================
-                                # ▼ ユーザーの悩みをHTMLの冒頭に追加し、美しく組み上げる
-                                # ==========================================
                                 html_output = f"""
                                 <div style='background-color:#F8F9FA; padding:20px; border-radius:10px; border-left:6px solid #b8860b; margin-bottom:25px;'>
                                     <div style='font-size:0.9rem; color:#777; font-weight:bold; margin-bottom:5px;'>💬 今月のあなたの悩み</div>
