@@ -4396,15 +4396,24 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
 【ユーザーの悩み】
 「{current_worry}」
 
+【痛みの正体IDの選択肢】
+A-1:相手の顔色を伺いすぎる, A-2:感情労働の疲弊, A-3:人前で極度に緊張する(自意識), A-4:自分の気持ちを察してほしい, A-5:同調圧力
+B-1:能力と環境のミスマッチ, B-2:インポスター症候群, B-3:計画錯誤・時間不足, B-4:選択肢過多で動けない, B-5:報酬枯渇
+C-1:理想と現実のギャップ, C-2:反芻思考, C-3:上方比較バイアス, C-4:白黒思考, C-5:学習性無力感
+D-1:欠乏の心理学(焦り), D-2:ディドロ効果(物欲), D-3:現在バイアス(浪費), D-4:損失回避性, D-5:サンクコストの誤謬
+E-1:不安型愛着(見捨てられ不安), E-2:回避型愛着, E-3:投影, E-4:共依存, E-5:ヤマアラシのジレンマ
+F-1:実存的空虚, F-2:アロスタティック負荷(過労), F-3:身体化された認知, F-4:デジタル脳疲労, F-5:アイデンティティ・クライシス
+
 【極秘スキルリスト】
 {available_skills_summary}
 
-以下の思考ステップ（JSONキー）に沿って推論を行い、最終的なスキルIDを決定してください。
-1. "fact_and_emotion": 悩みを「客観的事実」と「主観的感情（例：疲労、限界、恐怖など）」に明確に分離せよ。感情ワードの重力に騙されないこと。
-2. "locus_of_control": この問題の根本的な解決ターゲットは「他者の行動・環境を変えるアプローチ（対人・交渉など）」か、「自分の内面・解釈を変えるアプローチ（メンタルケア・認知など）」か判定せよ。
-3. "top3_candidates": 極秘スキルリストの中から、分離した【事実ベース】で解決に導く候補スキルを3つ挙げよ（IDのみの配列）。
-4. "judge_reason": ユーザーの文脈（職場の立場、対人関係の距離感、パワハラへの恐れなどの前提条件）を考慮し、トップ3の中から「最も現実的で、不自然にならずに明日からすぐ実行できるスキル」はどれか。なぜ他を落としそれを選んだのか論理的に審査せよ。
-5. "selected_skill_id": 最終決定したスキルID（例: "SKILL_02"）を1つだけ出力せよ。
+以下の思考ステップ（JSONキー）に沿って推論を行い、最終的な結果を決定してください。
+1. "intent_id": 上記の【痛みの正体IDの選択肢】の中から、ユーザーの悩みに最も適したID（例: "A-2"）を1つ判定せよ。
+2. "fact_and_emotion": 悩みを「客観的事実」と「主観的感情（例：疲労、限界、恐怖など）」に明確に分離せよ。感情ワードの重力に騙されないこと。
+3. "locus_of_control": この問題の根本的な解決ターゲットは「他者の行動・環境を変えるアプローチ（対人・交渉など）」か、「自分の内面・解釈を変えるアプローチ（メンタルケア・認知など）」か判定せよ。
+4. "top3_candidates": 極秘スキルリストの中から、分離した【事実ベース】で解決に導く候補スキルを3つ挙げよ（IDのみの配列）。
+5. "judge_reason": ユーザーの文脈（職場の立場、対人関係の距離感、パワハラへの恐れなどの前提条件）を考慮し、トップ3の中から「最も現実的で、不自然にならずに明日からすぐ実行できるスキル」はどれか。なぜ他を落としそれを選んだのか論理的に審査せよ。
+6. "selected_skill_id": 最終決定したスキルID（例: "SKILL_02"）を1つだけ出力せよ。
 """
                             try:
                                 response_triage = openai_client.chat.completions.create(
@@ -4418,15 +4427,23 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 )
                                 triage_result = json.loads(response_triage.choices[0].message.content)
                                 assigned_skill = triage_result.get("selected_skill_id", available_skill_ids[0]).upper()
+                                intent_id = triage_result.get("intent_id", "C-1")[:3].upper()
                                 
                                 if assigned_skill not in SECRET_SKILLS:
                                     assigned_skill = available_skill_ids[0]
+                                if intent_id not in INTENT_ROUTING_DB:
+                                    intent_id = "C-1"
                                     
                             except Exception as e:
                                 assigned_skill = available_skill_ids[0]
+                                intent_id = "C-1"
                                 triage_result = {"fact_and_emotion": "システムエラーにより感情と事実の分離をスキップ", "judge_reason": "システムフェイルセーフにより自動選択"}
 
+                            # 変数の安全な抽出
                             skill_data = SECRET_SKILLS[assigned_skill]
+                            intent_data = INTENT_ROUTING_DB[intent_id]
+                            intent_reason = intent_data["logic"]
+                            meta_skill = intent_data["meta_skill"]
 
                         with st.spinner(f" 処方スキル【{skill_data['name']}】に基づき、月次戦略レポートを生成中...（STEP 2/2）"):
                             
