@@ -4876,7 +4876,30 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
             # ▼ 未生成の場合の入力フォーム
             st.markdown("### ○ 今月の「生々しいモヤモヤ」を教えてください")
             with st.form("monthly_strategy_form"):
-                current_worry = st.text_area("今月のリアルな悩み・モヤモヤ", height=120, placeholder="例：気になる女性にうまく話しかけられない。等")
+                # ==========================================
+                # ▼ 入力フォーム：AIの精度を上げるための「コツ」と「プレースホルダー」
+                # ==========================================
+                st.markdown("""
+                <div style='background-color:#F0F7FF; padding:15px; border-radius:8px; border-left:5px solid #1976D2; margin-bottom:15px;'>
+                    <span style='font-size:0.9rem; color:#333;'>
+                        💡 <b>AIの分析精度を最大化する入力のコツ</b><br>
+                        「具体的な状況（事実）」＋「その時の感情」＋「動けない理由（恐れていること）」をセットで書くと、より安全で的確な戦略が生成されます。
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+
+                current_worry = st.text_area(
+                    "今月のリアルな悩み・モヤモヤ",
+                    height=250,
+                    placeholder="""【入力例1：対人関係】
+職場の部下が何度注意しても期限を守りません。強く言うとパワハラになりそうで言えず、結局自分が巻き取って残業して疲弊しています。
+
+【入力例2：キャリア・自己実現】
+新しいビジネスのアイデアはあるのに、失敗して周りに笑われるのが怖くて着手できません。毎日SNSで他人の成功を見ては自己嫌悪に陥っています。
+
+【入力例3：メンタル・恋愛】
+恋人からの返信が数時間ないだけで「嫌われた」とパニックになり、何も手につかなくなる自分が嫌です。重いと思われそうで電話もできず苦しいです。"""
+                )
                 submitted = st.form_submit_button("戦略的ブリーフィングを開始する", type="primary")
 
                 if submitted:
