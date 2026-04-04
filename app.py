@@ -1259,6 +1259,29 @@ def get_daily_science_weapon(mind_reason, user_id):
                 "rule": "【生成ルール】ユーザーの悩みに合わせ、「毎日必ず行う日常の動作」の直後に、複雑なタスクの名前を「資料を完成させる」ではなく「キーボードを5分叩く」等の簡単な言葉に書き換えるミッションを提案せよ。最後は必ずBYAF法で締めくくること。"
             }
         ]
+    }
+  {
+                "name": "処理流暢性のヒューリスティック",
+                "theory": "Alter & Oppenheimer（認知心理学）。情報が処理しやすい（流暢である）ほど、人はそれを簡単だと錯覚しやすい現象。",
+                "ai_guardrail": "【翻訳時の絶対ルール】「タスクを完全に終わらせる」というプレッシャーは絶対NG。「タスクの名前をメモ上で1文字だけ書き換える」「『キーボードを叩く』とだけ言う」等の数秒の極小アクションを代替案として含めること。",
+                "rule": "【生成ルール】ユーザーの悩みに合わせ、「毎日必ず行う日常の動作」の直後に、複雑なタスクの名前を「資料を完成させる」ではなく「キーボードを5分叩く」等の簡単な言葉に書き換えるミッションを提案せよ。最後は必ずBYAF法で締めくくること。"
+            }
+        ]
+    } # ← 🚨【重要】ここで weapons_db の辞書を閉じます！🚨
+
+    # 3. 日替わりローテーション（毎日違う武器を選出）
+    # サーバーのタイムゾーンに依存せず、強制的に日本時間(JST)を取得する
+    JST = datetime.timezone(datetime.timedelta(hours=+9), 'JST')
+    today_str = datetime.datetime.now(JST).strftime("%Y%m%d")
+    seed_string = f"{user_id}_{today_str}"
+    
+    # Pythonのhash()は実行毎に変わるため、安定したハッシュとして簡易的に文字コード合計を使う
+    hash_val = sum(ord(c) for c in seed_string)
+    
+    category_weapons = weapons_db.get(element, weapons_db["土"])
+    selected_weapon = category_weapons[hash_val % len(category_weapons)]
+
+    return selected_weapon
 
 # 3. 日替わりローテーション（毎日違う武器を選出）
     # サーバーのタイムゾーンに依存せず、強制的に日本時間(JST)を取得する
