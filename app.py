@@ -5588,7 +5588,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     """, unsafe_allow_html=True)
                     
                     s# レポートをUDボックスの中に流し込む
-                    st.markdown(f"<div class='ud-report-box'>{report_text}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='ud-report-box'>{report_text}</div>", unsafe_allow_html=True)
         
         # ====================================================
         # 🚀 行動変容への最強の導線（ハードコードCTA）
