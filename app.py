@@ -5568,7 +5568,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     # テキストの改行(\n)をHTMLの改行(<br>)に変換
                     report_text = report_text.replace("\n", "<br>")
 
-                  　# UDデザインのCSSを注入
+                    # UDデザインのCSSを注入
                     st.markdown("""
                     <style>
                         .ud-report-box { 
