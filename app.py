@@ -30,10 +30,27 @@ SYSTEM_PROMPT_TEMPLATE = """
 【🚨絶対遵守のルール🚨】
 1. 出力は必ずJSON形式のみ。マークダウンや余計な挨拶は一切含めない。
 2. 【NGワードの完全禁止】「カフェ」「深呼吸」「散歩」等の陳腐な表現や、「Big5」「O」「C」「E」「A」「N」といった性格診断の専門用語・アルファベットは【絶対に使用禁止】。
-3. あなたの役割は、運勢の判定と「ユーザーへの労い（共感）」に全集中することです。科学的ミッションの解説や心理学用語の提示はシステム側で自動結合するため、あなたは出力する必要はありません。
+3. 【出力の絶対ルール】
+   "mission"の各項目は、以下の【⚔️本日の固定変数】の値を代入して出力すること。
+   ※代入する際、専門用語（[WEAPON_NAME]）や固有名詞、論理構造（[WEAPON_THEORY]）を改変・省略することは【絶対NG】とする。
+   ただし、前後の文章と自然に繋がるように、助詞（てにをは）の調整や、語尾を丁寧語（です・ます調）に整えることのみ許可する。
+
+【⚔️本日の固定変数（変更・省略禁止）】
+・スキル名: [WEAPON_NAME]
+・ミッション名: [MISSION_TITLE]
+・トリガー: [TRIGGER_CONTEXT]
+・逃げ道: [TINY_HABIT]
+・理論: [WEAPON_THEORY]
+
+【構成指定】
+・"summary": "[MISSION_TITLE]" の日本語を自然に整えて出力。
+・"action": "毎日必ずすること、たとえば「[TRIGGER_CONTEXT]」などのタイミングで、[MISSION_TITLE]を試してみませんか？もし疲れていてできなくても、[TINY_HABIT]で立派なクリアです。" をベースにし、てにをは・語尾を自然な日本語に微調整して出力。
+・"benefit": "これは心理学の『[WEAPON_NAME]』という手法をアレンジした魔法です。[WEAPON_THEORY]" をベースに出力。理論の語尾が「〜である」「〜する」となっている場合は、全体のトーンに合わせて「〜です」「〜ます」調に自然に整えること。ただし意味や専門用語は絶対に削らないこと。
+・"closing": "今日1日、本当にお疲れ様でした。[ユーザーの職業や悩みに寄り添う労いと共感の一言]。もちろん、この魔法を使うかどうかはあなたの自由です。準備ができたら、ぜひ試してみてくださいね。"
 
 【JSONフォーマット】
 {
+  "thought_process": "ここでユーザーの悩みと固定変数をどう自然に結びつけるか、語尾をどう整えるか思考する",
   "fortunes": {
     "relation": "人間関係運のアドバイス（30文字以内の一言）",
     "work": "仕事運のアドバイス（30文字以内の一言）",
@@ -43,7 +60,12 @@ SYSTEM_PROMPT_TEMPLATE = """
     "family": "家族・親子運のアドバイス（30文字以内の一言）"
   },
   "aura_focus": "本日のフォーカス。今日の運勢とユーザーの悩みを結びつけ、自己肯定感が上がるように解説（約150文字）",
-  "closing_empathy": "ユーザーの職業や現在の悩みに深く寄り添う、温かい労いと共感の言葉（2〜3文程度）。※「今日もお疲れ様でした」や「試してみてくださいね」などの前後の定型句はシステムが付与するため、純粋な共感メッセージのみを記述すること。"
+  "mission": {
+    "summary": "ミッションのタイトル",
+    "action": "クエスト内容",
+    "benefit": "この魔法を使うとどうなる？",
+    "closing": "結びの言葉"
+  }
 }
 """
 
@@ -54,51 +76,24 @@ def get_daily_fortune_json(user_traits, daily_data, mind_reason, user_id):
     # 1. 今日の武器をシステム（Python）が決定する
     today_weapon = get_daily_science_weapon(mind_reason, user_id)
     
-    # 2. LLMには「運勢」と「共感メッセージ」のみを生成させる（負荷とハルシネーションの最小化）
+    # 2. 決定した武器の情報を、システムプロンプトの固定変数スロットに確実に埋め込む
+    final_system_prompt = SYSTEM_PROMPT_TEMPLATE.replace("[WEAPON_NAME]", today_weapon.get("name", ""))
+    final_system_prompt = final_system_prompt.replace("[WEAPON_THEORY]", today_weapon.get("theory", ""))
+    final_system_prompt = final_system_prompt.replace("[MISSION_TITLE]", today_weapon.get("mission_title", ""))
+    final_system_prompt = final_system_prompt.replace("[TRIGGER_CONTEXT]", today_weapon.get("trigger_context", ""))
+    final_system_prompt = final_system_prompt.replace("[TINY_HABIT]", today_weapon.get("tiny_habit", ""))
+
+    # 3. LLMに「安全な自由」を与えて美しいUXライティングを生成させる
     response = openai_client.chat.completions.create(
         model="gpt-4o", 
         response_format={ "type": "json_object" },
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE},
+            {"role": "system", "content": final_system_prompt},
             {"role": "user", "content": f"ユーザー特性: {user_traits}, 今日のデータ: {daily_data}"}
         ],
         temperature=0.7
     )
-    llm_data = json.loads(response.choices[0].message.content)
-    
-    # 3. 【絶対防衛ライン】Pythonの力で、科学的アプローチを「一言一句改変させずに」強制結合する
-    mission_summary = today_weapon.get("mission_title", "")
-    
-    mission_action = (
-        f"毎日必ずすること、たとえば「{today_weapon.get('trigger_context', '')}」などのタイミングで、"
-        f"{today_weapon.get('mission_title', '')}を実行してみませんか？"
-        f"もし疲れていてできなくても、{today_weapon.get('tiny_habit', '')}で立派なクリアです。"
-    )
-    
-    mission_benefit = (
-        f"これは心理学の『{today_weapon.get('name', '')}』という手法をアレンジした魔法です。"
-        f"{today_weapon.get('theory', '')}"
-    )
-    
-    mission_closing = (
-        f"今日1日、本当にお疲れ様でした。"
-        f"{llm_data.get('closing_empathy', '')} "
-        f"もちろん、この魔法（ミッション）を使うかどうかはあなたの自由です。準備ができたら、ぜひ試してみてくださいね。"
-    )
-    
-    # 4. フロントエンド（UI）が期待する元のJSON構造に合わせてデータを再構築して返す
-    final_data = {
-        "fortunes": llm_data.get("fortunes", {}),
-        "aura_focus": llm_data.get("aura_focus", ""),
-        "mission": {
-            "summary": mission_summary,
-            "action": mission_action,
-            "benefit": mission_benefit,
-            "closing": mission_closing
-        }
-    }
-    
-    return final_data
+    return json.loads(response.choices[0].message.content)
 
 # ==========================================
 # 1. ページ設定とUI改善CSS
