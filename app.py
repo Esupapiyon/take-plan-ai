@@ -5587,10 +5587,25 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     </style>
                     """, unsafe_allow_html=True)
                     
+                    s# レポートをUDボックスの中に流し込む
                     st.markdown(f"<div class='ud-report-box'>{report_text}</div>", unsafe_allow_html=True)
-                    
-                else:
-                    st.warning("レポートが見つかりませんでした。まだ診断が完了していないか、データが存在しません。")
+        
+        # ====================================================
+        # 🚀 行動変容への最強の導線（ハードコードCTA）
+        # ====================================================
+        st.markdown("""
+        <div style='background-color: #F4FBFA; border: 2px solid #06C755; border-radius: 12px; padding: 30px 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);'>
+            <h3 style='color: #06C755; margin-top: 0; font-weight: 900; font-size: 1.4rem;'>💡 この宿命を活かして、明日からどう動くか？</h3>
+            <p style='color: #222222; font-size: 1.05rem; font-weight: bold; margin-bottom: 0; line-height: 1.8;'>
+                あなたの本性（バグと才能）は完全に解析されました。<br>
+                次はこのデータを武器にして、現実を変える番です。<br><br>
+                <span style='color: #D32F2F; font-size: 1.15rem; border-bottom: 2px solid #D32F2F; padding-bottom: 3px;'>▶︎ 続きは「波乗りダッシュボード」の『今日の魔法のミッション』で実践しましょう！</span>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    else:
+        st.warning("レポートの表示に失敗しました。データは正常に保存されています。")
             except Exception as e:
                 st.error(f"データベース通信エラー: {e}")
 
