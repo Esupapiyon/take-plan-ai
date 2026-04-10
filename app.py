@@ -83,23 +83,23 @@ def get_daily_fortune_json(user_traits, daily_data, mind_reason, user_id):
     final_system_prompt = final_system_prompt.replace("[TINY_HABIT]", today_weapon.get("tiny_habit", ""))
 
     # 3. LLMに「安全な自由」を与えて美しいUXライティングを生成させる
-    response = anthropic_client.messages.create(
-        model="claude-sonnet-4-6", 
-        max_tokens=2000,
-        temperature=0.7,
-        system=final_system_prompt,
-        messages=[
-            {"role": "user", "content": f"ユーザー特性: {user_traits}, 今日のデータ: {daily_data}\n\n【重要】必ずJSON形式のみで出力し、最初の挨拶やマークダウン(```json 等)は一切含めないでください。"}
-        ]
-    )
-    
-    # 余計なテキストが混ざってもJSON部分だけを強制抽出する正規表現ハック
-    import re
-    raw_text = response.content[0].text
-    match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-    clean_json = match.group(0) if match else raw_text
-    
-    return json.loads(clean_json)
+    response = anthropic_client.messages.create(
+        model="claude-sonnet-4-6", 
+        max_tokens=2000,
+        temperature=0.7,
+        system=final_system_prompt,
+        messages=[
+            {"role": "user", "content": f"ユーザー特性: {user_traits}, 今日のデータ: {daily_data}\n\n【重要】必ずJSON形式のみで出力し、最初の挨拶やマークダウン(```json 等)は一切含めないでください。"}
+        ]
+    )
+    
+    # 余計なテキストが混ざってもJSON部分だけを強制抽出する正規表現ハック
+    import re
+    raw_text = response.content[0].text
+    match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+    clean_json = match.group(0) if match else raw_text
+    
+    return json.loads(clean_json)
 
 # ==========================================
 # 1. ページ設定とUI改善CSS
