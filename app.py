@@ -20,6 +20,31 @@ from openai import OpenAI
 # APIキーの読み込み（StreamlitのSecrets機能を使用）
 openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 anthropic_client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"]) 
+
+# ==========================================
+# インサイト収集：ユーザー行動トラッキング関数
+# ==========================================
+def track_insight(line_id, feature, action):
+    try:
+        # スプレッドシートの「Logs」シートにアクセス
+        creds_dict = st.secrets["gcp_service_account"]
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        
+        # ログ専用のシート（名前は 'Logs'）を開く
+        # ※あらかじめスプレッドシートに 'Logs' シートを作成しておいてください
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Logs")
+        
+        # 日本時間(JST)でタイムスタンプを生成
+        jst = datetime.timezone(datetime.timedelta(hours=+9), 'JST')
+        now_str = datetime.datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
+        
+        # ログ行の追加
+        sheet.append_row([line_id, now_str, feature, action])
+    except Exception as e:
+        # ログの失敗でアプリを止めないよう、エラーはプリントのみにする
+        print(f"Tracking Error: {e}")
 # ==========================================
 # デイリー機能：システムプロンプトテンプレート
 # ==========================================
