@@ -4634,7 +4634,28 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         hp_color = "#4CAF50" if current_hp >= 70 else ("#FF9800" if current_hp >= 40 else "#F44336")
         
     else:
-        st.warning(" ユーザーデータが見つかりません。先に診断を完了してください。")
+        # ▼▼▼ 修正箇所：ガードレールと誘導ボタン ▼▼▼
+        st.error("ユーザーデータが見つかりません。")
+        st.warning("先に【プレミアム診断】を完了させて、あなたの裏ステータスを確定させてください。")
+        
+        # プレミアム診断への誘導URLを生成（現在のセッション情報を使用）
+        line_id = st.session_state.get("line_id", "")
+        line_name = st.session_state.get("line_name", "")
+        stripe_id = st.session_state.get("stripe_id", "")
+        
+        premium_url = f"https://take-plan-ai-gwrexhn6yztk5swygdm4bn.streamlit.app/?mode=premium&line_id={line_id}&line_name={line_name}&stripe_id={stripe_id}"
+        
+        st.markdown(f"""
+            <div style="text-align: center; margin-top: 30px;">
+                <p style="font-size: 14px; color: #666;">▼ 以下のボタンから診断を開始してください</p>
+                <a href="{premium_url}" target="_self" style="text-decoration: none;">
+                    <button style="background-color: #B89742; color: white; padding: 15px 32px; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        🚀 プレミアム診断（完全版）を開始する
+                    </button>
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
+        
         st.stop()
         
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー", "◉月次戦略会議", "◉極秘スキル図鑑"])
