@@ -2014,41 +2014,38 @@ def save_to_spreadsheet():
                 system="""あなたは国内唯一の『戦略的ライフ・コンサルタント』です。
 専門用語は極力使わず、占い（算命学：不変のハードウェア）と科学（BigFive：現在のソフトウェア）を完全に融合させ、ユーザーの心に深く刺さるエモーショナルで説得力のある文章を作成してください。
 
-【見出しの完全固定ルール（絶対遵守）】
-AI側の判断で見出しの名前を変更したり、勝手に見出しを追加・削除することは一切禁止します。
-以下の「構成とフォーマット」で指定されたマークダウン（## や ###）とテキストを、一字一句変えずにそのまま使用してください。
-
 【出力構成とフォーマットの絶対ルール】
+※Markdownの「#」や「##」は一切使用せず、以下のHTMLタグを【そのまま】使用して各章を開始すること。
+AI側の判断で見出しの名前を変更したり、勝手に追加・削除することは一切禁止します。
 
-## 宿命と現実
-（※ここでは以下のHTMLタグを必ずそのまま使用し、[]の中身だけを書き換えて出力すること。Markdownの#などは使わないこと）
+<div class="report-h2">1. 宿命と現実</div>
 <div class="destiny-box">宿命：[算命学ベースの本質を、静かで重みのある一行で表現]</div>
 <div class="reality-box">現実：[Big5ベースの現在の状態を、内面的な葛藤を含めた唯一無二の一行で表現]</div>
 
-## あなたの中に眠る7つのパラドックス（矛盾）
+<div class="report-h2">2. あなたの中に眠る7つのパラドックス（矛盾）</div>
 （算命学とBig5の要素が衝突して生まれる、ユーザー特有のエッジの効いた矛盾を「7つ」だけ箇条書きで出力）
 
-## あなたを駆動する「5大欲求パラメーター」
+<div class="report-h2">3. あなたを駆動する「5大欲求パラメーター」</div>
 （[自由・探求欲求] [支配・達成欲求] [愛・つながり欲求] [生存欲求] [快楽・表現欲求] の5つについて、それぞれ0〜100%の数値を出し、各1〜2行で「なぜその数値なのか」を解説）
 
-## なぜ今、あなたは「生きづらい」のか（システムエラーの解剖）
+<div class="report-h2">4. なぜ今、あなたは「生きづらい」のか（システムエラーの解剖）</div>
 （以下の3つの中見出しを必ず使用し、1000〜1500文字程度で厚く語ること）
-### ハードウェアの設計（あなたが生まれ持った器）
+<div class="report-h3">■ ハードウェアの設計（あなたが生まれ持った器）</div>
 （本来どのような役割・精神性として設計されているかを解説）
-### 現在のソフトウェア（今インストールされているプログラム）
+<div class="report-h3">■ 現在のソフトウェア（今インストールされているプログラム）</div>
 （現在、どのような性格・行動特性のプログラムで動いているかを解説）
-### 発生しているバグ（システムエラーの正体）
+<div class="report-h3">■ 発生しているバグ（システムエラーの正体）</div>
 （ハードとソフトのミスマッチで起きている焦りや停滞感を解説）
 
-## 領域別・バグの現れ方とハック（攻略）法
+<div class="report-h2">5. 領域別・バグの現れ方とハック（攻略）法</div>
 （以下の5つの中見出しを必ず使用し、バグの現れ方とハック法を提示すること。上の章の繰り返しは避けること）
-### [仕事]
-### [人間関係]
-### [恋愛]
-### [金運]
-### [健康]
+<div class="report-h3">■ [仕事]</div>
+<div class="report-h3">■ [人間関係]</div>
+<div class="report-h3">■ [恋愛]</div>
+<div class="report-h3">■ [金運]</div>
+<div class="report-h3">■ [健康]</div>
 
-## 結びの言葉
+<div class="report-h2">6. 結びの言葉</div>
 （バグの修正に向けたユーザーの背中を静かに押す、パーソナライズされたエールを3行程度で出力）
 
 【最重要】文章は非常に長くなりますが、絶対に途中で途切れないように、最後まで完全に書き切ってください。""",
@@ -5678,71 +5675,70 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     # テキストの改行(\n)をHTMLの改行(<br>)に変換
                     report_text = report_text.replace("\n", "<br>")
 
-                    # 白×金（White & Gold）の高級感あるUDデザインのCSSを注入
+                    # 白×金（White & Gold）の究極デザインCSS
                     st.markdown("""
                     <style>
-                        /* レポート全体を囲む大枠の高級感 */
+                        /* レポート全体の大枠：ギャラリーの壁面のような質感 */
                         .ud-report-box { 
                             background-color: #FFFFFF;
-                            border: 1px solid #E8E2D2; 
-                            border-radius: 8px; 
-                            padding: 40px 30px; 
-                            margin-top: 20px; 
-                            margin-bottom: 40px; 
-                            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
-                            color: #333333;
-                            font-size: 1.05rem;
-                            line-height: 1.9;
-                            letter-spacing: 0.05em;
+                            border: 2px solid #F2E8CF; 
+                            border-radius: 12px; 
+                            padding: 50px 35px; 
+                            margin: 20px 0;
+                            box-shadow: 0 15px 45px rgba(184, 134, 11, 0.08);
+                            color: #3A3A3A;
+                            line-height: 2.0;
+                            letter-spacing: 0.03em;
                         }
-            
-                        /* 大見出し（##）のゴールドフレーム化 */
-                        .ud-report-box h2 {
-                            color: #B8860B; /* 深みのあるゴールド */
-                            border-bottom: 2px solid #D4AF37; /* ゴールドのアンダーライン */
-                            padding-bottom: 10px;
-                            margin-top: 45px;
-                            margin-bottom: 25px;
-                            font-size: 1.6rem;
-                            font-weight: 800;
-                        }
-            
-                        /* 中見出し（###）の装飾 */
-                        .ud-report-box h3 {
-                            color: #5A4A42;
-                            background-color: #FDFBF7; /* ほんのり金がかった白 */
-                            border-left: 5px solid #C5A059; /* 左にゴールドのライン */
-                            padding: 12px 18px;
-                            margin-top: 35px;
-                            margin-bottom: 15px;
-                            font-size: 1.3rem;
-                            font-weight: bold;
-                        }
-
-                        /* ▼新規追加：宿命と現実の専用対比ボックス */
-                        .destiny-box {
-                            background: linear-gradient(135deg, #FFFFFF, #FDFDF9);
-                            border: 1px solid #D4AF37;
-                            border-left: 10px solid #D4AF37; /* ゴールドの極太ライン */
-                            padding: 25px 30px;
+                        
+                        /* 大見出し（h2）：金の額縁フレーム */
+                        .report-h2 {
+                            color: #B8860B;
+                            background: #FFFCF5;
+                            border: 2px solid #D4AF37;
+                            padding: 15px 20px;
+                            margin: 50px 0 30px 0;
                             border-radius: 4px;
+                            text-align: center;
+                            font-size: 1.5rem;
+                            font-weight: 800;
+                            box-shadow: inset 0 0 10px rgba(212,175,55,0.1);
+                            display: block;
+                        }
+                        
+                        /* 中見出し（h3）：上品なサイドゴールド */
+                        .report-h3 {
+                            color: #5A4A42;
+                            background: linear-gradient(to right, #FFF9EB, #FFFFFF);
+                            border-left: 8px solid #D4AF37;
+                            border-bottom: 1px solid #EEE6D5;
+                            padding: 12px 20px;
+                            margin: 35px 0 20px 0;
+                            font-size: 1.2rem;
+                            font-weight: bold;
+                            display: block;
+                        }
+            
+                        /* 宿命・現実の専用ボックス（既にご満足いただいているものを微調整） */
+                        .destiny-box {
+                            background: #FFFCF9;
+                            border: 1.5px solid #D4AF37;
+                            border-left: 12px solid #D4AF37;
+                            padding: 25px;
                             margin-bottom: 15px;
-                            font-size: 1.5rem; /* 文字を大きく */
+                            font-size: 1.4rem;
                             font-weight: bold;
                             color: #222222;
-                            box-shadow: 0 4px 15px rgba(212,175,55,0.1);
                         }
                         .reality-box {
-                            background: linear-gradient(135deg, #FAFAFA, #F0EBE1);
-                            border: 1px solid #A9A090;
-                            border-left: 10px solid #8C7D6B; /* 少し影のある渋い色 */
-                            padding: 25px 30px;
-                            border-radius: 4px;
-                            margin-bottom: 35px;
-                            font-size: 1.5rem; /* 文字を大きく */
+                            background: #F8F8F8;
+                            border: 1.5px solid #A9A090;
+                            border-left: 12px solid #8C7D6B;
+                            padding: 25px;
+                            margin-bottom: 40px;
+                            font-size: 1.4rem;
                             font-weight: bold;
                             color: #4A4A4A;
-                            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
                         }
                     </style>
                     """, unsafe_allow_html=True)
