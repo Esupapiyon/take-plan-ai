@@ -2032,9 +2032,9 @@ def save_to_spreadsheet():
 （[自由・探求]等の解説。各項目3行以内に凝縮せよ）
 
 <div class="report-h2">4. なぜ今、あなたは「生きづらい」のか</div>
-<div class="report-h3">■ ハードウェアの設計</div>
+<div class="report-h3">■本来の宿命（ハードウェア）</div>
 （本来の器を解説）
-<div class="report-h3">■ 現在のソフトウェア</div>
+<div class="report-h3">■ 現在の性格（ソフトウェア）</div>
 （現在の性格プログラムを解説）
 <div class="report-h3">■ 発生しているバグ</div>
 （ミスマッチによる焦りと停滞を解剖）
@@ -6488,7 +6488,7 @@ elif st.session_state.step == "processing":
         time.sleep(1)
         st.write("✔️ 理想と現実の『摩擦係数』を計算中...")
         time.sleep(1)
-        st.write(" あなたの完全版の取扱説明書を生成しています（約60〜90秒）...")
+        st.write(" あなたの完全版の取扱説明書を生成しています（約90〜120秒）...")
         
         success = save_to_spreadsheet()
         if success:
