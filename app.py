@@ -4723,8 +4723,23 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         # ==========================================
         st.markdown("### ▼ あなたの北極星")
         current_north_star = user_data_for_ai.get("Free_Text", "").strip()
-        current_focus = user_data_for_ai.get("Pains", "未設定")
-
+     
+        raw_focus = user_data_for_ai.get("Pains", "未設定")
+        
+        if isinstance(raw_focus, str):
+            # "['人間関係', 'お金']" のような不要な記号を排除して綺麗にする
+            clean_focus = raw_focus.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
+            
+            # スプレッドシート側の仕様で「未, 設, 定」と分解されてしまった場合の自動修正
+            clean_focus = clean_focus.replace("未, 設, 定", "未設定").replace("未,設,定", "未設定")
+            
+            current_focus = clean_focus
+        elif isinstance(raw_focus, list):
+            # リスト形式でデータが来た場合は、スラッシュで綺麗に繋ぐ
+            current_focus = " / ".join(raw_focus)
+        else:
+            current_focus = str(raw_focus)
+            
         if current_north_star and current_north_star != "なし":
             st.markdown(f"""
             <div style='background-color:#E3F2FD; padding:20px; border-radius:10px; border-left:5px solid #2196F3; margin-bottom:15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>
