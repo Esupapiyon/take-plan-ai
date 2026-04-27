@@ -2023,13 +2023,21 @@ def save_to_spreadsheet():
 ※現実の表現において、年齢・職業等の表面的な情報は使用禁止。
 
 <div class="report-h2">2. あなたの中に眠る7つのパラドックス</div>
-※各項目は【40文字以内】で、SNSでシェアしたくなる鋭い一文にせよ。
-・[内容]
-・[内容]
-（以下7つまで）
+※以下のタグで、各項目を【40文字以内】で7つ出力せよ。箇条書きの「・」は不要。
+<div class="paradox-card">[矛盾の内容を鋭い一文で]</div>
 
 <div class="report-h2">3. あなたを駆動する5大欲求</div>
-（[自由・探求]等の解説。各項目3行以内に凝縮せよ）
+※以下の固定見出しを使用し、[数値]をデータから反映させ、解説を3行以内で書け。
+<div class="report-h3">1. 自我・自己実現欲（自分のこだわりを貫きたい欲）：[数値]%</div>
+（解説）
+<div class="report-h3">2. 愛・つながり欲求（他者と深く結びつきたい欲）：[数値]%</div>
+（解説）
+<div class="report-h3">3. 自由・探求欲求（未知を求め縛られたくない欲）：[数値]%</div>
+（解説）
+<div class="report-h3">4. 支配・達成欲求（力を持ち目的を完遂したい欲）：[数値]%</div>
+（解説）
+<div class="report-h3">5. 生存・安心欲求（安定を保ちリスクを避けたい欲）：[数値]%</div>
+（解説）
 
 <div class="report-h2">4. なぜ今、あなたは「生きづらい」のか</div>
 <div class="report-h3">■本来の宿命（ハードウェア）</div>
@@ -5676,74 +5684,75 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                     # テキストの改行(\n)をHTMLの改行(<br>)に変換
                     report_text = report_text.replace("\n", "<br>")
 
-                    # スマホ最適化：白×金のレスポンシブCSS
+                    # スマホ・視認性特化型：白×金プレミアムCSS
                     st.markdown("""
                     <style>
-                        /* 全体：フォントサイズをやや下げ、視認性を向上 */
                         .ud-report-box { 
                             background-color: #FFFFFF;
                             border: 1.5px solid #F2E8CF; 
                             border-radius: 12px; 
-                            padding: 40px 25px; 
+                            padding: 40px 20px; 
                             margin: 20px 0;
                             box-shadow: 0 15px 45px rgba(184, 134, 11, 0.08);
                             color: #3A3A3A;
                             line-height: 1.8;
-                            font-size: 0.95rem; /* 全体的に少し小さく */
+                            font-size: 0.95rem;
                         }
                         
-                        /* 金の額縁フレーム：文字サイズを最適化 */
+                        /* 大見出し：金の額縁フレーム */
                         .report-h2 {
                             color: #B8860B;
                             background: #FFFCF5;
                             border: 2px solid #D4AF37;
                             padding: 12px;
-                            margin: 40px 0 25px 0;
+                            margin: 45px 0 25px 0;
                             border-radius: 4px;
                             text-align: center;
-                            font-size: 1.2rem; /* スマホで見やすいサイズ */
-                            font-weight: 900; /* 極太 */
+                            font-size: 1.15rem;
+                            font-weight: 900;
                             box-shadow: inset 0 0 10px rgba(212,175,55,0.1);
                         }
                         
-                        /* サイドライン見出し */
-                        .report-h3 {
-                            color: #5A4A42;
-                            background: linear-gradient(to right, #FFF9EB, #FFFFFF);
-                            border-left: 6px solid #D4AF37;
-                            padding: 10px 15px;
-                            margin: 30px 0 15px 0;
-                            font-size: 1.1rem;
-                            font-weight: 800; /* 太字 */
+                        /* 7つのパラドックス：カード形式 */
+                        .paradox-card {
+                            background: #FFFCF7;
+                            border-left: 5px solid #D4AF37;
+                            padding: 15px;
+                            margin-bottom: 12px;
+                            border-radius: 0 8px 8px 0;
+                            font-weight: 700; /* 太字 */
+                            font-size: 0.9rem;
+                            line-height: 1.5;
+                            box-shadow: 0 2px 8px rgba(212,175,55,0.05);
                         }
             
-                        /* 宿命・現実：キャッチコピー用ボックス */
-                        .destiny-box {
-                            background: #FFFCF9;
-                            border: 1px solid #D4AF37;
-                            border-left: 10px solid #D4AF37;
-                            padding: 20px;
-                            margin-bottom: 12px;
-                            font-size: 1.2rem; /* 強調 */
+                        /* 欲求・カテゴリ見出し：固定ヘッダー形式 */
+                        .report-h3 {
+                            color: #FFFFFF;
+                            background: linear-gradient(90deg, #B8860B, #D4AF37);
+                            padding: 10px 18px;
+                            margin: 35px 0 15px 0;
+                            border-radius: 30px; /* カプセル型で視認性向上 */
+                            font-size: 1.0rem;
                             font-weight: 900;
-                            color: #1A1A1A;
+                            display: inline-block; /* 必要な幅だけ取る */
+                            box-shadow: 0 4px 10px rgba(184, 134, 11, 0.2);
+                        }
+            
+                        .destiny-box {
+                            background: #FFFCF9; border: 1px solid #D4AF37; border-left: 10px solid #D4AF37;
+                            padding: 20px; margin-bottom: 12px; font-size: 1.1rem; font-weight: 900; color: #1A1A1A;
                         }
                         .reality-box {
-                            background: #F8F8F8;
-                            border: 1px solid #A9A090;
-                            border-left: 10px solid #8C7D6B;
-                            padding: 20px;
-                            margin-bottom: 35px;
-                            font-size: 1.2rem;
-                            font-weight: 900;
-                            color: #333333;
+                            background: #F8F8F8; border: 1px solid #A9A090; border-left: 10px solid #8C7D6B;
+                            padding: 20px; margin-bottom: 35px; font-size: 1.1rem; font-weight: 900; color: #333333;
                         }
             
-                        /* スマホ専用の微調整 */
                         @media (max-width: 600px) {
-                            .ud-report-box { padding: 25px 15px; }
-                            .report-h2 { font-size: 1.1rem; }
-                            .destiny-box, .reality-box { font-size: 1.05rem; padding: 15px; }
+                            .ud-report-box { padding: 30px 15px; }
+                            .report-h2 { font-size: 1.05rem; }
+                            .paradox-card { font-size: 0.85rem; padding: 12px; }
+                            .report-h3 { font-size: 0.9rem; }
                         }
                     </style>
                     """, unsafe_allow_html=True)
