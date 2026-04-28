@@ -6027,7 +6027,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                 time.sleep(1)
                                 st.write("✔️ あなたとの相性・力関係を計算中...")
                                 time.sleep(1)
-                                st.write(" プロファイリング実行。ターゲットの完全攻略法を生成しています（約20〜30秒）...")
+                                st.write(" プロファイリング実行。ターゲットの完全攻略法を生成しています。画面を開いてお待ちください（約70〜100秒）...")
                                 
                                 success = consume_radar_limit(st.session_state.line_id)
                                 if not success:
@@ -6325,7 +6325,7 @@ F-1:実存的空虚, F-2:アロスタティック負荷(過労), F-3:身体化�
                             intent_reason = intent_data["logic"]
                             meta_skill = intent_data["meta_skill"]
 
-                        with st.spinner(f" 処方スキル【{skill_data['name']}】に基づき、月次戦略レポートを生成中...（STEP 2/2）"):
+                        with st.spinner(f" 処方スキル【{skill_data['name']}】に基づき、月次戦略レポートを生成中...出力に時間がかかります（STEP 2/2）"):
                             empathy_phrases = [
                                 "今日まで本当によく一人で頑張りましたね。",
                                 "まずは、ここまで一人で抱え込み、耐え抜いてきた自分を労ってあげてください。",
