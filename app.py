@@ -6179,9 +6179,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                         st.rerun()
 
                                         # ▼ 消失していた全体の例外キャッチを復活
-                                        except Exception as e:
-                                            status.update(label="エラーが発生しました", state="error", expanded=False)
-                                            st.error(f"AI解析中にエラーが発生しました: {e}")
+                                    except Exception as e:
+                                        status.update(label="エラーが発生しました", state="error", expanded=False)
+                                        st.error(f"AI解析中にエラーが発生しました: {e}")
                                            
     # ==========================================
     # 【タブ5】月次戦略会議室（引き算とスキル習得）
