@@ -6705,7 +6705,7 @@ elif st.session_state.step == "processing":
         time.sleep(1)
         st.write("✔️ 理想と現実の『摩擦係数』を計算中...")
         time.sleep(1)
-        st.write(" あなたの完全版の取扱説明書を生成しています（約90〜120秒）...")
+        st.write(" あなたの完全版の取扱説明書を生成しています。画面を開いてお待ちください（約60〜90秒）...")
         
         success = save_to_spreadsheet()
         if success:
