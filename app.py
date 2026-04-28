@@ -1881,6 +1881,7 @@ O(開放性): {scores['O']}, C(勤勉性): {scores['C']}, E(外向性): {scores[
 3. 文字数の確保: 当たり障りのない短い文章は絶対に許しません。ユーザーが「なぜそこまで分かるのか」と驚愕するレベルまで、具体例を交えて【非常に長く、深く】語り尽くすこと。
 4. アドバイスの禁止: このレポートは「究極の自己分析」です。解決策やアドバイス（例：〇〇しましょう、〇〇を心がけてください等）は【絶対に一切書かないでください】。徹底的に「あなたはこういう人間です」という事実の提示のみに留めてください。
 5. 絵文字の完全禁止: レポート内に絵文字は一切使用しないでください。
+6. 数値・記号出力の絶対禁止: 文章内で「(O:5)」や「協調性(A:4.5)」のような、具体的なアルファベット記号や数値をそのまま出力することは固く禁ずる。必ず「あなたは開放性が非常に高いため〜」のように、数値を伏せた自然な日本語表現に変換して出力せよ。
 
 # 出力構成（以下のマークダウンと指定の順番通りに必ず出力してください）
 
@@ -4632,10 +4633,20 @@ def start_test(line_name, line_id, dob_str, btime, gender, job_status, pain_poin
         st.error(" 存在しない日付です。")
         return
 
+    # ▼ 修正：文字列分解バグを完全に防ぐ、堅牢なデータクレンジング
+    if isinstance(pain_points, list):
+        pains_str = " / ".join(pain_points) # 複数選択の場合はスラッシュで綺麗に繋ぐ
+    elif isinstance(pain_points, str):
+        pains_str = pain_points # 単一選択（文字列）の場合はそのまま保存
+    else:
+        pains_str = "未設定"
+
     st.session_state.user_data = {
         "User_ID": line_name, "LINE_ID": line_id,
         "DOB": formatted_dob, "Birth_Time": btime.strip() if btime else "", "Gender": gender,
-        "Job": job_status, "Pains": ", ".join(pain_points), "Free_Text": free_goal
+        "Job": job_status, 
+        "Pains": pains_str, # 👈 修正：安全に処理された変数を格納
+        "Free_Text": free_goal
     }
     st.session_state.step = "test"
 
