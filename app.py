@@ -6075,46 +6075,44 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                                         try:
                                             result_data = json.loads(clean_json, strict=False)
                                             
-                                            # 全7章を白×金ベースの美しいUIで出力
-                                            html_output = f"""
-                                            <h3>【1. 本性】表の顔と、裏に隠された本当の性格</h3>
-                                            <p>{result_data.get('chapter1', '')}</p>
-                                            
-                                            <h3>【2. 仕事・適性】職場で見せる顔とプロフェッショナルとしての行動原理</h3>
-                                            <p>{result_data.get('chapter2', '')}</p>
-                                            
-                                            <h3>【3. 友人・人脈】交友関係の築き方と、心を許す相手の条件</h3>
-                                            <p>{result_data.get('chapter3', '')}</p>
-                                            
-                                            <h3>【4. 恋愛・執着】親密になった時だけ見せる愛情のサインと危うさ</h3>
-                                            <p>{result_data.get('chapter4', '')}</p>
-                                            
-                                            <h3>【5. 地雷】絶対に触れてはいけないタブーと、ストレス時の攻撃パターン</h3>
-                                            <p>{result_data.get('chapter5', '')}</p>
-                                            
-                                            <h3>【6. 力関係】あの人は「あなた」をどう見て、どう扱おうとしているか</h3>
-                                            <p>{result_data.get('chapter6', '')}</p>
-                                            
-                                            <h3 style="color:#D32F2F; border-left: 5px solid #D32F2F; margin-top: 35px;">【7. 完全攻略】明日から使える、あの人を動かす具体策</h3>
-                                            <div style="background: #FFFCF7; border-left: 6px solid #D4AF37; padding: 18px; margin-bottom: 20px; border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(212,175,55,0.05);">
-                                                <div style="color: #B8860B; font-size: 1.1rem; font-weight: 900; margin-bottom: 8px;">
-                                                    【使用理論】 {result_data.get('chapter7_hack_name', '')}
-                                                </div>
-                                                <div style="font-size: 0.95rem; color: #555555; line-height: 1.6;">
-                                                    {result_data.get('chapter7_reason', '')}
-                                                </div>
-                                            </div>
-                                            
-                                            <div style="background: #FFFFFF; border: 1.5px solid #1565C0; border-radius: 8px; padding: 18px; margin-bottom: 15px;">
-                                                <strong style="color: #1565C0; font-size: 1.05rem;">▶︎ アクション①</strong><br>
-                                                <span style="color: #333; line-height: 1.7;">{result_data.get('chapter7_action1', '')}</span>
-                                            </div>
-                                            
-                                            <div style="background: #FFFFFF; border: 1.5px solid #D32F2F; border-radius: 8px; padding: 18px;">
-                                                <strong style="color: #D32F2F; font-size: 1.05rem;">▶︎ アクション②</strong><br>
-                                                <span style="color: #333; line-height: 1.7;">{result_data.get('chapter7_action2', '')}</span>
-                                            </div>
-                                            """
+                                            # ▼ 修正：先頭のスペースを完全削除（黒いコードブロック化を防ぐ）
+                                            html_output = f"""<h3>【1. 本性】表の顔と、裏に隠された本当の性格</h3>
+<p>{result_data.get('chapter1', '')}</p>
+
+<h3>【2. 仕事・適性】職場で見せる顔とプロフェッショナルとしての行動原理</h3>
+<p>{result_data.get('chapter2', '')}</p>
+
+<h3>【3. 友人・人脈】交友関係の築き方と、心を許す相手の条件</h3>
+<p>{result_data.get('chapter3', '')}</p>
+
+<h3>【4. 恋愛・執着】親密になった時だけ見せる愛情のサインと危うさ</h3>
+<p>{result_data.get('chapter4', '')}</p>
+
+<h3>【5. 地雷】絶対に触れてはいけないタブーと、ストレス時の攻撃パターン</h3>
+<p>{result_data.get('chapter5', '')}</p>
+
+<h3>【6. 力関係】あの人は「あなた」をどう見て、どう扱おうとしているか</h3>
+<p>{result_data.get('chapter6', '')}</p>
+
+<h3 style="color:#D32F2F; border-left: 5px solid #D32F2F; margin-top: 35px;">【7. 完全攻略】明日から使える、あの人を動かす具体策</h3>
+<div style="background: #FFFCF7; border-left: 6px solid #D4AF37; padding: 18px; margin-bottom: 20px; border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(212,175,55,0.05);">
+<div style="color: #B8860B; font-size: 1.1rem; font-weight: 900; margin-bottom: 8px;">
+【使用理論】 {result_data.get('chapter7_hack_name', '')}
+</div>
+<div style="font-size: 0.95rem; color: #555555; line-height: 1.6;">
+{result_data.get('chapter7_reason', '')}
+</div>
+</div>
+
+<div style="background: #FFFFFF; border: 1.5px solid #1565C0; border-radius: 8px; padding: 18px; margin-bottom: 15px;">
+<strong style="color: #1565C0; font-size: 1.05rem;">▶︎ アクション①</strong><br>
+<span style="color: #333; line-height: 1.7;">{result_data.get('chapter7_action1', '')}</span>
+</div>
+
+<div style="background: #FFFFFF; border: 1.5px solid #D32F2F; border-radius: 8px; padding: 18px;">
+<strong style="color: #D32F2F; font-size: 1.05rem;">▶︎ アクション②</strong><br>
+<span style="color: #333; line-height: 1.7;">{result_data.get('chapter7_action2', '')}</span>
+</div>"""
                                             st.session_state.radar_result = html_output
                                             
                                         except Exception as e:
