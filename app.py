@@ -4854,7 +4854,25 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         st.markdown(f"<h3 style='text-align:center; color:#333; margin-top:20px; margin-bottom:20px;'>獲得累計 EXP: <span style='color:#b8860b; font-size:1.8rem; font-weight:900;'>{exp} ✨</span></h3>", unsafe_allow_html=True)
 
         # ==========================================
-        # 2. 北極星（理想の未来）と現在のフォーカスの表示
+        # 2. 🔋 今日の心のHP（認知資源）をスキルの上に移動
+        # ==========================================
+        st.markdown(f"""
+        <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-top: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+            <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
+            <div style='background-color: #E0E0E0; border-radius: 20px; width: 100%; height: 35px; overflow: hidden; margin-top: 15px;'>
+                <div style='background-color: {hp_color}; width: {current_hp}%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.1rem; transition: width 1s ease-in-out;'>
+                    {current_hp}%
+                </div>
+            </div>
+            <p style='text-align: center; font-size: 0.9rem; color: #777; margin-top: 15px; margin-bottom:0; line-height: 1.6;'>
+                ※環境の負荷（運勢）により朝のHPは変動します。<br><b>ミッションをクリアするとHPが100%に回復します！</b>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        
+        # ==========================================
+        # 3. 北極星（理想の未来）と現在のフォーカスの表示
         # ==========================================
         st.markdown("### ▼ あなたの北極星")
         current_north_star = user_data_for_ai.get("Free_Text", "").strip()
@@ -4918,23 +4936,7 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                 else:
                     st.error("入力してください。")
 
-        # ==========================================
-        # 3. 🔋 今日の心のHP（認知資源）をスキルの上に移動
-        # ==========================================
-        st.markdown(f"""
-        <div style='background-color: #FAFAFA; border: 2px solid #DDDDDD; border-radius: 12px; padding: 20px; margin-top: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-            <h4 style='text-align: center; margin-top: 0; color: #333; font-weight: 900;'><span style='font-size:1.5rem;'>🔋</span> 今日の心のHP（認知資源）</h4>
-            <div style='background-color: #E0E0E0; border-radius: 20px; width: 100%; height: 35px; overflow: hidden; margin-top: 15px;'>
-                <div style='background-color: {hp_color}; width: {current_hp}%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.1rem; transition: width 1s ease-in-out;'>
-                    {current_hp}%
-                </div>
-            </div>
-            <p style='text-align: center; font-size: 0.9rem; color: #777; margin-top: 15px; margin-bottom:0; line-height: 1.6;'>
-                ※環境の負荷（運勢）により朝のHPは変動します。<br><b>ミッションをクリアするとHPが100%に回復します！</b>
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
+        
         # ==========================================
         # 4. 📚 最近獲得した極秘スキル（最新3件のみ表示）
         # ==========================================
