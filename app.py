@@ -4834,60 +4834,9 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
         """, unsafe_allow_html=True)
         st.stop()
 
-# ==========================================
-# 決済前の関所（利用規約同意）ページ表示関数
-# ==========================================
-def show_checkout_page():
-    # URLパラメータからLINE IDを取得
-    query_params = st.query_params
-    line_id = query_params.get("line_id", "unknown")
-
-    st.markdown("### プレミアム版へのアップグレード")
-    st.write("以下の利用規約およびプライバシーポリシーをご確認の上、同意をお願いいたします。")
-
-    # 規約の表示
-    terms_text = """
-    【利用規約】
-    第1条（免責事項および損害賠償の制限）
-    1. 本サービス（裏・ステータス診断、月次戦略会議、各種ハック法等）は、独自アルゴリズムに基づき情報提供を行うものであり、当方は一切の保証を行いません。
-    2. ユーザーは、本サービスの診断結果やアドバイス等を参考にして行う一切の意思決定および行動（退職、離婚、対人トラブル等を含みます）について、完全に自己の責任において行うものとします。
-    3. 本サービスから得られた情報に起因してユーザーに生じた損害について、当方は一切の責任を負わないものとします。ただし、消費者契約法に定める消費者契約となる場合、この免責規定は適用されません。
-    4. 当方の故意または重過失による場合を除き、当方の賠償責任は、当該ユーザーが過去1ヶ月間に支払った利用料金（1,480円）を上限とします。
-    """
-    st.text_area("利用規約・プライバシーポリシー", terms_text, height=200)
-
-    # 同意チェックボックス
-    agree = st.checkbox("利用規約およびプライバシーポリシーに同意する")
-
-    # StripeのURL生成と決済ボタン
-    base_stripe_url = "[https://buy.stripe.com/test_xxxxxxxxxxxxxxx](https://buy.stripe.com/test_xxxxxxxxxxxxxxx)" # あなたのStripe Payment Link
-
-    if line_id != "unknown":
-        final_stripe_url = f"{base_stripe_url}?client_reference_id={line_id}"
-    else:
-        final_stripe_url = base_stripe_url
-
-    # 同意しないと押せない防衛策
-    st.link_button("規約に同意して決済ページへ進む", final_stripe_url, disabled=not agree)
-
-# ==========================================
-# メインアプリケーション（ルーティング）
-# ==========================================
-def main():
-    # URLのパラメータを取得
-    query_params = st.query_params
-    action = query_params.get("action", "")
-
-    # 【分岐A】もしURLに「action=checkout」が含まれていたら、関所ページを表示
-    if action == "checkout":
-        show_checkout_page()
-    
-    # 【分岐B】それ以外（通常のアクセスや、LINEからの通常ログイン）の場合
-    else:
-        # 🚨ここから下の行をすべて「さらに半角スペース4つ（Tab1回）」右にズラす🚨
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー", "◉月次戦略会議", "◉極秘スキル図鑑"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー", "◉月次戦略会議", "◉極秘スキル図鑑"])
   
-        with tab1:
+    with tab1:
             level = math.floor(exp / 50) + 1
             next_exp = level * 50
             progress = (exp % 50) / 50.0
@@ -6902,9 +6851,3 @@ elif st.session_state.step == "done":
     
     st.markdown("<br><hr>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center; font-weight: bold;'>レポートはポータルからいつでも確認できます</h4>", unsafe_allow_html=True)
-
-# スクリプトの実行
-if __name__ == "__main__":
-    main()
-    st.link_button("◀ LINEへ戻る", "https://lin.ee/FrawIyY", type="primary")
-    st.info("このウィンドウは閉じて構いません。")
