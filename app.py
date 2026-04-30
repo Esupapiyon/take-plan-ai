@@ -4884,27 +4884,25 @@ def main():
     
     # 【分岐B】それ以外（通常のアクセスや、LINEからの通常ログイン）の場合
     else:
-        
-        
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー", "◉月次戦略会議", "◉極秘スキル図鑑"])
+        # 🚨ここから下の行をすべて「さらに半角スペース4つ（Tab1回）」右にズラす🚨
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["◉マイページ", "◉波乗りダッシュボード", "◉極秘レポート", "◉対人レーダー", "◉月次戦略会議", "◉極秘スキル図鑑"])
   
-    with tab1:
-        level = math.floor(exp / 50) + 1
-        next_exp = level * 50
-        progress = (exp % 50) / 50.0
+        with tab1:
+            level = math.floor(exp / 50) + 1
+            next_exp = level * 50
+            progress = (exp % 50) / 50.0
 
-        st.markdown(f"""
-        <div style='background-color: #FAFAFA; padding: 20px; border-radius: 10px; border: 2px solid #b8860b; margin-bottom: 20px;'>
-            <h3 style='color: #b8860b; text-align: center; margin-top: 0;'>YOUR STATUS</h3>
-            <h1 style='color: #D32F2F; text-align: center; font-size: 3rem; margin: 10px 0;'>Lv. {level}</h1>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.progress(progress, text=f"次のレベルまで あと {next_exp - exp} EXP")
-        
-        # 1. 獲得累計 EXPを強調表示
-        st.markdown(f"<h3 style='text-align:center; color:#333; margin-top:20px; margin-bottom:20px;'>獲得累計 EXP: <span style='color:#b8860b; font-size:1.8rem; font-weight:900;'>{exp} ✨</span></h3>", unsafe_allow_html=True)
-
+            st.markdown(f"""
+            <div style='background-color: #FAFAFA; padding: 20px; border-radius: 10px; border: 2px solid #b8860b; margin-bottom: 20px;'>
+                <h3 style='color: #b8860b; text-align: center; margin-top: 0;'>YOUR STATUS</h3>
+                <h1 style='color: #D32F2F; text-align: center; font-size: 3rem; margin: 10px 0;'>Lv. {level}</h1>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.progress(progress, text=f"次のレベルまで あと {next_exp - exp} EXP")
+            
+            # 1. 獲得累計 EXPを強調表示
+            st.markdown(f"<h3 style='text-align:center; color:#333; margin-top:20px; margin-bottom:20px;'>獲得累計 EXP: <span style='color:#b8860b; font-size:1.8rem; font-weight:900;'>{exp} ✨</span></h3>", unsafe_allow_html=True)
         # ==========================================
         # 2. 🔋 今日の心のHP（認知資源）をスキルの上に移動
         # ==========================================
