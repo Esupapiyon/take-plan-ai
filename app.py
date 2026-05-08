@@ -5047,6 +5047,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         else:
                             st.error("職業と悩みの両方を入力してください。")
 
+        
+        st.divider()  # 区切り線を入れて視認性を高めます
+        st.markdown("### アカウント・契約管理")
+        st.write("クレジットカード情報の変更や、サブスクリプションの解約はこちらからお手続きいただけます。")
+
+        # Stripeで発行した本番用カスタマーポータルのURL
+        PORTAL_URL = "https://billing.stripe.com/p/login/5kQdRa7Nn5LW7vkfuYeUU00" 
+        
+        st.link_button(" 契約管理・解約手続きへ進む", PORTAL_URL)                
+                            
+
     with tab2:
         # --- スマホの横揺れをOSレベルで殺し、グラフだけを滑らせる最終CSS ---
         st.markdown("""
@@ -6852,15 +6863,3 @@ elif st.session_state.step == "done":
     
     st.markdown("<br><hr>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center; font-weight: bold;'>レポートはポータルからいつでも確認できます</h4>", unsafe_allow_html=True)
-
-
-    st.divider()  # 画面に薄い区切り線を引いて、設定エリアを区別します
-
-    st.markdown("### アカウント・契約管理")
-    st.write("クレジットカード情報の変更や、サブスクリプションの解約はこちらからお手続きいただけます。")
-
-    # ▼ 先ほどStripeで取得したカスタマーポータルのURLをここに貼り付けます
-    PORTAL_URL = "https://billing.stripe.com/p/login/5kQdRa7Nn5LW7vkfuYeUU00" 
-
-    # リンクボタンの表示
-    st.link_button(" 契約管理・解約手続きへ進む", PORTAL_URL)
