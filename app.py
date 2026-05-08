@@ -5047,15 +5047,17 @@ if p_mode in ["portal", "report"] and st.session_state.line_id:
                         else:
                             st.error("職業と悩みの両方を入力してください。")
 
+        st.divider()  # 区切り線
         
-        st.divider()  # 区切り線を入れて視認性を高めます
-        st.markdown("### アカウント・契約管理")
-        st.write("クレジットカード情報の変更や、サブスクリプションの解約はこちらからお手続きいただけます。")
+        # HTMLを使って文字色を白や明るいグレーに指定して見やすくします
+        st.markdown("<h3 style='color: white; margin-bottom: 5px;'> アカウント・契約管理</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #DDDDDD; font-size: 0.9rem;'>クレジットカード情報の変更や、サブスクリプションの解約はこちらからお手続きいただけます。</p>", unsafe_allow_html=True)
 
         # Stripeで発行した本番用カスタマーポータルのURL
         PORTAL_URL = "https://billing.stripe.com/p/login/5kQdRa7Nn5LW7vkfuYeUU00" 
         
-        st.link_button(" 契約管理・解約手続きへ進む", PORTAL_URL)                
+        # type="primary" をつけることで、ボタンに色がつき目立つようになります
+        st.link_button(" 契約管理・解約手続きへ進む", PORTAL_URL, type="primary")          
                             
 
     with tab2:
